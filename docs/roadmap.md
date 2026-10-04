@@ -20,9 +20,9 @@
 ## Milestone 2b — Studies (Lichess-style)
 - [x] Design (ADR-0011, docs/studies.md)
 - [x] PGN parser with variations, comments, glyphs, shapes
-- [ ] Viewer: chapters, move tree, comments, arrows/circles
+- [x] Viewer: chapters, move tree, comments, arrows/circles
 - [ ] Interactive chapters (gamebook rules)
-- [ ] Pipeline `study` download command
+- [x] Pipeline `study` download command
 
 ## Milestone 3 — Openings
 - [ ] Pipeline: lichess chess-openings → `openings.sqlite`

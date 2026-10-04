@@ -155,6 +155,10 @@ function Paperknight:addToMainMenu(menu_items)
                 callback = function() self:startPuzzles() end,
             },
             {
+                text = _("Studies"),
+                callback = function() require("pkstudies").show() end,
+            },
+            {
                 text = _("Play against the engine"),
                 callback = function() self:startGame() end,
             },

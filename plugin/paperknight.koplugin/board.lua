@@ -12,6 +12,7 @@ local TextWidget = require("ui/widget/textwidget")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local Chess = require("chess/src/chess")
 local Device = require("device")
+local UIManager = require("ui/uimanager")
 local Screen = Device.screen
 
 local BOARD_SIZE = 8
@@ -27,6 +28,9 @@ local HIGHLIGHT_COLOR = Blitbuffer.COLOR_GRAY_D  -- 0xDD
 -- white edge squares don't blend into the page.
 local BOARD_BORDER_COLOR = Blitbuffer.COLOR_DARK_GRAY -- 0x88
 local BOARD_BORDER_SIZE = 2 -- scaled by screen DPI
+-- Study shapes ([%csl] circles, [%cal] arrows). Brush colours can't be told
+-- apart on e-ink, so all shapes share one dark style (docs/studies.md).
+local SHAPE_COLOR = Blitbuffer.COLOR_GRAY_4
 
 local PkIcons = require("pkicons")
 local icons = { empty = PkIcons.empty }
@@ -269,6 +273,94 @@ function Board:showMove(move)
     self:handleMoveFlags(move, move.to)
 end
 
+--- Board:setShapes(shapes)
+-- Paperknight: { circles = { {square=}, ... }, arrows = { {from=, to=}, ... } }
+-- drawn over the squares on the next paint (nil clears them).
+function Board:setShapes(shapes)
+    self.shapes = shapes
+end
+
+-- A single-square refresh (selection border) paints only that button and
+-- would erase shapes crossing it: repaint the whole board when shapes exist.
+function Board:_repaintShapes()
+    local shapes = self.shapes
+    if shapes and ((shapes.circles and #shapes.circles > 0) or (shapes.arrows and #shapes.arrows > 0)) then
+        UIManager:setDirty(self.show_parent or self, "ui", self.dimen)
+    end
+end
+
+function Board:paintTo(bb, x, y)
+    FrameContainer.paintTo(self, bb, x, y)
+    if self.shapes then self:_paintShapes(bb) end
+end
+
+function Board:_squareRect(square)
+    local id = Board.chessToId(square)
+    local button = id and self.table:getButtonById(id)
+    return button and button.dimen
+end
+
+function Board:_paintShapes(bb)
+    local ring = math.max(2, math.floor(self.button_size / 14))
+    for _, c in ipairs(self.shapes.circles or {}) do
+        local r = self:_squareRect(c.square)
+        if r then
+            local inset = math.floor(self.button_size / 12)
+            local w = r.w - 2 * inset
+            bb:paintBorder(r.x + inset, r.y + inset, w, w, ring, SHAPE_COLOR, math.floor(w / 2))
+        end
+    end
+    local thick = math.max(3, math.floor(self.button_size / 9))
+    for _, a in ipairs(self.shapes.arrows or {}) do
+        local r1, r2 = self:_squareRect(a.from), self:_squareRect(a.to)
+        if r1 and r2 then
+            self:_paintArrow(bb, r1.x + r1.w / 2, r1.y + r1.h / 2, r2.x + r2.w / 2, r2.y + r2.h / 2, thick)
+        end
+    end
+end
+
+-- Thick line ending in a filled head, drawn by stamping small squares
+-- (Blitbuffer has no line primitive).
+function Board:_paintArrow(bb, x1, y1, x2, y2, thick)
+    local dx, dy = x2 - x1, y2 - y1
+    local len = math.sqrt(dx * dx + dy * dy)
+    if len < 1 then return end
+    local ux, uy = dx / len, dy / len
+    local head = math.min(len * 0.45, self.button_size * 0.45)
+    local half = math.floor(thick / 2)
+    -- shaft: overlapping squares every half thickness (cheap on slow CPUs)
+    local step = math.max(1, math.floor(half / 2))
+    for i = 0, math.floor(len - head), step do
+        bb:paintRect(math.floor(x1 + ux * i) - half, math.floor(y1 + uy * i) - half, thick, thick, SHAPE_COLOR)
+    end
+    -- head: filled triangle, one horizontal span per scanline
+    local px, py = -uy, ux
+    local base_half = thick * 1.6
+    local bx, by = x2 - ux * head, y2 - uy * head
+    self:_fillTriangle(bb, x2, y2, bx + px * base_half, by + py * base_half,
+        bx - px * base_half, by - py * base_half)
+end
+
+function Board:_fillTriangle(bb, ax, ay, bx, by, cx, cy)
+    local pts = { { ax, ay }, { bx, by }, { cx, cy } }
+    local ymin = math.floor(math.min(ay, by, cy))
+    local ymax = math.ceil(math.max(ay, by, cy))
+    for y = ymin, ymax do
+        local yc = y + 0.5
+        local xs = {}
+        for i = 1, 3 do
+            local p1, p2 = pts[i], pts[i % 3 + 1]
+            if (p1[2] <= yc and p2[2] > yc) or (p2[2] <= yc and p1[2] > yc) then
+                xs[#xs + 1] = p1[1] + (yc - p1[2]) * (p2[1] - p1[1]) / (p2[2] - p1[2])
+            end
+        end
+        if #xs == 2 then
+            local x0, x1 = math.floor(math.min(xs[1], xs[2])), math.ceil(math.max(xs[1], xs[2]))
+            bb:paintRect(x0, y, x1 - x0 + 1, 1, SHAPE_COLOR)
+        end
+    end
+end
+
 --- Board:setHighlights(squares)
 -- Paperknight: tint the given squares (e.g. the last move), replacing
 -- previous highlights.
@@ -352,6 +444,7 @@ function Board:markSelected(square)
     local button = self.table:getButtonById(id_result)
     button.frame.bordersize = Screen:scaleBySize(SELECTED_BORDER)
     button:refresh()
+    self:_repaintShapes()
 end
 
 --- Board:unmarkSelected(square)
@@ -366,6 +459,7 @@ function Board:unmarkSelected(square)
     local button = self.table:getButtonById(id_result)
     button.frame.bordersize = 0
     button:refresh()
+    self:_repaintShapes()
 end
 
 --- Board:placePiece(square, piece, color)

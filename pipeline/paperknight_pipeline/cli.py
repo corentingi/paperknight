@@ -6,7 +6,9 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from . import puzzles, sources
+import os
+
+from . import puzzles, sources, studies
 
 REPO = Path(__file__).resolve().parents[2]
 DOWNLOADS = REPO / "build" / "downloads"
@@ -37,6 +39,25 @@ def cmd_puzzles(args: argparse.Namespace) -> int:
     return 0 if stats["written"] else 1
 
 
+def cmd_study(args: argparse.Namespace) -> int:
+    study_id = studies.parse_study_id(args.study)
+    if args.input:
+        pgn = Path(args.input).read_text(encoding="utf-8")
+    else:
+        token = os.environ.get(args.token_env) if args.token_env else None
+        print(f"downloading study {study_id} ...", file=sys.stderr)
+        pgn = studies.download_study(study_id, token)
+    report = studies.validate(pgn)
+    if report.chapters == 0:
+        print("no chapters found (private study? set a token with --token-env)", file=sys.stderr)
+        return 1
+    path = studies.save(pgn, Path(args.output_dir), report.name or study_id, study_id)
+    print(f"{path}: {report.chapters} chapters ({report.gamebook_chapters} interactive), {report.moves} moves")
+    for problem in report.problems:
+        print(f"  warning: {problem}", file=sys.stderr)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="paperknight_pipeline", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -51,6 +72,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--min-plays", type=int, default=defaults.min_plays)
     p.add_argument("--max-rating-dev", type=int, default=defaults.max_rating_dev)
     p.set_defaults(func=cmd_puzzles)
+
+    p = sub.add_parser("study", help="download a Lichess study as PGN and validate it")
+    p.add_argument("study", help="study id (8 characters) or lichess.org/study/... URL")
+    p.add_argument("--output-dir", default=str(REPO / "build" / "studies"))
+    p.add_argument("--token-env", default="LICHESS_TOKEN",
+                   help="environment variable holding a Lichess token (needed for private studies)")
+    p.add_argument("--input", help="validate a local PGN instead of downloading (tests)")
+    p.set_defaults(func=cmd_study)
 
     args = parser.parse_args(argv)
     return args.func(args)

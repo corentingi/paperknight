@@ -35,7 +35,8 @@ E2E_SCENARIOS := $(wildcard tools/emulator/scenarios/*.lua)
 
 .PHONY: e2e emulator
 e2e: koreader fixture-packs ## Headless end-to-end scenarios (screenshots in build/e2e/)
-	PAPERKNIGHT_PACKS_DIR=$(abspath $(FIXTURE_PACKS)) tools/emulator/run.sh e2e $(E2E_SCENARIOS)
+	PAPERKNIGHT_PACKS_DIR=$(abspath $(FIXTURE_PACKS)) PAPERKNIGHT_STUDIES_DIR=$(abspath plugin/tests/fixtures) \
+		tools/emulator/run.sh e2e $(E2E_SCENARIOS)
 
 emulator: koreader ## Desktop KOReader window with the plugin loaded (needs a display)
 	tools/emulator/run.sh window
@@ -65,3 +66,8 @@ packs: venv ## Build real data packs into build/packs/ (downloads ~300 MB once)
 fixture-packs: venv ## Small deterministic packs for e2e tests (build/packs/fixture/)
 	$(PIPELINE) puzzles --input pipeline/tests/fixtures/lichess_puzzles_sample.csv \
 		--output $(FIXTURE_PACKS)/puzzles.sqlite --min-popularity -100 --min-plays 0 --max-rating-dev 500
+
+.PHONY: study
+study: venv ## Download a Lichess study: make study ID=<id or URL> (private: LICHESS_TOKEN=...)
+	@test -n "$(ID)" || { echo "usage: make study ID=<study id or URL>"; exit 2; }
+	$(PIPELINE) study "$(ID)"
