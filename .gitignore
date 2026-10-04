@@ -1,0 +1,10 @@
+/build/
+__pycache__/
+*.pyc
+.pytest_cache/
+pipeline/.venv/
+*.egg-info/
+# engine binaries are provided separately, never committed
+plugin/paperknight.koplugin/bin/
+# packs are build outputs
+plugin/paperknight.koplugin/packs/*.sqlite
