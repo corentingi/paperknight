@@ -41,6 +41,11 @@ function PkPuzzlePack.open(path)
     local base = "SELECT " .. COLUMNS .. " FROM puzzles WHERE band = ? AND "
     self.after_stmt = conn:prepare(base .. "rnd >= ? ORDER BY rnd LIMIT ?")
     self.before_stmt = conn:prepare(base .. "rnd < ? ORDER BY rnd LIMIT ?")
+    -- Same, restricted to a theme through the puzzle_themes index.
+    local tbase = "SELECT " .. COLUMNS:gsub("([%w_]+)", "p.%1") .. " FROM puzzle_themes t"
+        .. " JOIN puzzles p ON p.id = t.puzzle_id WHERE t.theme = ? AND t.band = ? AND "
+    self.theme_after_stmt = conn:prepare(tbase .. "t.rnd >= ? ORDER BY t.rnd LIMIT ?")
+    self.theme_before_stmt = conn:prepare(tbase .. "t.rnd < ? ORDER BY t.rnd LIMIT ?")
     self.get_stmt = conn:prepare("SELECT " .. COLUMNS .. " FROM puzzles WHERE id = ?")
     return self
 end
@@ -57,9 +62,15 @@ local BATCH = 25
 
 -- One random puzzle of rating band `band`: scans up to 2*BATCH candidates from
 -- random key `rnd` (wrapping around), returning the first `accept`ed one.
-function PkPuzzlePack:_pickInBand(band, rnd, accept)
-    for _, stmt in ipairs({ self.after_stmt, self.before_stmt }) do
-        stmt:reset():bind(band, rnd, BATCH)
+function PkPuzzlePack:_pickInBand(band, rnd, accept, theme)
+    local stmts = theme and { self.theme_after_stmt, self.theme_before_stmt }
+        or { self.after_stmt, self.before_stmt }
+    for _, stmt in ipairs(stmts) do
+        if theme then
+            stmt:reset():bind(theme, band, rnd, BATCH)
+        else
+            stmt:reset():bind(band, rnd, BATCH)
+        end
         local row = stmt:step()
         while row do
             local p = rowToPuzzle(row)
@@ -74,7 +85,8 @@ end
 --  1. an accepted puzzle within ±2 bands (home band first, then neighbours),
 --  2. any puzzle within ±2 bands (e.g. all recent ones were rejected),
 --  3. an accepted puzzle further away, 4. anything.
--- @param opts { random = function() -> [0,1), accept = function(p) -> bool }
+-- @param opts { random = function() -> [0,1), accept = function(p) -> bool,
+--                theme = key or nil (only puzzles carrying this theme) }
 function PkPuzzlePack:pickNear(rating, opts)
     opts = opts or {}
     local random = opts.random or math.random
@@ -88,7 +100,7 @@ function PkPuzzlePack:pickNear(rating, opts)
     for _, pass in ipairs({ { near, opts.accept }, { near, nil }, { far, opts.accept }, { far, nil } }) do
         for _, band in ipairs(pass[1]) do
             if band >= 0 then
-                local p = self:_pickInBand(band, math.floor(random() * 0x7FFFFFFF), pass[2])
+                local p = self:_pickInBand(band, math.floor(random() * 0x7FFFFFFF), pass[2], opts.theme)
                 if p then return p end
             end
         end
@@ -96,10 +108,25 @@ function PkPuzzlePack:pickNear(rating, opts)
     return nil
 end
 
+--- Themes present in the pack: { {theme=key, count=n}, ... } (unordered).
+function PkPuzzlePack:themes()
+    local out = {}
+    local stmt = self.conn:prepare("SELECT theme, count FROM themes")
+    local row = stmt:step()
+    while row do
+        out[#out + 1] = { theme = row[1], count = tonumber(row[2]) }
+        row = stmt:step()
+    end
+    stmt:close()
+    return out
+end
+
 function PkPuzzlePack:close()
     if self.conn then
         self.after_stmt:close()
         self.before_stmt:close()
+        self.theme_after_stmt:close()
+        self.theme_before_stmt:close()
         self.get_stmt:close()
         self.conn:close()
         self.conn = nil

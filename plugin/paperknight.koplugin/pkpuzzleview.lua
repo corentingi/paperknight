@@ -22,6 +22,8 @@ local Chess = require("chess")
 local ChessBoard = require("board")
 local PkPromotion = require("pkpromotion")
 local PkPuzzle = require("pkpuzzle")
+local PkThemes = require("pkthemes")
+local Menu = require("ui/widget/menu")
 
 local REPLY_DELAY = 0.6 -- seconds before the opponent replies, so the user sees their move first
 local RECENT_DAYS = 30  -- don't repeat puzzles attempted this recently (ADR-0010)
@@ -46,8 +48,16 @@ function PkPuzzleView:init()
         title = _("Puzzles"),
         subtitle = "",
         with_bottom_line = true,
+        left_icon = "appbar.menu",
+        left_icon_tap_callback = function() self:showThemeMenu() end,
         close_callback = function() self:onClose() end,
     }
+    self.theme = self.progress:getSetting("theme") -- nil = all themes
+    if self.theme and not self:_packHasTheme(self.theme) then
+        -- saved with an older pack that had this theme: fall back to all themes
+        self.theme = nil
+        self.progress:setSetting("theme", nil)
+    end
     self.status = TextBoxWidget:new{
         text = "",
         face = Font:getFace("cfont", 20),
@@ -68,6 +78,7 @@ function PkPuzzleView:init()
     local board_h = self.dimen.h - self.title_bar:getHeight() - self.status:getSize().h
         - self.buttons:getSize().h - 4 * Size.padding.default
     self.board_size = math.min(self.dimen.w, board_h)
+    self:_prepareBoard(false) -- the frame exists even if no puzzle can be picked
     self:nextPuzzle()
 end
 
@@ -121,6 +132,9 @@ function PkPuzzleView:_updateTitle()
     if self.puzzle then
         subtitle = subtitle .. " · " .. T(_("Puzzle %1"), self.puzzle.rating)
     end
+    if self.theme then -- last: a long theme name may be cut off
+        subtitle = subtitle .. " · " .. PkThemes.label(self.theme)
+    end
     self.title_bar:setSubTitle(subtitle)
 end
 
@@ -155,20 +169,32 @@ function PkPuzzleView:loadPuzzle(puzzle)
     UIManager:setDirty(self, "full") -- new position: full refresh clears e-ink ghosting
 end
 
+function PkPuzzleView:_packHasTheme(theme)
+    for _, t in ipairs(self.pack:themes()) do
+        if t.theme == theme and t.count > 0 then return true end
+    end
+    return false
+end
+
+--- Picks and loads the next puzzle. Returns true on success.
 function PkPuzzleView:nextPuzzle()
     local since = os.time() - RECENT_DAYS * 86400
     local puzzle = self.pack:pickNear(self.progress:rating(), {
         random = self.random,
+        theme = self.theme,
         accept = function(p)
             return not (self.puzzle and p.id == self.puzzle.id)
                 and not self.progress:wasAttemptedSince(p.id, since)
         end,
     })
     if not puzzle then
-        self:_setStatus(_("No puzzles found in the pack."))
-        return
+        self:_updateTitle()
+        self:_setStatus(self.theme and _("No puzzles with this theme in the pack.")
+            or _("No puzzles found in the pack."))
+        return false
     end
     self:loadPuzzle(puzzle)
+    return true
 end
 
 -- Records the attempt once (ADR-0010): when the puzzle ends, or when the user
@@ -253,6 +279,49 @@ function PkPuzzleView:_flushReply()
         self._reply_task = nil
     end
     self:_showReply()
+end
+
+--- Theme picker: "All themes" + the pack's themes with counts (pack format:
+-- `themes` table). The current choice is marked with a check mark.
+function PkPuzzleView:showThemeMenu()
+    local function mark(text, selected) return selected and ("✓ " .. text) or text end
+    local items = {{
+        text = mark(_("All themes"), self.theme == nil),
+        callback = function() self:setTheme(nil) end,
+    }}
+    for _, t in ipairs(PkThemes.sorted(self.pack:themes())) do
+        items[#items + 1] = {
+            text = mark(PkThemes.label(t.theme), self.theme == t.theme),
+            mandatory = tostring(t.count),
+            callback = function() self:setTheme(t.theme) end,
+        }
+    end
+    self.theme_menu = Menu:new{
+        title = T(_("Puzzle theme: %1"), self.theme and PkThemes.label(self.theme) or _("All themes")),
+        item_table = items,
+        covers_fullscreen = true,
+        is_borderless = true,
+        is_popout = false,
+        width = Screen:getWidth(),
+        height = Screen:getHeight(),
+    }
+    self.theme_menu.close_callback = function()
+        UIManager:close(self.theme_menu)
+        self.theme_menu = nil
+    end
+    UIManager:show(self.theme_menu)
+end
+
+function PkPuzzleView:setTheme(theme)
+    if theme == self.theme then return end -- don't abandon the current puzzle
+    local previous = self.theme
+    self.theme = theme
+    if self:nextPuzzle() then
+        self.progress:setSetting("theme", theme)
+    else
+        self.theme = previous
+        self:_updateTitle()
+    end
 end
 
 function PkPuzzleView:onHint()

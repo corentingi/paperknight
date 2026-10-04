@@ -12,10 +12,17 @@
 - [x] Plugin: puzzle mode (load puzzle, play opponent's first move, check
       solver moves, reply, success/fail)
 - [x] Puzzle rating + progress stored in `progress.sqlite`
-- [ ] Theme filter (e.g. only forks, mates in 2) — pack already indexed for it
+- [x] Theme filter (e.g. only forks, mates in 2)
 - [x] Square cells, thin grey board frame
-- [ ] Board coordinates (a–h / 1–8)
+- [x] Board coordinates (a–h / 1–8)
 - [ ] Test on a real Kindle Paperwhite 2
+
+## Milestone 2b — Studies (Lichess-style)
+- [ ] Design (ADR-0011, docs/studies.md)
+- [ ] PGN parser with variations, comments, glyphs, shapes
+- [ ] Viewer: chapters, move tree, comments, arrows/circles
+- [ ] Interactive chapters (gamebook rules)
+- [ ] Pipeline `study` download command
 
 ## Milestone 3 — Openings
 - [ ] Pipeline: lichess chess-openings → `openings.sqlite`

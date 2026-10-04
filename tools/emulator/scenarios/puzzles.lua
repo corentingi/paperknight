@@ -3,9 +3,26 @@
 -- hint, solution, next puzzle. Squares are tapped like a user would.
 return function(h)
     local pk = h.ui.paperknight
+    -- A theme saved with an older pack that the current pack lacks must not
+    -- leave a blank screen: it falls back to all themes.
+    local DataStorage = require("datastorage")
+    local PkProgress = require("pkprogress")
+    local seed = PkProgress.open(DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+    seed:setSetting("theme", "noSuchTheme")
+    seed:close()
+
     local view = pk:startPuzzles()
     h.check(view, "puzzle view did not open (pack missing?)")
     h.wait(1)
+    h.check(view.theme == nil and view.puzzle, "stale theme dropped and a puzzle loaded")
+    h.check(view.progress:getSetting("theme") == nil, "stale theme cleared from settings")
+
+    -- Coordinate labels follow the orientation.
+    local function labels(board)
+        local group = board[1][1]              -- HorizontalGroup: ranks | (frame + files) | spacer
+        local ranks, files = group[1], group[2][2]
+        return ranks[2][1].text .. ranks[9][1].text, files[2][1].text .. files[9][1].text
+    end
 
     local function tapSquare(sq)
         local board = view.board
@@ -19,6 +36,8 @@ return function(h)
     view:loadPuzzle(view.pack:get("004JD"))
     h.wait(1)
     h.check(view.board.flipped, "board shows Black's side")
+    local r, f = labels(view.board)
+    h.check(r == "18" and f == "ha", "flipped labels top-down 1..8, h..a: " .. r .. " " .. f)
     h.check(status():find("Black to move"), "prompt: " .. status())
     h.shot("puzzle-1-start")
     tapSquare("d8"); tapSquare("d1")
@@ -36,6 +55,8 @@ return function(h)
     view:loadPuzzle(view.pack:get("0042j"))
     h.wait(1)
     h.check(not view.board.flipped, "board shows White's side")
+    r, f = labels(view.board)
+    h.check(r == "81" and f == "ah", "labels top-down 8..1, a..h: " .. r .. " " .. f)
     local rating_before = view.progress:rating()
     local function iconAt(sq)
         local file, rank = sq:byte(1) - 96, tonumber(sq:sub(2, 2))
@@ -80,7 +101,34 @@ return function(h)
     h.check(status():find("d1"), "hint names the next square: " .. status())
     view.reply_delay = 0.6
 
-    -- 4. Next picks another puzzle near the rating.
+    -- 4. Theme filter: pick "Mate in 1" in the menu by tapping it.
+    h.tapWidget(view.title_bar.left_button)
+    h.wait(1)
+    h.check(view.theme_menu, "theme menu opened")
+    h.shot("puzzle-themes")
+    local target
+    for _, w in ipairs(view.theme_menu.item_group) do
+        if w.text == "Mate in 1" then target = w end
+    end
+    h.check(target, "'Mate in 1' is listed on the first menu page")
+    h.tapWidget(target)
+    h.wait(1)
+    h.check(not view.theme_menu, "menu closed after choosing")
+    h.check(view.theme == "mateIn1", "theme set")
+    h.check(view.progress:getSetting("theme") == "mateIn1", "theme saved")
+    local subtitle = view.title_bar.subtitle_widget.text
+    h.check(subtitle:find("Mate in 1"), "subtitle shows the theme: " .. subtitle)
+    for _ = 1, 3 do
+        h.check((" " .. view.puzzle.themes .. " "):find(" mateIn1 "), "puzzle has the theme: " .. view.puzzle.themes)
+        tapButton("next"); h.wait(1)
+    end
+    h.shot("puzzle-theme-mate1")
+    -- choosing the current theme again keeps the current puzzle
+    local current = view.puzzle.id
+    view:setTheme("mateIn1")
+    h.check(view.puzzle.id == current, "re-selecting the same theme is a no-op")
+
+    -- 5. Next picks another puzzle near the rating.
     local last_id = view.puzzle.id
     tapButton("next")
     h.wait(1)

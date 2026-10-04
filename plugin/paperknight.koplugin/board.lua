@@ -6,6 +6,10 @@ local Blitbuffer = require("ffi/blitbuffer")
 local ButtonTable = require("buttontable")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local CenterContainer = require("ui/widget/container/centercontainer")
+local Font = require("ui/font")
+local HorizontalGroup = require("ui/widget/horizontalgroup")
+local TextWidget = require("ui/widget/textwidget")
+local VerticalGroup = require("ui/widget/verticalgroup")
 local Chess = require("chess/src/chess")
 local Device = require("device")
 local Screen = Device.screen
@@ -37,6 +41,7 @@ local Board = FrameContainer:extend{
     onPromotionNeeded = nil, -- NEW: Callback for when a pawn promotion is detected
     flipped = false, -- Paperknight: true shows the board from Black's side
     locked = false,  -- Paperknight: true ignores taps (e.g. puzzle finished, opponent thinking)
+    coordinates = true, -- Paperknight: draw a–h / 1–8 around the board
     padding = 0,
     bordersize = 0,  -- Paperknight: the grey frame is drawn around the squares only
     background = Blitbuffer.COLOR_WHITE,
@@ -84,18 +89,53 @@ function Board:init()
     }
 
     self:applySquareColors()
+    local framed = FrameContainer:new{
+        bordersize = Screen:scaleBySize(BOARD_BORDER_SIZE),
+        color = BOARD_BORDER_COLOR,
+        padding = 0,
+        margin = 0,
+        self.table,
+    }
     self[1] = CenterContainer:new{
         dimen = self:getSize(),
-        FrameContainer:new{
-            bordersize = Screen:scaleBySize(BOARD_BORDER_SIZE),
-            color = BOARD_BORDER_COLOR,
-            padding = 0,
-            margin = 0,
-            self.table,
-        },
+        self.coordinates and self:_withCoordinates(framed) or framed,
     }
 
     logger.dbg("Chess board initialized")
+end
+
+--- Board:_withCoordinates(framed)
+-- Paperknight: rank numbers on the left, file letters below, in the spare
+-- margin (button_size leaves about one square of room). Follows `flipped`.
+function Board:_withCoordinates(framed)
+    local border = Screen:scaleBySize(BOARD_BORDER_SIZE)
+    local face = Font:getFace("infont", 14) -- size is DPI-scaled by KOReader
+    -- at least one text line high, so small boards don't overlap the labels
+    local label_w = math.max(math.floor(self.button_size * 0.35), face.size + Screen:scaleBySize(2))
+    local function label(text, w, h)
+        return CenterContainer:new{
+            dimen = Geom:new{ w = w, h = h },
+            TextWidget:new{ text = text, face = face, fgcolor = Blitbuffer.COLOR_BLACK },
+        }
+    end
+    local ranks = VerticalGroup:new{}
+    table.insert(ranks, label("", label_w, border))
+    for row_idx = 0, BOARD_SIZE - 1 do
+        local rank = self.flipped and row_idx or (BOARD_SIZE - 1 - row_idx)
+        table.insert(ranks, label(tostring(rank + 1), label_w, self.button_size))
+    end
+    local files = HorizontalGroup:new{}
+    table.insert(files, label("", border, label_w))
+    for col_idx = 0, BOARD_SIZE - 1 do
+        local file = self.flipped and (BOARD_SIZE - 1 - col_idx) or col_idx
+        table.insert(files, label(string.char(97 + file), self.button_size, label_w))
+    end
+    return HorizontalGroup:new{
+        align = "top",
+        ranks,
+        VerticalGroup:new{ align = "left", framed, files },
+        label("", label_w, label_w), -- keeps the squares centred
+    }
 end
 
 function Board:createSquareButton(file, rank)

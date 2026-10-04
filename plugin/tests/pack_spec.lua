@@ -75,4 +75,31 @@ return {
         reopened:close()
         os.remove(path)
     end },
+    { "theme filter: every pick carries the theme, themes() lists counts", function(t)
+        local pack = assert(PkPuzzlePack.open(FIXTURE))
+        local counts = {}
+        for _, th in ipairs(pack:themes()) do counts[th.theme] = th.count end
+        t.eq(counts.mateIn1, 14, "mateIn1 count")
+        for _, r in ipairs({ 0.1, 0.5, 0.9 }) do
+            local p = pack:pickNear(1500, { random = seq(r), theme = "mateIn1" })
+            t.ok(p and (" " .. p.themes .. " "):find(" mateIn1 "), "picked a mateIn1 puzzle: " .. tostring(p and p.themes))
+            t.eq(p and type(p.rating), "number", "rating is a number")
+        end
+        t.eq(pack:pickNear(1500, { random = seq(0.5), theme = "noSuchTheme" }), nil, "unknown theme")
+        pack:close()
+    end },
+    { "settings persist and can be cleared", function(t)
+        local path = tmpdb()
+        local prog = PkProgress.open(path)
+        t.eq(prog:getSetting("theme"), nil, "unset")
+        prog:setSetting("theme", "fork")
+        prog:close()
+        prog = PkProgress.open(path)
+        t.eq(prog:getSetting("theme"), "fork", "persisted")
+        prog:setSetting("theme", nil)
+        t.eq(prog:getSetting("theme"), nil, "cleared")
+        t.eq(prog:rating(), 1200, "settings don't touch the rating")
+        prog:close()
+        os.remove(path)
+    end },
 }

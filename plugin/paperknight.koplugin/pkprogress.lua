@@ -53,6 +53,26 @@ function PkProgress:rating()
     return tonumber(v) or START_RATING
 end
 
+--- Small settings stored next to the progress (e.g. the chosen puzzle theme).
+function PkProgress:getSetting(key)
+    local stmt = self.conn:prepare("SELECT value FROM kv WHERE key = ?")
+    local row = stmt:reset():bind("setting." .. key):step()
+    stmt:close()
+    return row and row[1] or nil
+end
+
+function PkProgress:setSetting(key, value)
+    local stmt
+    if value == nil then
+        stmt = self.conn:prepare("DELETE FROM kv WHERE key = ?")
+        stmt:reset():bind("setting." .. key):step()
+    else
+        stmt = self.conn:prepare("INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)")
+        stmt:reset():bind("setting." .. key, tostring(value)):step()
+    end
+    stmt:close()
+end
+
 function PkProgress:attemptCount()
     return tonumber(self.conn:rowexec("SELECT count(*) FROM attempts"))
 end
