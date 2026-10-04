@@ -19,7 +19,7 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
 |---|---|
 | `[StudyName]` | Study title (else the file name) |
 | `[ChapterName]` | Chapter title (else `White – Black`, else `Event`, else "Chapter n") |
-| `[Orientation "white"/"black"]` | Board orientation (else White; gamebook: the side that moves first after the root… see below) |
+| `[Orientation "white"/"black"]` | Board orientation and the student's side in lessons (else White; for a gamebook chapter without the tag, the side to move at the start) |
 | `[ChapterMode "gamebook"]` | Interactive chapter |
 | `[FEN]` + `[SetUp "1"]` | Custom starting position |
 | `{ text }`, `; text` | Comments (a comment before the first move is the chapter intro) |
@@ -38,10 +38,10 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
   (brush colours are not distinguishable on e-ink; all shapes use one style).
 - Text panel: the current move (`12... Nf6!?`), its glyphs and comment; the
   chapter intro at the start; a hint when the next move has alternatives.
-- Navigation: ⏮ start · ◀ back · ▶ forward (follows the current line) · ⏭ end of
-  line · *Lines*: choose among the alternatives at the next move (main move
-  first, then variations). Tapping on the board a move that exists as a child
-  follows it.
+- Navigation: ⏮ start · ◀ back · *Lines* · ▶ forward (follows the current
+  line) · ⏭ end of line · *Train*. *Lines* chooses among the alternatives at
+  the next move (main move first, then variations). Tapping on the board a
+  move that exists as a child follows it; other moves are refused.
 - Chapter list from the title bar; previous/next chapter.
 
 ## Interactive chapters (Lichess gamebook rules)
@@ -56,5 +56,8 @@ The student plays the side the board is oriented to.
 5. Hint: the square of the piece to move (Lichess hints are not exported).
    Solution: plays the expected move.
 
-Non-gamebook chapters can also be trained with *Train this chapter* (same
-rules, student picks a side).
+Ordinary chapters can be trained with **Train** (same flow; the student plays
+the chapter's orientation). There, a move found in a variation is reported as
+a *sideline* ("find the main move"), not a mistake. **Browse** leaves the
+lesson at the current position; **Restart** starts over. While a lesson runs,
+the panel never shows upcoming moves.

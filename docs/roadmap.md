@@ -21,7 +21,7 @@
 - [x] Design (ADR-0011, docs/studies.md)
 - [x] PGN parser with variations, comments, glyphs, shapes
 - [x] Viewer: chapters, move tree, comments, arrows/circles
-- [ ] Interactive chapters (gamebook rules)
+- [x] Interactive chapters (gamebook rules) + Train for ordinary chapters
 - [x] Pipeline `study` download command
 
 ## Milestone 3 — Openings

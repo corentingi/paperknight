@@ -28,7 +28,9 @@ KOReader's SDL frontend runs on a desktop. We run the official Linux release:
   relative path `plugins/paperknight.koplugin`, exactly like on a Kindle.
   Edits are picked up on restart.
 - `make e2e` sets `PAPERKNIGHT_PACKS_DIR` to the fixture packs
-  (`build/packs/fixture/`); without it the plugin reads `<plugin>/packs/`.
+  (`build/packs/fixture/`) and `PAPERKNIGHT_STUDIES_DIR` to
+  `plugin/tests/fixtures/`; without them the plugin reads `<plugin>/packs/`
+  and `<KOReader data>/paperknight/studies/`.
 - `EMULATE_READER_W=758 EMULATE_READER_H=1024` matches the Paperwhite 2 screen.
 - `SDL_VIDEODRIVER=offscreen` runs without a display (used by `make e2e`).
 

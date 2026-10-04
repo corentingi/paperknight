@@ -43,9 +43,15 @@ Paperknight modules (prefixed `pk` to avoid `package.loaded` clashes, ADR-0009):
 | `pkprogress.lua` | User rating + attempt history in `progress.sqlite` (ADR-0010) |
 | `pkpromotion.lua` | Promotion piece chooser shared by both screens |
 | `pkicons.lua` | Absolute paths of the piece icons inside the plugin folder |
+| `pkthemes.lua` | Puzzle theme labels and menu order |
+| `pkpgn.lua` | PGN reader: chapter index + movetext tree (ADR-0011) |
+| `pkstudy.lua` | Study chapters and a lazy-resolving tree cursor |
+| `pklesson.lua` | Interactive lesson rules (Lichess gamebook) on a cursor |
+| `pkstudies.lua` | Studies browser (folder listing, chapter list) |
+| `pkstudyview.lua` | Study viewer and lesson screen |
 
-The menu entry *Paperknight* opens a submenu: *Puzzles* and *Play against the
-engine*. Planned additions are tracked in [`roadmap.md`](roadmap.md).
+The menu entry *Paperknight* opens a submenu: *Puzzles*, *Studies* and
+*Play against the engine*. Planned additions are tracked in [`roadmap.md`](roadmap.md).
 
 ## Pipeline (`pipeline/`)
 
