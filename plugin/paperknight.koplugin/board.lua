@@ -13,15 +13,9 @@ local Screen = Device.screen
 local BOARD_SIZE = 8
 local SELECTED_BORDER = 5
 
-local icons = {
-    empty = "chess/empty",
-    [Chess.PAWN]   = { [Chess.WHITE] = "chess/wP", [Chess.BLACK] = "chess/bP" },
-    [Chess.KNIGHT] = { [Chess.WHITE] = "chess/wN", [Chess.BLACK] = "chess/bN" },
-    [Chess.BISHOP] = { [Chess.WHITE] = "chess/wB", [Chess.BLACK] = "chess/bB" },
-    [Chess.ROOK]   = { [Chess.WHITE] = "chess/wR", [Chess.BLACK] = "chess/bR" },
-    [Chess.QUEEN]  = { [Chess.WHITE] = "chess/wQ", [Chess.BLACK] = "chess/bQ" },
-    [Chess.KING]   = { [Chess.WHITE] = "chess/wK", [Chess.BLACK] = "chess/bK" },
-}
+local PkIcons = require("pkicons")
+local icons = { empty = PkIcons.empty }
+for piece, by_color in pairs(PkIcons.pieces) do icons[piece] = by_color end
 
 local Board = FrameContainer:extend{
     game = nil,
@@ -161,11 +155,11 @@ function Board:handleMove(from, to)
     end
 
     if is_pawn_promotion and self.onPromotionNeeded then
-        -- If it's a promotion and we have a callback, defer the move to Kochess.lua.
-        -- Kochess.lua will then prompt for the promotion piece and call game.move().
+        -- If it's a promotion and we have a callback, defer the move to Paperknight.lua.
+        -- Paperknight.lua will then prompt for the promotion piece and call game.move().
         logger.dbg(string.format("Pawn promotion detected: %s pawn from %s to %s. Triggering promotion dialog.", piece.color, from, to))
         self.onPromotionNeeded(from, to, piece.color)
-        -- IMPORTANT: Do NOT call self.game.move() here. Kochess will handle it after selection.
+        -- IMPORTANT: Do NOT call self.game.move() here. Paperknight will handle it after selection.
     else
         -- If not a promotion, or no promotion callback provided, proceed with a normal move.
         local move = self.game.move{ from = from, to = to }
@@ -182,7 +176,7 @@ end
 
 --- Board:handleGameMove(move)
 -- Processes a successfully executed chess move (from game logic).
--- Updates the board visually and triggers the main move callback in Kochess.
+-- Updates the board visually and triggers the main move callback in Paperknight.
 -- @param move Table, the move object returned by ChessGame.move().
 function Board:handleGameMove(move)
     if not move then return end -- Should not happen if called with a valid move
@@ -195,7 +189,7 @@ function Board:handleGameMove(move)
     self:handleMoveFlags(move, move.to)
 
     if self.moveCallback then
-        self.moveCallback(move) -- Notify Kochess.lua that the move has completed
+        self.moveCallback(move) -- Notify Paperknight.lua that the move has completed
     end
 end
 

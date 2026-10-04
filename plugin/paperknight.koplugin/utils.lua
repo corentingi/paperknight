@@ -117,7 +117,7 @@ function Utils.reader(fd, action, dbg)
         local pending = chunk
         for line in pending:gmatch("(.-)\n") do
             Logger.dbg((dbg or "") .. "< " .. line)
-            if dbg and dbg:find("Kochess DBG UCI") then
+            if dbg and dbg:find("Paperknight DBG UCI") then
                 Logger.info((dbg or "") .. " < " .. line)
             end
             if action then
@@ -128,7 +128,7 @@ function Utils.reader(fd, action, dbg)
         local leftover = pending:match("([^\n]*)$") or ""
         if #leftover > 0 then
             Logger.dbg((dbg or "") .. " < " .. leftover)
-            if dbg and dbg:find("Kochess DBG UCI") then
+            if dbg and dbg:find("Paperknight DBG UCI") then
                 Logger.info((dbg or "") .. " < " .. leftover)
             end
             if action then
@@ -146,7 +146,7 @@ function Utils.writer(fd, eol, dbg)
     local _writer = function (cmd)
         local line = cmd .. (eol and "\n" or "")
         Logger.dbg((dbg or "") .. " > " .. line)
-        if dbg and dbg:find("Kochess DBG UCI") then
+        if dbg and dbg:find("Paperknight DBG UCI") then
             Logger.info((dbg or "") .. " > " .. line)
         end
         local n = C.write(fd, line, #line)

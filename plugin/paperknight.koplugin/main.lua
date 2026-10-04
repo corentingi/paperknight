@@ -1,4 +1,4 @@
--- kochess.lua
+-- paperknight.lua
 -- Core dependencies
 local Device = require("device")
 local Screen = Device.screen
@@ -35,6 +35,8 @@ local ChessBoard = require("board")
 local Timer = require("timer")
 local Uci = require("uci")
 local SettingsWidget = require("settingswidget")
+local PkIcons = require("pkicons")
+local PkButton = require("button") -- Paperknight Button subclass: accepts absolute icon paths
 
 -- Utilities
 local Logger = require("logger")
@@ -50,53 +52,10 @@ local function getPluginPath()
         dir = dir:gsub("\\", "/")
         return dir:sub(-1) == "/" and dir:sub(1, -2) or dir
     end
-    return DataStorage:getDataDir() .. "/plugins/chess.koplugin"
+    return DataStorage:getDataDir() .. "/plugins/paperknight.koplugin"
 end
 
 local PLUGIN_PATH = getPluginPath()
-
-local function copyFile(src, dst)
-    local src_f = io.open(src, "rb")
-    if not src_f then
-        return false
-    end
-    local data = src_f:read("*a")
-    src_f:close()
-    local dst_f = io.open(dst, "wb")
-    if not dst_f then
-        return false
-    end
-    dst_f:write(data)
-    dst_f:close()
-    return true
-end
-
-local function ensureChessIconsInstalled()
-    local src_dir = PLUGIN_PATH .. "/icons/chess"
-    local src_mode = lfs.attributes(src_dir, "mode")
-    if src_mode ~= "directory" then
-        return
-    end
-    local data_icons_dir = DataStorage:getDataDir() .. "/icons"
-    if lfs.attributes(data_icons_dir, "mode") ~= "directory" then
-        lfs.mkdir(data_icons_dir)
-    end
-    local dest_dir = data_icons_dir .. "/chess"
-    if lfs.attributes(dest_dir, "mode") == "directory" then
-        return
-    end
-    lfs.mkdir(dest_dir)
-    for entry in lfs.dir(src_dir) do
-        if entry ~= "." and entry ~= ".." then
-            local src_path = src_dir .. "/" .. entry
-            local mode = lfs.attributes(src_path, "mode")
-            if mode == "file" then
-                local dst_path = dest_dir .. "/" .. entry
-                copyFile(src_path, dst_path)
-            end
-        end
-    end
-end
 
 -- Configuration Constants
 local DEFAULT_TIME_MINUTES = 30
@@ -107,15 +66,15 @@ local PGN_LOG_FONT_SIZE = 14
 local TOOLBAR_PADDING = 4
 local PGN_LOG_PAST_MOVES_TO_SHOW = 10 -- Number of past moves to show in PGN log for context
 
--- Debugging functions for Kochess
+-- Debugging functions for Paperknight
 local function dbg(txt, label)
-    Logger.dbg("Kochess " .. (label or "") .. ": " .. txt)
+    Logger.dbg("Paperknight " .. (label or "") .. ": " .. txt)
 end
 
 local function dbgTable(tbl, label)
     label = label or "dbgTable"
     if not tbl then
-        Logger.dbg(("Kochess %s: <nil>"):format(label))
+        Logger.dbg(("Paperknight %s: <nil>"):format(label))
         return
     end
     local parts = {}
@@ -123,7 +82,7 @@ local function dbgTable(tbl, label)
         -- Ensure values are converted to strings for concatenation to prevent errors
         table.insert(parts, ("%s=%s"):format(k, tostring(v)))
     end
-    Logger.dbg(("Kochess %s: {%s}"):format(label, table.concat(parts, ", ")))
+    Logger.dbg(("Paperknight %s: {%s}"):format(label, table.concat(parts, ", ")))
 end
 
 --- map(tbl, fn) -> new_tbl
@@ -137,9 +96,9 @@ local function map(tbl, fn)
     return out
 end
 
--- Define the main Kochess application widget, extending FrameContainer
-local Kochess = FrameContainer:extend{
-    name = "kochess_root",
+-- Define the main Paperknight application widget, extending FrameContainer
+local Paperknight = FrameContainer:extend{
+    name = "paperknight_root",
     background = BACKGROUND_COLOR,
     bordersize = 0,
     padding = 0,
@@ -157,18 +116,18 @@ local Kochess = FrameContainer:extend{
     running = false,
 }
 
---- Kochess:init()
--- Initializes the Kochess application, registers it with the dispatcher
+--- Paperknight:init()
+-- Initializes the Paperknight application, registers it with the dispatcher
 -- and adds it to the main menu.
-function Kochess:init()
+function Paperknight:init()
     self.dimensions = Geometry:new{ w = self.full_width, h = self.full_height }
     self.covers_fullscreen = true -- Indicates this widget should cover the entire screen
 
-    -- Register a dispatcher action to allow starting Kochess from elsewhere
-    Dispatcher:registerAction("kochess", {
+    -- Register a dispatcher action to allow starting Paperknight from elsewhere
+    Dispatcher:registerAction("paperknight", {
         category = "none",
-        event = "KochessStart",
-        title = _("Chess Game"),
+        event = "PaperknightStart",
+        title = _("Paperknight"),
         general = true,
     })
 
@@ -176,26 +135,32 @@ function Kochess:init()
     self.ui.menu:registerToMainMenu(self)
 end
 
---- Kochess:addToMainMenu(menu_items)
--- Callback for the UIManager to add Kochess as an option in the main menu.
+--- Paperknight:onPaperknightStart()
+-- Handler for the dispatcher action registered in init (gesture/hotkey launch).
+function Paperknight:onPaperknightStart()
+    self:startGame()
+    return true
+end
+
+--- Paperknight:addToMainMenu(menu_items)
+-- Callback for the UIManager to add Paperknight as an option in the main menu.
 -- @param menu_items Table of menu items to append to.
-function Kochess:addToMainMenu(menu_items)
-    dbg("Adding Kochess to main menu", "MENU")
-    menu_items.kochess = {
-        text = _("Chess Game"),
+function Paperknight:addToMainMenu(menu_items)
+    dbg("Adding Paperknight to main menu", "MENU")
+    menu_items.paperknight = {
+        text = _("Paperknight"),
         sorting_hint = "tools", -- Suggests where it should appear in the menu
         callback = function() self:startGame() end, -- Action when selected
         keep_menu_open = false, -- Close menu after starting game
     }
 end
 
---- Kochess:startGame()
+--- Paperknight:startGame()
 -- Entry point for starting a new chess game.
 -- Initializes all game components (logic, engine, board) and builds the UI.
-function Kochess:startGame()
-    Logger.info("Kochess:startGame() invoked from main menu")
+function Paperknight:startGame()
+    Logger.info("Paperknight:startGame() invoked from main menu")
     dbg("Starting new chess game session", "GAME START")
-    ensureChessIconsInstalled()
     self:initializeGameLogic()
     self:initializeEngine()
     self:initializeBoard()
@@ -204,12 +169,12 @@ function Kochess:startGame()
     self:updateTimerDisplay()
     self:updatePlayerDisplay()
     self.board:updateBoard() -- Redraw the chess board
-    UIManager:show(self) -- Show the main Kochess UI
+    UIManager:show(self) -- Show the main Paperknight UI
 end
 
---- Kochess:initializeGameLogic()
+--- Paperknight:initializeGameLogic()
 -- Sets up the core chess game state and timer.
-function Kochess:initializeGameLogic()
+function Paperknight:initializeGameLogic()
     dbg("Initializing chess game logic and timer", "GAME INIT")
     self.game = Chess:new()
     self.game.reset() -- Reset the game to the initial position
@@ -226,15 +191,15 @@ function Kochess:initializeGameLogic()
     self.running = false -- Game is paused initially, starts on first human move or explicit play
 end
 
---- Kochess:initializeEngine()
+--- Paperknight:initializeEngine()
 -- Spawns and configures the UCI chess engine (e.g., Stockfish).
-function Kochess:initializeEngine()
-    Logger.info("Kochess:initializeEngine() starting, engine path: " .. tostring(UCI_ENGINE_PATH))
+function Paperknight:initializeEngine()
+    Logger.info("Paperknight:initializeEngine() starting, engine path: " .. tostring(UCI_ENGINE_PATH))
     dbg("Initializing UCI engine and setting up event listeners", "ENGINE INIT")
     -- NOTE: pass the engine path as argv[0] so execvp receives a valid argument list
     self.engine = Uci.UCIEngine.spawn(UCI_ENGINE_PATH, { UCI_ENGINE_PATH })
     if not self.engine then
-        Logger.info("Kochess:initializeEngine() failed to spawn engine at path")
+        Logger.info("Paperknight:initializeEngine() failed to spawn engine at path")
         dbg("Failed to spawn UCI engine at: " .. UCI_ENGINE_PATH, "ERROR")
         UIManager:show(infoMessage:new{
             text = _("Error"),
@@ -245,16 +210,16 @@ function Kochess:initializeEngine()
 
     -- Setup event listeners for UCI engine communication
     self.engine:on("uciok", function()
-        Logger.info("Kochess: UCI engine signaled uciok (engine ready)")
+        Logger.info("Paperknight: UCI engine signaled uciok (engine ready)")
         dbg("UCI: uciok received (engine is ready)", "ENGINE")
 
         -- Disable NNUE to avoid requiring an external .nnue network file on Kobo.
         local has_nnue_opt = self.engine.state.options
             and (self.engine.state.options["Use NNUE"] ~= nil)
         if has_nnue_opt then
-            Logger.info("Kochess: Disabling NNUE (advertised option, setoption Use NNUE = false)")
+            Logger.info("Paperknight: Disabling NNUE (advertised option, setoption Use NNUE = false)")
         else
-            Logger.info("Kochess: Disabling NNUE (blind setoption, option not advertised)")
+            Logger.info("Paperknight: Disabling NNUE (blind setoption, option not advertised)")
         end
 
         if self.engine.setOption then
@@ -287,7 +252,7 @@ function Kochess:initializeEngine()
     end)
 
     self.engine:on("eof", function()
-        Logger.info("Kochess: UCI engine EOF (process terminated)")
+        Logger.info("Paperknight: UCI engine EOF (process terminated)")
         dbg("UCI: eof (engine process terminated)", "ENGINE")
         -- Potentially display an error message or attempt to restart the engine
         UIManager:show(infoMessage:new{
@@ -300,10 +265,10 @@ function Kochess:initializeEngine()
     self.engine:uci()
 end
 
---- Kochess:updatePgnLogInitialText()
+--- Paperknight:updatePgnLogInitialText()
 -- Updates the PGN log widget with initial welcome message and engine information.
-function Kochess:updatePgnLogInitialText()
-    local text = _("Welcome to Chess Game!\nWhite to play.")
+function Paperknight:updatePgnLogInitialText()
+    local text = _("Welcome to Paperknight!\nWhite to play.")
     if self.engine and self.engine.state.uciok then
         text = text .. "\nEngine ready: " .. (self.engine.state.id_name or "")
         if self.engine.state.id_author then
@@ -318,11 +283,11 @@ function Kochess:updatePgnLogInitialText()
     end
 end
 
---- Kochess:initializeBoard()
+--- Paperknight:initializeBoard()
 -- Sets up the ChessBoard widget.
 -- NOTE: This now expects ChessBoard to provide an 'onPromotionNeeded' callback
 -- when a human player attempts a pawn promotion, rather than directly executing the move.
-function Kochess:initializeBoard()
+function Paperknight:initializeBoard()
     dbg("Initializing chess board widget", "BOARD INIT")
     self.board = ChessBoard:new{
         game = self.game,
@@ -339,11 +304,11 @@ function Kochess:initializeBoard()
     }
 end
 
---- Kochess:registerHold()
+--- Paperknight:registerHold()
 -- Registers a hold gesture listener specifically for the PGN log area.
 -- This allows for text selection or other interactions.
 -- (Currently commented out in startGame, re-enable if needed).
-function Kochess:registerHold()
+function Paperknight:registerHold()
     dbg("Registering hold gesture on PGN log area", "UI")
     self.pgn_log:registerTouchZones({
         {
@@ -353,7 +318,7 @@ function Kochess:registerHold()
                 ratio_x = 0, ratio_y = 0, ratio_w = 1, ratio_h = 1, -- Full screen zone
             },
             handler = function(ges)
-                dbg('Kochess DBG: Chess User held screen!', "HOLD")
+                dbg('Paperknight DBG: Chess User held screen!', "HOLD")
                 dbgTable(ges, "Hold Gesture Info")
                 self.pgn_log:onHoldWord(
                     function(word)
@@ -367,13 +332,13 @@ function Kochess:registerHold()
     })
 end
 
---- Kochess:createPgnLogWidget(initial_text, width, height)
+--- Paperknight:createPgnLogWidget(initial_text, width, height)
 -- Helper to create and configure the PGN log TextBoxWidget.
 -- @param initial_text String to display initially.
 -- @param width Numeric width of the widget.
 -- @param height Numeric height of the widget.
 -- @return TextBoxWidget instance.
-function Kochess:createPgnLogWidget(initial_text, width, height)
+function Paperknight:createPgnLogWidget(initial_text, width, height)
     return TextBoxWidget:new{
         use_xtext = true, -- Enables rich text features if supported
         text = initial_text,
@@ -388,7 +353,7 @@ function Kochess:createPgnLogWidget(initial_text, width, height)
     }
 end
 
---- Kochess:createToolbarButton(icon, width, height, callback, hold_callback)
+--- Paperknight:createToolbarButton(icon, width, height, callback, hold_callback)
 -- Helper to create standard toolbar buttons with icons.
 -- @param icon String icon name.
 -- @param width Numeric icon width.
@@ -396,7 +361,7 @@ end
 -- @param callback Function to call on tap.
 -- @param hold_callback Function to call on hold (optional).
 -- @return ButtonWidget instance.
-function Kochess:createToolbarButton(icon, width, height, callback, hold_callback)
+function Paperknight:createToolbarButton(icon, width, height, callback, hold_callback)
     return ButtonWidget:new{
         icon = icon,
         icon_width = width,
@@ -408,9 +373,9 @@ function Kochess:createToolbarButton(icon, width, height, callback, hold_callbac
     }
 end
 
---- Kochess:buildUILayout()
--- Constructs the entire user interface for the Kochess application.
-function Kochess:buildUILayout()
+--- Paperknight:buildUILayout()
+-- Constructs the entire user interface for the Paperknight application.
+function Paperknight:buildUILayout()
     dbg("Building main UI layout structure", "UI")
     -- Create top and bottom bars
     local title_bar = self:createTitleBar()
@@ -431,7 +396,7 @@ function Kochess:buildUILayout()
     if toolbar_width > self.full_width / 3 then toolbar_width = math.floor(self.full_width / 3) end
 
     local pgn_log_width = self.full_width - toolbar_width
-    self.pgn_log = self:createPgnLogWidget(_("Welcome to Chess Game!\nWhite to play."), pgn_log_width, log_h)
+    self.pgn_log = self:createPgnLogWidget(_("Welcome to Paperknight!\nWhite to play."), pgn_log_width, log_h)
 
     -- Wrap PGN log in a centered frame
     local log_frame = FrameContainer:new{
@@ -504,11 +469,11 @@ function Kochess:buildUILayout()
     }
 end
 
---- Kochess:handleUndoMove(all_moves)
+--- Paperknight:handleUndoMove(all_moves)
 -- Handles the undo action, either for one move or all moves.
 -- Stops the engine and timer, performs undo, updates UI, and restarts timer.
 -- @param all_moves Boolean, true to undo all moves, false for single move.
-function Kochess:handleUndoMove(all_moves)
+function Paperknight:handleUndoMove(all_moves)
     dbg("Handling undo move(s), all: " .. tostring(all_moves), "ACTION")
     self:stopUCI() -- Stop any ongoing engine calculations
     self.timer:stop() -- Pause the timer during undo/redo
@@ -528,11 +493,11 @@ function Kochess:handleUndoMove(all_moves)
     self.timer:start() -- Restart timer
 end
 
---- Kochess:handleRedoMove(all_moves)
+--- Paperknight:handleRedoMove(all_moves)
 -- Handles the redo action, either for one move or all moves.
 -- Stops the engine and timer, performs redo, updates UI, and restarts timer.
 -- @param all_moves Boolean, true to redo all moves, false for single move.
-function Kochess:handleRedoMove(all_moves)
+function Paperknight:handleRedoMove(all_moves)
     dbg("Handling redo move(s), all: " .. tostring(all_moves), "ACTION")
     self:stopUCI()
     self.timer:stop()
@@ -552,9 +517,9 @@ function Kochess:handleRedoMove(all_moves)
     self.timer:start()
 end
 
---- Kochess:openLoadPgnDialog()
+--- Paperknight:openLoadPgnDialog()
 -- Opens a file chooser dialog to load a PGN chess game from a file.
-function Kochess:openLoadPgnDialog()
+function Paperknight:openLoadPgnDialog()
     dbg("Opening PGN load file dialog", "FILE")
     UIManager:show(
         PathChooser:new{
@@ -592,10 +557,10 @@ function Kochess:openLoadPgnDialog()
     )
 end
 
---- Kochess:launchNextMove()
+--- Paperknight:launchNextMove()
 -- Manages the transition to the next move, including switching timers and
 -- potentially launching the UCI engine if it's an AI turn.
-function Kochess:launchNextMove()
+function Paperknight:launchNextMove()
     dbg("Launching next move sequence", "GAME FLOW")
     self.timer:switchPlayer() -- Switch the active player for the timer
     self:updateTimerDisplay() -- Update timer display immediately
@@ -627,10 +592,10 @@ local function formatPgnMove(idx, san)
     return pgn_text
 end
 
---- Kochess:updatePgnLog()
+--- Paperknight:updatePgnLog()
 -- Generates and updates the text content of the PGN log widget.
 -- Includes headers, past moves, current comment, and future (redo) moves.
-function Kochess:updatePgnLog()
+function Paperknight:updatePgnLog()
     dbg("Updating PGN log text content", "UI")
     local headers = self.game:header()
     local moves = self.game:history()
@@ -705,12 +670,12 @@ function Kochess:updatePgnLog()
     self.pgn_log:scrollViewToCharPos() -- Scroll the log to the last current move
 end
 
---- Kochess:onMoveExecuted(move)
+--- Paperknight:onMoveExecuted(move)
 -- Callback function invoked when a chess move is successfully made on the board.
 -- Triggers UI updates and the next move sequence. This is for both human (after promotion if needed)
 -- and engine moves.
 -- @param move Table, the move object with details like SAN.
-function Kochess:onMoveExecuted(move)
+function Paperknight:onMoveExecuted(move)
     dbg("Chess move executed: " .. move.san, "GAME")
     self.running = true -- Game is now officially running
     self:updatePgnLog() -- Update the PGN display
@@ -752,10 +717,10 @@ function Kochess:onMoveExecuted(move)
     UIManager:setDirty(self, "ui") -- Request UI redraw
 end
 
---- Kochess:uciMove(inmove_str)
+--- Paperknight:uciMove(inmove_str)
 -- Interprets a UCI move string from the engine and applies it to the game.
 -- @param inmove_str String, the UCI move string (e.g., "e2e4", "e7e8q").
-function Kochess:uciMove(inmove_str)
+function Paperknight:uciMove(inmove_str)
     dbg("Processing UCI move string: " .. inmove_str, "UCI")
     -- Parse the UCI string into a table format compatible with Chess.move
     local tmove = {
@@ -770,10 +735,10 @@ function Kochess:uciMove(inmove_str)
     end
 end
 
---- Kochess:launchUCI()
+--- Paperknight:launchUCI()
 -- Sends the current game position and time controls to the UCI engine
 -- and requests it to find the best move.
-function Kochess:launchUCI()
+function Paperknight:launchUCI()
     dbg("Requesting bestmove from UCI engine", "UCI")
     local params = {
         wtime = self.timer:getRemainingTime(Chess.WHITE) * 1000, -- White's remaining time in ms
@@ -794,9 +759,9 @@ function Kochess:launchUCI()
     self.engine:go(params) -- Tell the engine to calculate the best move
 end
 
---- Kochess:stopUCI()
+--- Paperknight:stopUCI()
 -- Sends a "stop" command to the UCI engine, halting any ongoing search.
-function Kochess:stopUCI()
+function Paperknight:stopUCI()
     dbg("Sending 'stop' command to UCI engine", "UCI")
     if self.engine and self.engine.state.uciok then
         self.engine.send("stop")
@@ -816,9 +781,9 @@ local function getPlayerIndicator(is_running, turn)
     end
 end
 
---- Kochess:updateTimerDisplay()
+--- Paperknight:updateTimerDisplay()
 -- Updates the timer display in the status bar.
-function Kochess:updateTimerDisplay()
+function Paperknight:updateTimerDisplay()
     -- dbg("Updating timer display", "UI") -- This can be very chatty if un-commented
     local fmt = self.timer.formatTime -- Timer's formatTime function
     local white_time = self.timer:getRemainingTime(Chess.WHITE)
@@ -828,9 +793,9 @@ function Kochess:updateTimerDisplay()
     UIManager:setDirty(self.status_bar, "ui") -- Request redraw for status bar
 end
 
---- Kochess:updatePlayerDisplay()
+--- Paperknight:updatePlayerDisplay()
 -- Updates the player type (Human/Engine) display in the status bar subtitle.
-function Kochess:updatePlayerDisplay()
+function Paperknight:updatePlayerDisplay()
     dbg("Updating player type display", "UI")
     local function labelFor(color)
         return self.game.is_human(color) and _("Human")
@@ -843,9 +808,9 @@ function Kochess:updatePlayerDisplay()
     UIManager:setDirty(self.status_bar, "ui")
 end
 
---- Kochess:resetGame()
+--- Paperknight:resetGame()
 -- Resets the entire chess game to its initial state.
-function Kochess:resetGame()
+function Paperknight:resetGame()
     dbg("Resetting current game", "ACTION")
     self.running = false
     self:stopUCI()
@@ -864,12 +829,12 @@ function Kochess:resetGame()
     UIManager:setDirty(self, "ui")
 end
 
---- Kochess:handleSaveFile(dialog, filename_input, current_dir)
+--- Paperknight:handleSaveFile(dialog, filename_input, current_dir)
 -- Helper function to perform the actual file saving operation for PGN.
 -- @param dialog InputDialog instance.
 -- @param filename_input InputText widget for the filename.
 -- @param current_dir String, the directory to save in.
-function Kochess:handleSaveFile(dialog, filename_input, current_dir)
+function Paperknight:handleSaveFile(dialog, filename_input, current_dir)
     dbg("Executing PGN file save", "FILE")
     filename_input:onCloseKeyboard() -- Ensure on-screen keyboard is closed
 
@@ -905,10 +870,10 @@ function Kochess:handleSaveFile(dialog, filename_input, current_dir)
     })
 end
 
---- Kochess:openSaveDialog()
+--- Paperknight:openSaveDialog()
 -- Creates and displays the dialog for saving the current game as a PGN file.
 -- @return InputDialog instance.
-function Kochess:openSaveDialog()
+function Paperknight:openSaveDialog()
     dbg("Opening 'Save PGN' dialog", "UI")
     local current_dir = lfs.currentdir() -- Get current working directory as default save location
     local dialog
@@ -1015,13 +980,13 @@ function Kochess:openSaveDialog()
     return dialog
 end
 
---- Kochess:openPromotionDialog(from_sq, to_sq, pawn_color)
+--- Paperknight:openPromotionDialog(from_sq, to_sq, pawn_color)
 -- Opens a dialog for the user to choose a promotion piece when a pawn reaches the 8th/1st rank.
 -- This function is intended to be called by ChessBoard's 'onPromotionNeeded' callback.
 -- @param from_sq String, the square the pawn moved from (e.g., "e7").
 -- @param to_sq String, the square the pawn moved to (e.g., "e8").
 -- @param pawn_color String, the color of the pawn ('w' or 'b').
-function Kochess:openPromotionDialog(from_sq, to_sq, pawn_color)
+function Paperknight:openPromotionDialog(from_sq, to_sq, pawn_color)
     dbg(("Opening promotion dialog for %s pawn at %s to %s"):format(pawn_color, from_sq, to_sq), "PROMOTION")
 
     -- Define available promotion pieces (char and Chess constant mapping)
@@ -1034,12 +999,7 @@ function Kochess:openPromotionDialog(from_sq, to_sq, pawn_color)
     local promotion_pieces_order = { "q", "r", "b", "n" } -- Order for display
 
     -- Define icons for the promotion pieces (matching board.lua's structure)
-    local promotion_icons = {
-        [Chess.QUEEN]  = { [Chess.WHITE] = "chess/wQ", [Chess.BLACK] = "chess/bQ" },
-        [Chess.ROOK]   = { [Chess.WHITE] = "chess/wR", [Chess.BLACK] = "chess/bR" },
-        [Chess.BISHOP] = { [Chess.WHITE] = "chess/wB", [Chess.BLACK] = "chess/bB" },
-        [Chess.KNIGHT] = { [Chess.WHITE] = "chess/wN", [Chess.BLACK] = "chess/bN" },
-    }
+    local promotion_icons = PkIcons.pieces
 
     local dialog = InputDialog:new{
         title = _("Choose Promotion Piece"),
@@ -1081,7 +1041,7 @@ function Kochess:openPromotionDialog(from_sq, to_sq, pawn_color)
     for _, piece_char in ipairs(promotion_pieces_order) do
         local piece_type = promotion_piece_map[piece_char]
         local icon_path = promotion_icons[piece_type][pawn_color]
-        table.insert(button_widgets, ButtonWidget:new{
+        table.insert(button_widgets, PkButton:new{
             icon = icon_path, -- Use the icon path
             icon_width = icon_size,
             icon_height = icon_size,
@@ -1135,14 +1095,14 @@ function Kochess:openPromotionDialog(from_sq, to_sq, pawn_color)
     dialog:refocusWidget()
 end
 
---- Kochess:createTitleBar()
+--- Paperknight:createTitleBar()
 -- Creates the application's main title bar with game controls.
 -- @return TitleBarWidget instance.
-function Kochess:createTitleBar()
+function Paperknight:createTitleBar()
     dbg("Creating application title bar", "UI")
     return TitleBarWidget:new{
         fullscreen = true,
-        title = _("Chess for Koreader"),
+        title = _("Paperknight"),
         title_align = "center",
         title_multilines = false,
         title_shrink_font_to_fit = true,
@@ -1158,15 +1118,15 @@ function Kochess:createTitleBar()
             if self.engine then
                 self.engine:stop()
             end
-            UIManager:close(self) -- Close the Kochess UI
+            UIManager:close(self) -- Close the Paperknight UI
         end,
     }
 end
 
---- Kochess:createStatusBar()
+--- Paperknight:createStatusBar()
 -- Creates the status bar, displaying timers and player types.
 -- @return TitleBarWidget instance (used as a status bar).
-function Kochess:createStatusBar()
+function Paperknight:createStatusBar()
     dbg("Creating application status bar", "UI")
     return TitleBarWidget:new{
         fullscreen = true,
@@ -1218,9 +1178,9 @@ function Kochess:createStatusBar()
     }
 end
 
---- Kochess:startTimer()
+--- Paperknight:startTimer()
 -- Starts or resumes the game timer.
-function Kochess:startTimer()
+function Paperknight:startTimer()
     dbg("Starting or resuming game timer", "TIMER")
     if not self.running then
         self.running = true
@@ -1229,4 +1189,4 @@ function Kochess:startTimer()
     end
 end
 
-return Kochess
+return Paperknight

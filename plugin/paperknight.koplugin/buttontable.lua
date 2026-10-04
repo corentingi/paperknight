@@ -8,7 +8,8 @@ local VerticalGroup = require("ui/widget/verticalgroup")
 local Geom = require("ui/geometry")
 local Screen = Device.screen
 
-local ButtonTable = require("ui/widget/buttontable")
+-- Paperknight: subclass instead of patching KOReader's global ButtonTable:init
+local ButtonTable = require("ui/widget/buttontable"):extend{}
 
 function ButtonTable:init()
     self.width = self.width or math.floor(math.min(Screen:getWidth(), Screen:getHeight()) * 0.9)

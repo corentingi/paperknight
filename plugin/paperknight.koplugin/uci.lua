@@ -131,8 +131,8 @@ function UCIEngine.spawn(cmd, args)
                                 parse_uci_line(line, self.state)
                                 self:_trigger("line", line)
                               end,
-                              "Kochess DBG UCI")
-  self.send = Utils.writer(self.fd_write, true, "Kochess DBG UCI")
+                              "Paperknight DBG UCI")
+  self.send = Utils.writer(self.fd_write, true, "Paperknight DBG UCI")
   return self
 end
 

@@ -11,7 +11,8 @@ local TextBoxWidget = require("ui/widget/textboxwidget")
 local TextWidget = require("ui/widget/textwidget")
 local _ = require("gettext")
 
-local Button = require("ui/widget/button")
+-- Paperknight: subclass instead of patching KOReader's global Button:init
+local Button = require("ui/widget/button"):extend{}
 
 function Button:init()
     if self.menu_style then
@@ -126,6 +127,8 @@ function Button:init()
     else
         self.label_widget = IconWidget:new{
             icon = self.icon,
+            -- Paperknight: an absolute path is loaded as a file (see pkicons.lua)
+            file = self.icon and self.icon:sub(1, 1) == "/" and self.icon or nil,
             alpha = self.alpha,
             rotation_angle = self.icon_rotation_angle,
             dim = not self.enabled,
