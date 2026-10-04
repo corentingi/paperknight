@@ -12,9 +12,13 @@ local Screen = Device.screen
 
 local BOARD_SIZE = 8
 local SELECTED_BORDER = 5
--- Paperknight: last-move squares get a light tint (a border is partly painted
--- over by neighbouring squares in the ButtonTable).
-local HIGHLIGHT_COLOR = Blitbuffer.COLOR_GRAY_E
+-- Paperknight: square colours. E-ink shows 16 grey levels (steps of 0x11);
+-- light squares are white and dark squares a light grey so pieces stay crisp.
+-- The last-move tint sits two levels from both (a border would be partly
+-- painted over by neighbouring squares in the ButtonTable).
+local LIGHT_SQUARE = Blitbuffer.COLOR_WHITE      -- 0xFF
+local DARK_SQUARE = Blitbuffer.COLOR_GRAY_B      -- 0xBB
+local HIGHLIGHT_COLOR = Blitbuffer.COLOR_GRAY_D  -- 0xDD
 
 local PkIcons = require("pkicons")
 local icons = { empty = PkIcons.empty }
@@ -102,8 +106,8 @@ function Board:applySquareColors()
         for file = 0, BOARD_SIZE - 1 do
             local button = self.table:getButtonById(Board.toId(file, rank))
             button.frame.background = ((file + rank) % 2 == 1)
-                and Blitbuffer.COLOR_LIGHT_GRAY
-                or Blitbuffer.COLOR_DARK_GRAY
+                and LIGHT_SQUARE
+                or DARK_SQUARE
         end
     end
 end
@@ -407,7 +411,7 @@ end
 --- Board.positionToColor(position)
 -- Determines the background color of a square based on its algebraic position.
 -- @param position String, algebraic notation (e.g., "e4").
--- @return Blitbuffer.COLOR_LIGHT_GRAY or Blitbuffer.COLOR_DARK_GRAY.
+-- @return LIGHT_SQUARE or DARK_SQUARE.
 function Board.positionToColor(position)
     if type(position) == "string" and #position == 2 then
         local file_char = position:sub(1, 1)
@@ -415,7 +419,7 @@ function Board.positionToColor(position)
         if 'a' <= file_char and file_char <= 'h' and '1' <= rank_char and rank_char <= '8' then
             local file_idx = string.byte(file_char) - string.byte('a')
             local rank_idx = tonumber(rank_char) - 1
-            return (file_idx + rank_idx) % 2 == 1 and Blitbuffer.COLOR_LIGHT_GRAY or Blitbuffer.COLOR_DARK_GRAY
+            return (file_idx + rank_idx) % 2 == 1 and LIGHT_SQUARE or DARK_SQUARE
         end
     end
     return nil -- Or a default color, depending on desired behavior for invalid input
