@@ -18,3 +18,4 @@ Template: [`0000-template.md`](0000-template.md).
 | [0008](0008-puzzle-selection.md) | Select puzzles by quality + deterministic per-band quota | accepted |
 | [0009](0009-puzzle-mode-architecture.md) | Puzzle mode as a separate screen with pure-Lua session logic | accepted |
 | [0010](0010-puzzle-rating.md) | Local Elo-style puzzle rating in progress.sqlite | accepted |
+| [0011](0011-studies-from-pgn.md) | Studies are PGN files read on the device, parsed lazily | accepted |

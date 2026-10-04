@@ -18,8 +18,8 @@
 - [ ] Test on a real Kindle Paperwhite 2
 
 ## Milestone 2b — Studies (Lichess-style)
-- [ ] Design (ADR-0011, docs/studies.md)
-- [ ] PGN parser with variations, comments, glyphs, shapes
+- [x] Design (ADR-0011, docs/studies.md)
+- [x] PGN parser with variations, comments, glyphs, shapes
 - [ ] Viewer: chapters, move tree, comments, arrows/circles
 - [ ] Interactive chapters (gamebook rules)
 - [ ] Pipeline `study` download command

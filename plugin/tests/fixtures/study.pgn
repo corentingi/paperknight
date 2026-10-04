@@ -1,0 +1,59 @@
+[Event "Paperknight test study: Italian ideas"]
+[Site "https://lichess.org/study/TESTTEST/chap0001"]
+[Result "*"]
+[StudyName "Paperknight test study"]
+[ChapterName "Italian ideas"]
+[ChapterURL "https://lichess.org/study/TESTTEST/chap0001"]
+[Annotator "https://lichess.org/@/tester"]
+[Orientation "white"]
+
+{ [%anno "Tester", tester] Welcome! This chapter shows the
+Italian game. [%csl Ge4,Gd4] }
+1. e4 { [%clk 0:03:00] Controls the centre. [%cal Ge2e4] } 1... e5 2. Nf3 Nc6
+3. Bc4!? { The Italian. } (3. Bb5 { The Spanish. } 3... a6 (3... Nf6 4. O-O $14)
+4. Ba4) 3... Bc5 $1 ; a classical reply
+4. c3 Nf6 5. d4 exd4 6. cxd4 Bb4+ 7. Bd2 Bxd2+ 8. Nbxd2 d5 $132 { [%eval 0.1] [%cal Rd5e4,Gc4d5] [%csl Re4] } *
+
+
+[Event "Paperknight test study: Mate in two"]
+[Result "1-0"]
+[StudyName "Paperknight test study"]
+[ChapterName "Mate in two"]
+[FEN "3r2k1/4nppp/pq3b2/1p2p3/2r2P2/2P1NR2/PP1Q2BP/3R2K1 w - - 0 25"]
+[SetUp "1"]
+[Orientation "white"]
+[ChapterMode "gamebook"]
+
+{ White to play and mate in two. }
+25. Qxd8+ { Forcing! } (25. fxe5? { Wins a pawn but misses the mate. } 25... Rxd2 $19)
+(25. Qd7 { Too slow. }) 25... Qxd8 26. Rxd8# { Back-rank mate. } 1-0
+
+
+[Event "Black to move"]
+[White "Alice \"Ace\" Smith"]
+[Black "Bob"]
+[Result "0-1"]
+[StudyName "Paperknight test study"]
+[FEN "4k3/4P3/4K3/8/8/8/8/r7 b - - 0 60"]
+[SetUp "1"]
+[Orientation "black"]
+
+60... Ra6+ 61. Kd5 Kxe7 62. Kc5 Ra5+ 63. Kb4 Ra1 { [%anno "Coach"] Draw-ish, but the test only needs moves. } 0-1
+
+
+[Event "Empty chapter"]
+[Result "*"]
+[StudyName "Paperknight test study"]
+[ChapterName "Empty"]
+
+*
+
+
+[Event "Promotion and castling"]
+[Result "*"]
+[StudyName "Paperknight test study"]
+[ChapterName "Specials"]
+[FEN "r3k2r/1P6/8/8/8/8/8/R3K2R w KQkq - 0 1"]
+[SetUp "1"]
+
+1. O-O-O O-O 2. b8=Q Raxb8 $2 3. Rd8+ Rbxd8 *
