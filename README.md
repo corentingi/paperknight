@@ -10,7 +10,8 @@ Stockfish, PGN load/save) that grows into a training tool:
 - **Openings** — named repertoire lines to drill with spaced repetition.
 - **Master games** — curated notable games, replayed in "guess the move" mode.
 
-> Status: early development. See [`docs/roadmap.md`](docs/roadmap.md).
+> Status: early development — offline puzzles work in the desktop emulator;
+> not yet tested on a real Kindle. See [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Repository layout
 
@@ -18,7 +19,7 @@ Stockfish, PGN load/save) that grows into a training tool:
 |---|---|
 | [`plugin/paperknight.koplugin/`](plugin/) | The KOReader plugin (Lua). This folder is what you copy to the device. |
 | [`pipeline/`](pipeline/) | Python scripts that download public datasets and build compact data packs for the plugin. |
-| [`tools/emulator/`](tools/emulator/) | Runs KOReader on a desktop (in Docker) to test the plugin without a Kindle. |
+| [`tools/emulator/`](tools/emulator/) | Runs the desktop KOReader (headless or windowed) to test the plugin without a Kindle. |
 | [`docs/`](docs/) | Architecture, data sources, development guide, and [decision records](docs/adr/). |
 
 ## Quick start (development)
@@ -26,8 +27,9 @@ Stockfish, PGN load/save) that grows into a training tool:
 ```sh
 make help          # list targets
 make test          # unit tests (plugin + pipeline)
-make packs         # build data packs into build/packs/
-make emulator      # run the plugin in a desktop KOReader (see docs/development.md)
+make packs         # download Lichess puzzles (~300 MB, once) and build build/packs/puzzles.sqlite
+make check         # unit tests + headless end-to-end scenarios (screenshots in build/e2e/)
+make emulator      # run the plugin in a desktop KOReader window (see docs/development.md)
 ```
 
 ## Installing on a Kindle
@@ -36,7 +38,9 @@ make emulator      # run the plugin in a desktop KOReader (see docs/development.
    `koreader-kindlepw2-*.zip` release).
 2. Copy `plugin/paperknight.koplugin/` to `/mnt/us/koreader/plugins/`.
 3. Copy the data packs from `build/packs/` to `/mnt/us/koreader/plugins/paperknight.koplugin/packs/`.
-4. Restart KOReader; Paperknight appears in the **Tools** menu.
+4. Restart KOReader; **Paperknight** appears in the **Tools** menu, with
+   *Puzzles* and *Play against the engine*. Playing the engine needs a
+   Stockfish binary at `paperknight.koplugin/bin/stockfish` (not shipped yet).
 
 ## License
 

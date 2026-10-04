@@ -33,8 +33,19 @@ Forked from Kochess (ADR-0003). Current modules, inherited:
 | `button.lua`, `buttontable.lua` | Patched copies of KOReader button widgets |
 | `utils.lua` | Helpers |
 
-Planned additions are tracked in [`roadmap.md`](roadmap.md). New modes are
-separate modules (e.g. `puzzles/`) that reuse the board widget and rules engine.
+Paperknight modules (prefixed `pk` to avoid `package.loaded` clashes, ADR-0009):
+
+| File | Role |
+|---|---|
+| `pkpuzzleview.lua` | Puzzle screen: board, status line, Hint / Solution / Retry / Next |
+| `pkpuzzle.lua` | Puzzle session state machine (pure logic, unit-tested) |
+| `pkpuzzlepack.lua` | Read-only access to `puzzles.sqlite` (indexed random picks) |
+| `pkprogress.lua` | User rating + attempt history in `progress.sqlite` (ADR-0010) |
+| `pkpromotion.lua` | Promotion piece chooser shared by both screens |
+| `pkicons.lua` | Absolute paths of the piece icons inside the plugin folder |
+
+The menu entry *Paperknight* opens a submenu: *Puzzles* and *Play against the
+engine*. Planned additions are tracked in [`roadmap.md`](roadmap.md).
 
 ## Pipeline (`pipeline/`)
 

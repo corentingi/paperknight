@@ -5,6 +5,15 @@ local here = debug.getinfo(1, "S").source:gsub("^@", ""):match("(.*)/") or "."
 local plugin_dir = here .. "/../paperknight.koplugin"
 package.path = plugin_dir .. "/?.lua;" .. here .. "/?.lua;" .. package.path
 
+-- When started from KOReader's assets directory (as `make test-lua` does), load
+-- KOReader's environment so modules like lua-ljsqlite3 and logger work.
+PK_KOREADER_ENV = pcall(require, "setupkoenv")
+if PK_KOREADER_ENV then
+    -- KOReader's frontend and common modules, as in reader.lua
+    package.path = "frontend/?.lua;common/?.lua;" .. package.path
+end
+PK_REPO_ROOT = here .. "/../.."
+
 local t = {}
 function t.eq(actual, expected, msg)
     if actual ~= expected then

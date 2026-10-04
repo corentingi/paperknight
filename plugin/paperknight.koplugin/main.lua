@@ -35,8 +35,7 @@ local ChessBoard = require("board")
 local Timer = require("timer")
 local Uci = require("uci")
 local SettingsWidget = require("settingswidget")
-local PkIcons = require("pkicons")
-local PkButton = require("button") -- Paperknight Button subclass: accepts absolute icon paths
+local PkPromotion = require("pkpromotion")
 
 -- Utilities
 local Logger = require("logger")
@@ -150,9 +149,58 @@ function Paperknight:addToMainMenu(menu_items)
     menu_items.paperknight = {
         text = _("Paperknight"),
         sorting_hint = "tools", -- Suggests where it should appear in the menu
-        callback = function() self:startGame() end, -- Action when selected
-        keep_menu_open = false, -- Close menu after starting game
+        sub_item_table = {
+            {
+                text = _("Puzzles"),
+                callback = function() self:startPuzzles() end,
+            },
+            {
+                text = _("Play against the engine"),
+                callback = function() self:startGame() end,
+            },
+        },
     }
+end
+
+--- Paperknight:packsDir()
+-- Data packs live in <plugin>/packs; PAPERKNIGHT_PACKS_DIR overrides it (tests).
+function Paperknight:packsDir()
+    return os.getenv("PAPERKNIGHT_PACKS_DIR") or (PLUGIN_PATH .. "/packs")
+end
+
+--- Paperknight:startPuzzles()
+-- Opens the puzzle screen (ADR-0009). Returns the view, or nil if no pack.
+function Paperknight:startPuzzles()
+    local PkProgress = require("pkprogress")
+    local PkPuzzlePack = require("pkpuzzlepack")
+    local PkPuzzleView = require("pkpuzzleview")
+    local pack_path = self:packsDir() .. "/puzzles.sqlite"
+    local pack, err = PkPuzzlePack.open(pack_path)
+    if not pack then
+        Logger.warn("Paperknight:", err)
+        UIManager:show(infoMessage:new{
+            text = _("No puzzle pack found.") .. "\n" .. _("Copy puzzles.sqlite to:") .. "\n" .. self:packsDir()
+                .. "\n\n(" .. tostring(err) .. ")",
+        })
+        return nil
+    end
+    if pack:count() == 0 then
+        pack:close()
+        UIManager:show(infoMessage:new{ text = _("The puzzle pack is empty.") })
+        return nil
+    end
+    local ok, progress = pcall(PkProgress.open, DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+    if not ok then
+        pack:close()
+        Logger.warn("Paperknight: cannot open progress database:", progress)
+        UIManager:show(infoMessage:new{
+            text = _("Cannot open the progress database.") .. "\n" .. tostring(progress),
+        })
+        return nil
+    end
+    local view = PkPuzzleView:new{ pack = pack, progress = progress }
+    UIManager:show(view)
+    return view
 end
 
 --- Paperknight:startGame()
@@ -202,8 +250,7 @@ function Paperknight:initializeEngine()
         Logger.info("Paperknight:initializeEngine() failed to spawn engine at path")
         dbg("Failed to spawn UCI engine at: " .. UCI_ENGINE_PATH, "ERROR")
         UIManager:show(infoMessage:new{
-            text = _("Error"),
-            message = _("Failed to load chess engine.\nPlease ensure Stockfish is installed at %s"):format(UCI_ENGINE_PATH),
+            text = _("Error") .. "\n" .. _("Failed to load chess engine.\nPlease ensure Stockfish is installed at %s"):format(UCI_ENGINE_PATH),
         })
         return
     end
@@ -256,8 +303,7 @@ function Paperknight:initializeEngine()
         dbg("UCI: eof (engine process terminated)", "ENGINE")
         -- Potentially display an error message or attempt to restart the engine
         UIManager:show(infoMessage:new{
-            text = _("Engine Offline"),
-            message = _("The chess engine has stopped running."),
+            text = _("Engine Offline") .. "\n" .. _("The chess engine has stopped running."),
         })
     end)
 
@@ -531,7 +577,7 @@ function Paperknight:openLoadPgnDialog()
                 if not fh then
                     dbg("Failed to open PGN file: " .. path, "ERROR")
                     UIManager:show(infoMessage:new{
-                        text = _("Error"), message = _("Could not open file:\n") .. path,
+                        text = _("Error") .. "\n" .. _("Could not open file:\n") .. path,
                     })
                     return
                 end
@@ -855,7 +901,7 @@ function Paperknight:handleSaveFile(dialog, filename_input, current_dir)
     if not fh then
         dbg("Failed to open file for write: " .. tostring(err), "ERROR")
         UIManager:show(infoMessage:new{
-            text = _("Error"), message = _("Could not save file:\n") .. tostring(err),
+            text = _("Error") .. "\n" .. _("Could not save file:\n") .. tostring(err),
         })
         return
     end
@@ -866,7 +912,7 @@ function Paperknight:handleSaveFile(dialog, filename_input, current_dir)
     UIManager:close(dialog) -- Close the save dialog
     dbg("PGN successfully saved to " .. fullpath, "FILE")
     UIManager:show(infoMessage:new{
-        text = _("Saved"), message = _("Game saved to:\n") .. fullpath
+        text = _("Saved") .. "\n" .. _("Game saved to:\n") .. fullpath
     })
 end
 
@@ -988,111 +1034,19 @@ end
 -- @param pawn_color String, the color of the pawn ('w' or 'b').
 function Paperknight:openPromotionDialog(from_sq, to_sq, pawn_color)
     dbg(("Opening promotion dialog for %s pawn at %s to %s"):format(pawn_color, from_sq, to_sq), "PROMOTION")
-
-    -- Define available promotion pieces (char and Chess constant mapping)
-    local promotion_piece_map = {
-        q = Chess.QUEEN,
-        r = Chess.ROOK,
-        b = Chess.BISHOP,
-        n = Chess.KNIGHT,
-    }
-    local promotion_pieces_order = { "q", "r", "b", "n" } -- Order for display
-
-    -- Define icons for the promotion pieces (matching board.lua's structure)
-    local promotion_icons = PkIcons.pieces
-
-    local dialog = InputDialog:new{
-        title = _("Choose Promotion Piece"),
-        buttons = {}, -- Buttons will be created dynamically
-    }
-
-    -- Determine a reasonable size for the promotion piece icons
-    local icon_size = math.floor(math.min(Screen:getWidth(), Screen:getHeight()) / 10) -- Roughly 1/10th of smallest screen dimension
-    if icon_size < 60 then icon_size = 60 end -- Minimum size
-    if icon_size > 96 then icon_size = 96 end -- Maximum size
-
-    -- Callback for when a promotion piece is chosen
-    local function onPieceChosen(chosen_piece_char)
-        dbg("Promotion piece chosen: " .. chosen_piece_char, "PROMOTION")
-        UIManager:close(dialog) -- Close the promotion dialog
-
-        -- Now, execute the actual chess move with the chosen promotion piece
-        local tmove = { from = from_sq, to = to_sq, promotion = chosen_piece_char }
-        local move_obj = self.game.move(tmove)
-
+    PkPromotion.show(pawn_color, function(chosen_piece_char)
+        local move_obj = self.game.move({ from = from_sq, to = to_sq, promotion = chosen_piece_char })
         if move_obj then
-            self.board:handleGameMove(move_obj) -- Update the board visually with the new piece
-            self:onMoveExecuted(move_obj) -- Trigger general post-move updates (PGN, timer, etc.)
+            self.board:handleGameMove(move_obj) -- Update the board, then PGN/timer via onMoveExecuted
         else
-            -- This case should ideally not happen if Chess.move is robust,
-            -- as the choice is valid.
             dbg(("Error applying promotion move from %s to %s with piece %s"):format(from_sq, to_sq, chosen_piece_char), "ERROR")
             UIManager:show(infoMessage:new{
-                text = _("Error"),
-                message = _("Failed to promote pawn. Please try again."),
+                text = _("Failed to promote pawn. Please try again."),
             })
-            self.board:updateBoard() -- Redraw to clear any attempted invalid highlights
+            self.board:updateBoard()
             UIManager:setDirty(self, "ui")
         end
-    end
-
-    -- Create buttons for each promotion choice, using icons
-    local button_widgets = {}
-    for _, piece_char in ipairs(promotion_pieces_order) do
-        local piece_type = promotion_piece_map[piece_char]
-        local icon_path = promotion_icons[piece_type][pawn_color]
-        table.insert(button_widgets, PkButton:new{
-            icon = icon_path, -- Use the icon path
-            icon_width = icon_size,
-            icon_height = icon_size,
-            id = "promote_" .. piece_char,
-            callback = function() onPieceChosen(piece_char) end,
-            -- Optional: Add a text label below the icon if desired for clarity
-            -- text = promotion_names[piece_char],
-            -- text_align = "center",
-        })
-    end
-
-    -- Arrange buttons in a vertical group for clarity
-    local buttons_group = VerticalGroup:new{
-        align = "center",
-        spacing = Size.padding.large,
-    }
-    for _, btn in ipairs(button_widgets) do
-        buttons_group[#buttons_group + 1] = btn
-    end
-
-    -- Define the content layout for the promotion dialog
-    local content = FrameContainer:new{
-        radius = Size.radius.window,
-        bordersize = Size.border.window,
-        background = BACKGROUND_COLOR,
-        padding = Size.padding.large,
-        margin = 0,
-        VerticalGroup:new{
-            align = "center",
-            dialog.title_bar,
-            VerticalSpan:new{ width = Size.padding.large },
-            TextWidget:new{
-                text = _("Select the piece for promotion:"),
-                face = Font:getFace("cfont", 22),
-                -- Ensure text fits within the dialog width
-                max_width = dialog.width * 0.9,
-                align = "center",
-            },
-            VerticalSpan:new{ width = Size.padding.large },
-            buttons_group,
-            VerticalSpan:new{ width = Size.padding.large },
-            -- No general dialog.button_table needed as we handle specific choices
-        },
-    }
-
-    -- Make the dialog movable and display it centered on the screen
-    dialog.movable = MovableContainer:new{ content }
-    dialog[1] = CenterContainer:new{ dimen = Screen:getSize(), dialog.movable }
-    UIManager:show(dialog)
-    -- Focus is typically handled by UIManager.show for new dialogs, but explicitly calling refocusWidget can ensure it.
-    dialog:refocusWidget()
+    end)
 end
 
 --- Paperknight:createTitleBar()

@@ -23,12 +23,24 @@ Run `make help` for the current list. Main ones:
 KOReader's SDL frontend runs on a desktop. We run the official Linux release:
 
 - `HOME=build/emulator-home` isolates settings from your own KOReader.
-- The plugin is symlinked into `build/emulator-home/.config/koreader/plugins/`,
-  so edits are picked up on restart.
+- The plugin is symlinked into KOReader's own `plugins/` folder
+  (`build/koreader/lib/koreader/plugins/`), so KOReader loads it through the
+  relative path `plugins/paperknight.koplugin`, exactly like on a Kindle.
+  Edits are picked up on restart.
+- `make e2e` sets `PAPERKNIGHT_PACKS_DIR` to the fixture packs
+  (`build/packs/fixture/`); without it the plugin reads `<plugin>/packs/`.
 - `EMULATE_READER_W=758 EMULATE_READER_H=1024` matches the Paperwhite 2 screen.
 - `SDL_VIDEODRIVER=offscreen` runs without a display (used by `make e2e`).
 
 See [ADR-0007](adr/0007-headless-koreader-emulator.md).
+
+### Writing an e2e scenario
+
+A scenario is a Lua file in `tools/emulator/scenarios/` returning
+`function(h) … end`. Helpers: `h.ui` (the file manager, `h.ui.paperknight` is
+the plugin), `h.wait(s)`, `h.tap(x, y)`, `h.tapWidget(w)`, `h.shot(name)`,
+`h.check(cond, msg)`, `h.log(...)`. The run fails on a failed check, a Lua
+error, any `ERROR` line in the log, a timeout, or a non-zero exit.
 
 ## Deploying to a Kindle
 

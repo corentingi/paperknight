@@ -12,6 +12,9 @@ local Screen = Device.screen
 
 local BOARD_SIZE = 8
 local SELECTED_BORDER = 5
+-- Paperknight: last-move squares get a light tint (a border is partly painted
+-- over by neighbouring squares in the ButtonTable).
+local HIGHLIGHT_COLOR = Blitbuffer.COLOR_GRAY_E
 
 local PkIcons = require("pkicons")
 local icons = { empty = PkIcons.empty }
@@ -24,6 +27,8 @@ local Board = FrameContainer:extend{
     moveCallback = nil,
     holdCallback = nil,
     onPromotionNeeded = nil, -- NEW: Callback for when a pawn promotion is detected
+    flipped = false, -- Paperknight: true shows the board from Black's side
+    locked = false,  -- Paperknight: true ignores taps (e.g. puzzle finished, opponent thinking)
     padding = 0,
     background = Blitbuffer.COLOR_WHITE,
 }
@@ -47,10 +52,14 @@ function Board:init()
     self.selected = nil
     logger.dbg(string.format("Initializing board: %dx%d, button size: %d", self.width, self.height, self.button_size))
 
+    self.highlighted = {}
     local grid = {}
-    for rank = BOARD_SIZE - 1, 0, -1 do -- Iterate from rank 7 down to 0 (corresponds to board ranks 8 to 1)
+    for row_idx = 0, BOARD_SIZE - 1 do
+        -- Top row is rank 8 (index 7) normally, rank 1 (index 0) when flipped
+        local rank = self.flipped and row_idx or (BOARD_SIZE - 1 - row_idx)
         local row = {}
-        for file = 0, BOARD_SIZE - 1 do -- Iterate from file 0 to 7 (corresponds to 'a' to 'h')
+        for col_idx = 0, BOARD_SIZE - 1 do
+            local file = self.flipped and (BOARD_SIZE - 1 - col_idx) or col_idx
             table.insert(row, self:createSquareButton(file, rank))
         end
         table.insert(grid, row)
@@ -105,6 +114,7 @@ end
 -- @param file Number, the 0-indexed file of the tapped square.
 -- @param rank Number, the 0-indexed rank of the tapped square.
 function Board:handleClick(file, rank)
+    if self.locked then return end
     local id = Board.toId(file, rank)
     local square = Board.idToPosition(id) -- Chess algebraic notation (e.g., "e4")
     logger.dbg("Chess click on square: " .. square)
@@ -182,15 +192,48 @@ function Board:handleGameMove(move)
     if not move then return end -- Should not happen if called with a valid move
 
     logger.dbg("Applying game move to board visuals: " .. move.san)
-    self:updateSquare(move.from) -- Update source square (now empty)
-    self:updateSquare(move.to)   -- Update destination square (new piece)
-
-    -- Handle special move flags like en passant or castling which affect other squares
-    self:handleMoveFlags(move, move.to)
+    self:showMove(move)
 
     if self.moveCallback then
         self.moveCallback(move) -- Notify Paperknight.lua that the move has completed
     end
+end
+
+--- Board:showMove(move)
+-- Paperknight: redraws the squares a move touched, without invoking moveCallback
+-- (for moves played by the program: engine, puzzle replies, solutions).
+function Board:showMove(move)
+    self:updateSquare(move.from)
+    self:updateSquare(move.to)
+    -- Special moves (en passant, castling) affect other squares
+    self:handleMoveFlags(move, move.to)
+end
+
+--- Board:setHighlights(squares)
+-- Paperknight: tint the given squares (e.g. the last move), replacing
+-- previous highlights.
+function Board:setHighlights(squares)
+    local old = self.highlighted
+    self.highlighted = {}
+    for _, sq in ipairs(squares or {}) do self.highlighted[sq] = true end
+    for sq in pairs(old) do
+        if not self.highlighted[sq] then self:_applyBackground(sq) end
+    end
+    for sq in pairs(self.highlighted) do self:_applyBackground(sq) end
+end
+
+--- Board:squareColor(square): background for a square, highlight included.
+function Board:squareColor(square)
+    if self.highlighted and self.highlighted[square] then return HIGHLIGHT_COLOR end
+    return Board.positionToColor(square)
+end
+
+function Board:_applyBackground(square)
+    local id = Board.chessToId(square)
+    if not id then return end
+    local button = self.table:getButtonById(id)
+    button.frame.background = self:squareColor(square)
+    button:refresh()
 end
 
 --- Board:handleMoveFlags(move, to)
@@ -278,8 +321,10 @@ function Board:placePiece(square, piece, color)
         return
     end
     local button = self.table:getButtonById(id_result)
+    -- Paperknight: skip unchanged squares; each refresh is an e-ink update
+    if button.icon == icon then return end
     button:setIcon(icon, self.button_size)
-    button.frame.background = Board.positionToColor(square) -- Re-apply background color in case it was changed
+    button.frame.background = self:squareColor(square) -- Re-apply background color in case it was changed
     button:refresh()
 end
 

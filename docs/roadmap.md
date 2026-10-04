@@ -2,16 +2,19 @@
 
 ## Milestone 1 — Foundation
 - [x] Repository, docs, ADRs
-- [ ] Plugin forked from Kochess, renamed, loads in KOReader
-- [ ] Headless emulator harness + `make e2e`
-- [ ] Unit tests for the rules engine with KOReader's LuaJIT
+- [x] Plugin forked from Kochess, renamed, loads in KOReader
+- [x] Headless emulator harness + `make e2e`
+- [x] Unit tests for the rules engine with KOReader's LuaJIT
 
 ## Milestone 2 — Offline puzzles (first training feature)
-- [ ] Pack format v1 (`docs/pack-format.md`)
-- [ ] Pipeline: Lichess puzzle CSV → `puzzles.sqlite` (filtered, stratified)
-- [ ] Plugin: puzzle mode (load puzzle, play opponent's first move, check
+- [x] Pack format v1 (`docs/pack-format.md`)
+- [x] Pipeline: Lichess puzzle CSV → `puzzles.sqlite` (filtered, stratified)
+- [x] Plugin: puzzle mode (load puzzle, play opponent's first move, check
       solver moves, reply, success/fail)
-- [ ] Puzzle rating + progress stored in `progress.sqlite`
+- [x] Puzzle rating + progress stored in `progress.sqlite`
+- [ ] Theme filter (e.g. only forks, mates in 2) — pack already indexed for it
+- [ ] Board coordinates (a–h / 1–8), square cells
+- [ ] Test on a real Kindle Paperwhite 2
 
 ## Milestone 3 — Openings
 - [ ] Pipeline: lichess chess-openings → `openings.sqlite`

@@ -27,8 +27,18 @@ Score 1 if solved with no mistake and no hint/solution, else 0.
 K = 60 for the first 20 attempts, 30 afterwards. Rating is clamped to 400–3000.
 Stored in `<KOReader settings>/paperknight/progress.sqlite`:
 `attempts(puzzle_id, ts, solved, mistakes, used_help, puzzle_rating, rating_before, rating_after)`
-and `kv(key, value)` for the current rating. Next puzzle: within ±100 of the
-user's rating, excluding puzzles attempted in the last 30 days when possible.
+and `kv(key, value)` for the current rating.
+
+An attempt is recorded once per puzzle load: when the puzzle ends (solved or
+solution shown), or when the user leaves it (Next, Retry, close) after having
+"touched" it — a mistake, a hint, or at least one correct move (part of the
+line has been seen). Leaving an untouched puzzle records nothing. Retry after
+a recorded attempt replays without rating impact.
+
+Next puzzle (pack `band` = rating / 100, see pack format): an unseen puzzle
+(not attempted in the last 30 days) within ±2 bands of the user's rating,
+home band first; else a recently seen one within ±2 bands; only then
+further bands.
 
 ## Consequences
 - Easy to replace by Glicko later: attempts keep enough data to recompute.
