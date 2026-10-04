@@ -66,24 +66,39 @@ local function fullscreenMenu(title, items)
     return menu
 end
 
+local MAX_STUDY_BYTES = 2 * 1024 * 1024 -- larger files are game databases, not studies
+
+local ERRORS = {
+    empty = _("This file contains no games."),
+    not_pgn = _("This file is not a PGN file."),
+}
+
 --- Opens a study file and shows its chapter list. Returns the chapter menu.
 function PkStudies.openStudy(path)
+    local name = path:match("([^/]+)$") or path
+    local size = lfs.attributes(path, "size")
+    if size and size > MAX_STUDY_BYTES then
+        UIManager:show(InfoMessage:new{ text = T(_("%1 is too large for a study (%2 MB, limit 2 MB)."),
+            util.fixUtf8(name, "?"), string.format("%.1f", size / 1048576)) })
+        return nil
+    end
     local ok, study, err = pcall(PkStudy.open, path)
     if not ok then study, err = nil, study end
     if not study then
         logger.warn("Paperknight: cannot open study", path, err)
-        UIManager:show(InfoMessage:new{ text = T(_("Cannot open study:\n%1"), tostring(err)) })
+        UIManager:show(InfoMessage:new{ text = T(_("Cannot open %1:\n%2"), util.fixUtf8(name, "?"),
+            ERRORS[err] or tostring(err)) })
         return nil
     end
     local items = {}
     for i, ch in ipairs(study.chapters) do
         items[#items + 1] = {
-            text = T("%1. %2", i, ch.title),
+            text = T("%1. %2", i, util.fixUtf8(ch.title, "?")),
             mandatory = ch.gamebook and _("lesson") or nil,
             callback = function() PkStudies.openChapter(study, i) end,
         }
     end
-    local menu = fullscreenMenu(study.name, items)
+    local menu = fullscreenMenu(util.fixUtf8(study.name, "?"), items)
     UIManager:show(menu)
     return menu, study
 end

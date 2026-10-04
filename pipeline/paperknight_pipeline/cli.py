@@ -7,6 +7,7 @@ from datetime import date
 from pathlib import Path
 
 import os
+import urllib.error
 
 from . import puzzles, sources, studies
 
@@ -46,7 +47,13 @@ def cmd_study(args: argparse.Namespace) -> int:
     else:
         token = os.environ.get(args.token_env) if args.token_env else None
         print(f"downloading study {study_id} ...", file=sys.stderr)
-        pgn = studies.download_study(study_id, token)
+        try:
+            pgn = studies.download_study(study_id, token)
+        except urllib.error.HTTPError as e:
+            hint = (f" (private study? put a token with study:read in ${args.token_env})"
+                    if e.code in (401, 403, 404) else "")
+            print(f"download failed: HTTP {e.code}{hint}", file=sys.stderr)
+            return 1
     report = studies.validate(pgn)
     if report.chapters == 0:
         print("no chapters found (private study? set a token with --token-env)", file=sys.stderr)

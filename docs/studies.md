@@ -8,7 +8,9 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
 
 - **From Lichess**: open the study → *Share & export* → *Study PGN* (or
   `make study ID=<8-char id>` / `python -m paperknight_pipeline study <id-or-url>`,
-  which calls `https://lichess.org/api/study/<id>.pgn?orientation=true&clocks=false`).
+  which calls `https://lichess.org/api/study/<id>.pgn?orientation=true&clocks=false&comments=true&variations=true`).
+  The pipeline export always includes `[Orientation]`; a PGN downloaded from the
+  Lichess website may not, in which case ordinary chapters open from White's side.
   Private studies need a personal token with `study:read`.
 - Copy the `.pgn` to `koreader/paperknight/studies/` on the Kindle.
 - Any PGN works; each game is a chapter.
@@ -27,8 +29,8 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
 | `[%csl Gd4,Re5]` | Circles: brush letter (G/R/Y/B) + square |
 | `[%cal Ge2e4]` | Arrows: brush letter + from + to |
 | `[%clk …]`, `[%eval …]`, `[%emt …]` | Ignored (stripped) |
-| `!`, `?`, `!!`, `??`, `!?`, `?!`, `$1`–`$6` | Move glyphs, shown after the move |
-| `$10`–`$19`, `$13`, `$14`–`$19`, `$32`…`$146` | Position glyphs (=, ⩲, ±, +−, ∞, …), shown with the move |
+| `!`, `?`, `!!`, `??`, `!?`, `?!`, `$1`–`$6` | Move glyphs, attached to the move (`Bc4!?`) |
+| `$7`, `$10`, `$13`–`$19`, `$22`, `$32`…`$146` | Position glyphs in ASCII/Latin-1 (`=`, `+=`, `±`, `+-`, `unclear`, `(counterplay)`, …) since e-reader fonts may lack chess symbols; other codes show as `$n` |
 | `( … )` | Variations (nested to any depth) |
 
 ## Viewer
@@ -42,7 +44,12 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
   line) · ⏭ end of line · *Train*. *Lines* chooses among the alternatives at
   the next move (main move first, then variations). Tapping on the board a
   move that exists as a child follows it; other moves are refused.
-- Chapter list from the title bar; previous/next chapter.
+- Chapter list from the title bar (≡). After a finished lesson, *Next* opens
+  the next chapter.
+- E-ink: steps refresh the board/panel area; a full refresh happens on chapter
+  change, on ⏮/⏭, at lesson start, and every 10 steps.
+- Text is shown with invalid UTF-8 replaced (older Latin-1 PGNs); files over
+  2 MB are refused (game databases are not studies).
 
 ## Interactive chapters (Lichess gamebook rules)
 
@@ -58,6 +65,14 @@ The student plays the side the board is oriented to.
 
 Ordinary chapters can be trained with **Train** (same flow; the student plays
 the chapter's orientation). There, a move found in a variation is reported as
-a *sideline* ("find the main move"), not a mistake. **Browse** leaves the
+a *sideline* ("find the main move"), not a mistake, and the annotator's
+arrows/circles are hidden while it is the student's turn (they often point at
+the answer).
+
+Pacing follows Lichess: opponent moves play automatically after a short pause
+unless the position just shown has a comment — then the lesson waits for
+**Next** so it can be read. The status line ("Your move", "Correct!", the
+summary) is always shown above the comment. If the PGN contains an illegal
+move on the main line, the lesson stops with a message and **Browse** remains. **Browse** leaves the
 lesson at the current position; **Restart** starts over. While a lesson runs,
 the panel never shows upcoming moves.

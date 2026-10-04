@@ -53,7 +53,8 @@ function PkStudy.fromText(text, fallback_name)
     return self
 end
 
---- Reads a study from a file. Returns the study, or nil and an error.
+--- Reads a study from a file. Returns the study, or nil and an error:
+-- "empty" (no games), "not_pgn" (no tags and no moves), or an io message.
 function PkStudy.open(path)
     local f, err = io.open(path, "rb")
     if not f then return nil, err end
@@ -62,7 +63,12 @@ function PkStudy.open(path)
     local base = path:match("([^/]+)%.[Pp][Gg][Nn]$") or path:match("([^/]+)$")
     local study = PkStudy.fromText(text, base)
     study.path = path
-    if #study.chapters == 0 then return nil, "no games in " .. path end
+    if #study.chapters == 0 then return nil, "empty" end
+    local first = study.chapters[1]
+    if #study.chapters == 1 and next(first.tags) == nil
+        and #study:tree(1).children == 0 then
+        return nil, "not_pgn"
+    end
     return study
 end
 

@@ -13,7 +13,7 @@ Run `make help` for the current list. Main ones:
 |---|---|
 | `make koreader` | Download the pinned desktop KOReader into `build/koreader/` |
 | `make test` | Lua unit tests (with KOReader's LuaJIT) + pipeline `pytest` |
-| `make e2e` | Headless end-to-end scenarios; screenshots in `build/screenshots/` |
+| `make e2e` | Headless end-to-end scenarios; screenshots and logs in `build/e2e/` |
 | `make emulator` | Visible KOReader window with the plugin loaded (needs a display) |
 | `make packs` | Build data packs into `build/packs/` |
 | `make check` | Everything CI runs |

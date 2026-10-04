@@ -17,6 +17,7 @@ local TitleBar = require("ui/widget/titlebar")
 local UIManager = require("ui/uimanager")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local logger = require("logger")
+local util = require("util")
 local _ = require("gettext")
 local T = require("ffi/util").template
 
@@ -27,6 +28,9 @@ local PkPromotion = require("pkpromotion")
 local PkStudy = require("pkstudy")
 
 local REPLY_DELAY = 0.8 -- seconds before the opponent's reply in a lesson
+-- E-ink: partial refreshes of the board/panel area, and a full refresh every
+-- FULL_REFRESH_EVERY steps (and on jumps) to clear ghosting.
+local FULL_REFRESH_EVERY = 10
 
 local PkStudyView = InputContainer:extend{
     name = "paperknight_study",
@@ -148,8 +152,10 @@ function PkStudyView:_setButtons(tbl)
     UIManager:setDirty(self, "ui")
 end
 
--- ScrollTextWidget has no setText: replace the panel widget.
+-- ScrollTextWidget has no setText: replace the panel widget. The caller
+-- schedules the screen refresh (see _redraw).
 function PkStudyView:_setText(text)
+    text = util.fixUtf8(text, "?") -- e.g. Latin-1 PGNs from older tools
     self.panel_text = text
     local old = self.text
     self.text = self:_textWidget(text)
@@ -158,7 +164,24 @@ function PkStudyView:_setText(text)
     end
     old:free()
     self.vgroup:resetLayout()
-    UIManager:setDirty(self, "ui")
+end
+
+--- Schedules the screen update after a step. Partial ("ui") refresh of the
+-- area below the title bar; "full" when forced or every FULL_REFRESH_EVERY steps.
+function PkStudyView:_redraw(full)
+    self._steps = (self._steps or 0) + 1
+    if full or self._steps >= FULL_REFRESH_EVERY then
+        self._steps = 0
+        UIManager:setDirty(self, "full")
+        return
+    end
+    local region
+    if self.board.dimen and self.buttons.dimen then
+        local top = self.board.dimen.y
+        region = Geometry:new{ x = 0, y = top, w = self.dimen.w,
+                               h = self.buttons.dimen.y + self.buttons.dimen.h - top }
+    end
+    UIManager:setDirty(self, "ui", region)
 end
 
 --- Opens chapter `index` at its start position.
@@ -181,7 +204,7 @@ function PkStudyView:loadChapter(index)
         for _, id in ipairs({ "start", "back", "lines", "forward", "end", "train" }) do
             self.buttons:getButtonById(id):enableDisable(false)
         end
-        self.title_bar:setTitle(self.chapter.title)
+        self.title_bar:setTitle(util.fixUtf8(self.chapter.title, "?"))
         self:_setText(T(_("Cannot open this chapter: %1"), tostring(err)))
         UIManager:setDirty(self, "full")
         return
@@ -193,13 +216,14 @@ function PkStudyView:loadChapter(index)
     self.browse_buttons:getButtonById("train"):enableDisable(#cursor.root.children > 0)
     self.cursor = cursor
     self:_build()
-    self.title_bar:setTitle(self.chapter.title)
+    self.title_bar:setTitle(util.fixUtf8(self.chapter.title, "?"))
     if self.chapter.gamebook then
         self:startLesson()
     else
         self:_setButtons(self.browse_buttons)
         self:refresh()
     end
+    self._steps = 0
     UIManager:setDirty(self, "full")
 end
 
@@ -212,7 +236,6 @@ function PkStudyView:_panelText()
     else
         parts[#parts + 1] = PkStudy.moveLabel(node)
     end
-    if node.comment then parts[#parts + 1] = node.comment end
     local children = node.children
     if #children == 0 then
         parts[#parts + 1] = (node == self.cursor.root) and _("(no moves)") or _("— End of line —")
@@ -224,12 +247,15 @@ function PkStudyView:_panelText()
         end
         parts[#parts + 1] = T(_("Next: %1"), table.concat(alts, " · "))
     end
+    -- the comment last: long comments scroll without hiding the lines above
+    if node.comment then parts[#parts + 1] = node.comment end
     return table.concat(parts, "\n\n")
 end
 
 --- Redraws board, highlights, shapes, panel and subtitle for the current node.
--- `prefix`: optional message shown above the panel text.
-function PkStudyView:refresh(prefix)
+-- `prefix`: optional message shown above the panel text; `full`: force a
+-- full e-ink refresh (jumps).
+function PkStudyView:refresh(prefix, full)
     local node = self.cursor.node
     if self.board.selected then -- a selection from before must not turn the next tap into a move
         self.board:unmarkSelected(self.board.selected)
@@ -241,13 +267,19 @@ function PkStudyView:refresh(prefix)
     else
         self.board:setHighlights({})
     end
-    self.board:setShapes(node.shapes)
+    -- when training an ordinary chapter, annotators' arrows often point at the
+    -- move to find: hide shapes while it's the student's turn
+    local hide_shapes = self.lesson and not self.lesson.variations_are_mistakes and self.lesson.state == "play"
+    self.board:setShapes(not hide_shapes and node.shapes or nil)
     self.board.locked = false
     self.title_bar:setSubTitle(T(_("%1 · Chapter %2/%3"), self.study.name, self.chapter_index, #self.study.chapters))
-    if self.lesson then return self:_lessonRefresh(prefix) end
-    self:_setText(prefix and (prefix .. "\n\n" .. self:_panelText()) or self:_panelText())
-    self.browse_buttons:getButtonById("lines"):enableDisable(#node.children > 1)
-    UIManager:setDirty(self, "ui")
+    if self.lesson then
+        self:_lessonRefresh(prefix)
+    else
+        self:_setText(prefix and (prefix .. "\n\n" .. self:_panelText()) or self:_panelText())
+        self.browse_buttons:getButtonById("lines"):enableDisable(#node.children > 1)
+    end
+    self:_redraw(full)
 end
 
 function PkStudyView:_show(node, err)
@@ -263,8 +295,8 @@ end
 function PkStudyView:_canBrowse() return self.cursor ~= nil and self.lesson == nil end
 function PkStudyView:forward(i) if self:_canBrowse() then self:_show(self.cursor:forward(i)) end end
 function PkStudyView:back() if self:_canBrowse() and self.cursor:back() then self:refresh() end end
-function PkStudyView:toStart() if self:_canBrowse() then self.cursor:toStart(); self:refresh() end end
-function PkStudyView:toEnd() if self:_canBrowse() then self.cursor:toEnd(); self:refresh() end end
+function PkStudyView:toStart() if self:_canBrowse() then self.cursor:toStart(); self:refresh(nil, true) end end
+function PkStudyView:toEnd() if self:_canBrowse() then self.cursor:toEnd(); self:refresh(nil, true) end end
 function PkStudyView:onForward() self:forward(); return true end
 function PkStudyView:onBackward() self:back(); return true end
 
@@ -357,7 +389,7 @@ function PkStudyView:startLesson()
     self.lesson:start()
     self.waiting_next = false
     self:_setButtons(self.lesson_buttons)
-    self:refresh()
+    self:refresh(nil, true)
     self:_paceOpponent()
 end
 
@@ -374,6 +406,9 @@ function PkStudyView:_paceOpponent(prefix)
 end
 
 function PkStudyView:lessonNext()
+    if self.lesson and self.lesson.state == "end" and self.chapter_index < #self.study.chapters then
+        return self:loadChapter(self.chapter_index + 1) -- lesson finished: next chapter
+    end
     if not (self.lesson and self.waiting_next) then return end
     self.waiting_next = false
     self:_cancelReply()
@@ -395,10 +430,11 @@ end
 -- the last move (or the chapter intro at the start).
 function PkStudyView:_lessonRefresh(prefix)
     local lesson, node = self.lesson, self.cursor.node
-    local parts = {}
-    if prefix then parts[#parts + 1] = prefix end
-    if node ~= self.cursor.root then parts[#parts + 1] = PkStudy.moveLabel(node) end
-    if node.comment then parts[#parts + 1] = node.comment end
+    -- status first (a long comment scrolls below it)
+    local status = {}
+    if prefix then status[#status + 1] = prefix end
+    local has_next_chapter = self.chapter_index < #self.study.chapters
+    local parts = status
     if lesson.state == "end" then
         local summary
         if lesson.mistakes == 0 and not lesson.used_help then
@@ -408,6 +444,7 @@ function PkStudyView:_lessonRefresh(prefix)
             if lesson.used_help then summary = summary .. " " .. _("(with hints or solutions)") end
         end
         parts[#parts + 1] = summary
+        if has_next_chapter then parts[#parts + 1] = _("Tap Next for the next chapter.") end
         self.board.locked = true
     elseif lesson.state == "error" then
         parts[#parts + 1] = T(_("This study has an illegal move here (%1). Use Browse to read on."),
@@ -419,11 +456,14 @@ function PkStudyView:_lessonRefresh(prefix)
         self.board.locked = true -- opponent to move
         if self.waiting_next then parts[#parts + 1] = _("Tap Next to continue.") end
     end
+    if node ~= self.cursor.root then parts[#parts + 1] = PkStudy.moveLabel(node) end
+    if node.comment then parts[#parts + 1] = node.comment end
     self:_setText(table.concat(parts, "\n\n"))
     local playing = lesson.state == "play"
     self.lesson_buttons:getButtonById("hint"):enableDisable(playing)
     self.lesson_buttons:getButtonById("solution"):enableDisable(playing)
-    self.lesson_buttons:getButtonById("next"):enableDisable(self.waiting_next == true)
+    self.lesson_buttons:getButtonById("next"):enableDisable(self.waiting_next == true
+        or (lesson.state == "end" and has_next_chapter))
 end
 
 function PkStudyView:onLessonMove(from, to, promotion)
@@ -472,11 +512,11 @@ function PkStudyView:lessonHint()
     if not square then return end
     self:refresh(T(_("Hint: move the piece on %1."), square))
     -- a ring, not the last-move tint, so it doesn't read as "the last move"
-    local shapes = { circles = { { square = square } }, arrows = {} }
-    for _, c in ipairs((self.cursor.node.shapes or {}).circles or {}) do table.insert(shapes.circles, c) end
-    shapes.arrows = (self.cursor.node.shapes or {}).arrows or {}
+    local current = self.board.shapes or {}
+    local shapes = { circles = { { square = square } }, arrows = current.arrows or {} }
+    for _, c in ipairs(current.circles or {}) do table.insert(shapes.circles, c) end
     self.board:setShapes(shapes)
-    UIManager:setDirty(self, "ui")
+    UIManager:setDirty(self, "ui", self.board.dimen)
 end
 
 function PkStudyView:lessonSolution()

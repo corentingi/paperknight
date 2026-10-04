@@ -133,6 +133,20 @@ return {
         t.eq(ok, nil, "illegal move refused"); t.ok(err:find("Ke3"), err)
         t.eq(game.fen(), c2.node.fen, "game still on the current node")
     end },
+    { "open: empty and non-PGN files are refused with a code", function(t)
+        local function tmpfile(content)
+            local path = os.tmpname()
+            local f = io.open(path, "wb"); f:write(content); f:close()
+            return path
+        end
+        local p1, p2 = tmpfile(""), tmpfile("Hello, this is a shopping list.\nMilk\n")
+        local s, err = PkStudy.open(p1)
+        t.eq(s, nil, "empty refused"); t.eq(err, "empty", "code")
+        s, err = PkStudy.open(p2)
+        t.eq(s, nil, "text refused"); t.eq(err, "not_pgn", "code")
+        os.remove(p1); os.remove(p2)
+        t.ok(PkStudy.fromText("1. e4 e5 *") ~= nil, "movetext without tags is still a study")
+    end },
     { "empty chapter has a root and no moves", function(t)
         local s = study()
         local c = assert(s:cursor(4, Chess:new()))

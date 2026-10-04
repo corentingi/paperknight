@@ -55,6 +55,17 @@ def test_download_sends_token_and_flags(monkeypatch):
     assert seen["auth"] == "Bearer tok"
 
 
+def test_cli_study_http_error_hint(monkeypatch, capsys):
+    import urllib.error
+
+    def fail(*a, **k):
+        raise urllib.error.HTTPError("u", 404, "Not Found", {}, None)
+
+    monkeypatch.setattr(studies, "download_study", fail)
+    assert main(["study", "Xk3pQ7aZ"]) == 1
+    assert "private study?" in capsys.readouterr().err
+
+
 def test_cli_study_from_local_file(tmp_path, capsys):
     code = main(["study", "Xk3pQ7aZ", "--input", str(FIXTURE), "--output-dir", str(tmp_path)])
     assert code == 0
