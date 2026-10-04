@@ -10,6 +10,11 @@ KOREADER  := $(BUILD)/koreader
 KO_ASSETS := $(KOREADER)/lib/koreader
 LUAJIT    := $(KO_ASSETS)/luajit
 
+VENV      := pipeline/.venv
+PY        := $(VENV)/bin/python
+PIPELINE  := $(PY) -m paperknight_pipeline
+FIXTURE_PACKS := $(BUILD)/packs/fixture
+
 .PHONY: help koreader clean
 
 help: ## List targets
@@ -29,16 +34,34 @@ clean: ## Remove build outputs (keeps downloads)
 E2E_SCENARIOS := $(wildcard tools/emulator/scenarios/*.lua)
 
 .PHONY: e2e emulator
-e2e: koreader ## Headless end-to-end scenarios (screenshots in build/e2e/)
-	tools/emulator/run.sh e2e $(E2E_SCENARIOS)
+e2e: koreader fixture-packs ## Headless end-to-end scenarios (screenshots in build/e2e/)
+	PAPERKNIGHT_PACKS_DIR=$(abspath $(FIXTURE_PACKS)) tools/emulator/run.sh e2e $(E2E_SCENARIOS)
 
 emulator: koreader ## Desktop KOReader window with the plugin loaded (needs a display)
 	tools/emulator/run.sh window
 
-.PHONY: test test-lua check
+.PHONY: test test-lua test-py check
 test-lua: koreader ## Lua unit tests (KOReader's LuaJIT)
 	$(LUAJIT) plugin/tests/run.lua
 
-test: test-lua ## All unit tests
+test-py: venv ## Pipeline unit tests (pytest)
+	cd pipeline && .venv/bin/pytest -q
+
+test: test-lua test-py ## All unit tests
 
 check: test e2e ## Everything CI runs (exit command of the dev loop)
+
+.PHONY: venv packs fixture-packs
+venv: $(VENV)/.installed ## Create the pipeline virtualenv
+
+$(VENV)/.installed: pipeline/pyproject.toml
+	python3 -m venv $(VENV)
+	$(VENV)/bin/pip install -q -e 'pipeline[dev]'
+	@touch $@
+
+packs: venv ## Build real data packs into build/packs/ (downloads ~300 MB once)
+	$(PIPELINE) puzzles
+
+fixture-packs: venv ## Small deterministic packs for e2e tests (build/packs/fixture/)
+	$(PIPELINE) puzzles --input pipeline/tests/fixtures/lichess_puzzles_sample.csv \
+		--output $(FIXTURE_PACKS)/puzzles.sqlite --min-popularity -100 --min-plays 0 --max-rating-dev 500

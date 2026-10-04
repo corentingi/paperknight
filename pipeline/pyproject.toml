@@ -1,0 +1,26 @@
+[project]
+name = "paperknight-pipeline"
+version = "0.1.0"
+description = "Builds offline SQLite data packs for the Paperknight KOReader plugin"
+requires-python = ">=3.10"
+license = "GPL-3.0-or-later"
+dependencies = [
+    "chess==1.11.2",
+    "zstandard==0.25.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.1.1"]
+
+[project.scripts]
+paperknight-pipeline = "paperknight_pipeline.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["paperknight_pipeline"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

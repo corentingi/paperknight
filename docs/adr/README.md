@@ -15,3 +15,6 @@ Template: [`0000-template.md`](0000-template.md).
 | [0005](0005-sqlite-data-packs.md) | Ship data as offline SQLite packs | accepted |
 | [0006](0006-python-pipeline.md) | Write the data pipeline in Python | accepted |
 | [0007](0007-headless-koreader-emulator.md) | Test in a headless desktop KOReader | accepted |
+| [0008](0008-puzzle-selection.md) | Select puzzles by quality + deterministic per-band quota | accepted |
+| [0009](0009-puzzle-mode-architecture.md) | Puzzle mode as a separate screen with pure-Lua session logic | accepted |
+| [0010](0010-puzzle-rating.md) | Local Elo-style puzzle rating in progress.sqlite | accepted |
