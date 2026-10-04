@@ -13,7 +13,8 @@
       solver moves, reply, success/fail)
 - [x] Puzzle rating + progress stored in `progress.sqlite`
 - [ ] Theme filter (e.g. only forks, mates in 2) — pack already indexed for it
-- [ ] Board coordinates (a–h / 1–8), square cells
+- [x] Square cells, thin grey board frame
+- [ ] Board coordinates (a–h / 1–8)
 - [ ] Test on a real Kindle Paperwhite 2
 
 ## Milestone 3 — Openings

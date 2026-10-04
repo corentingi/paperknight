@@ -70,8 +70,9 @@ function ButtonTable:init()
                 background = btn_entry.background,
                 bordersize = 0,
                 margin = 0,
-                padding = Size.padding.buttontable, -- a bit taller than standalone buttons, for easier tap
-                padding_h = btn_entry.align == "left" and Size.padding.large or Size.padding.button,
+                -- Paperknight: honour per-button padding (board squares use 0 to stay square)
+                padding = btn_entry.padding or Size.padding.buttontable, -- a bit taller than standalone buttons, for easier tap
+                padding_h = btn_entry.padding_h or (btn_entry.align == "left" and Size.padding.large or Size.padding.button),
                     -- allow text to take more of the horizontal space if centered
                 avoid_text_truncation = btn_entry.avoid_text_truncation,
                 text_font_face = btn_entry.font_face,

@@ -19,6 +19,10 @@ local SELECTED_BORDER = 5
 local LIGHT_SQUARE = Blitbuffer.COLOR_WHITE      -- 0xFF
 local DARK_SQUARE = Blitbuffer.COLOR_GRAY_B      -- 0xBB
 local HIGHLIGHT_COLOR = Blitbuffer.COLOR_GRAY_D  -- 0xDD
+-- Thin frame around the squares, a bit darker than the dark squares, so the
+-- white edge squares don't blend into the page.
+local BOARD_BORDER_COLOR = Blitbuffer.COLOR_DARK_GRAY -- 0x88
+local BOARD_BORDER_SIZE = 2 -- scaled by screen DPI
 
 local PkIcons = require("pkicons")
 local icons = { empty = PkIcons.empty }
@@ -34,6 +38,7 @@ local Board = FrameContainer:extend{
     flipped = false, -- Paperknight: true shows the board from Black's side
     locked = false,  -- Paperknight: true ignores taps (e.g. puzzle finished, opponent thinking)
     padding = 0,
+    bordersize = 0,  -- Paperknight: the grey frame is drawn around the squares only
     background = Blitbuffer.COLOR_WHITE,
 }
 
@@ -71,6 +76,7 @@ function Board:init()
 
     self.table = ButtonTable:new{
         buttons = grid,
+        width = BOARD_SIZE * self.button_size, -- Paperknight: exactly 8 squares, no side margins
         shrink_unneeded_width = false,
         zero_sep = true,
         sep_width = 0,
@@ -78,7 +84,16 @@ function Board:init()
     }
 
     self:applySquareColors()
-    self[1] = CenterContainer:new{ dimen = self:getSize(), self.table }
+    self[1] = CenterContainer:new{
+        dimen = self:getSize(),
+        FrameContainer:new{
+            bordersize = Screen:scaleBySize(BOARD_BORDER_SIZE),
+            color = BOARD_BORDER_COLOR,
+            padding = 0,
+            margin = 0,
+            self.table,
+        },
+    }
 
     logger.dbg("Chess board initialized")
 end
@@ -95,6 +110,7 @@ function Board:createSquareButton(file, rank)
         bordersize = 0,
         margin = 0,
         padding = 0,
+        padding_h = 0,
         allow_hold_when_disabled = true,
         callback = function() self:handleClick(file, rank) end,
         hold_callback = self.holdCallback,
