@@ -10,9 +10,12 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
   `make study ID=<8-char id>` / `python -m paperknight_pipeline study <id-or-url>`,
   which calls `https://lichess.org/api/study/<id>.pgn?orientation=true&clocks=false&comments=true&variations=true`).
   The pipeline export always includes `[Orientation]`; a PGN downloaded from the
-  Lichess website may not, in which case ordinary chapters open from White's side.
+  Lichess website may not: chapters then open from White's side, except set-up
+  positions, which open from the side to move. *Flip board* fixes the rest.
   Private studies need a personal token with `study:read`.
-- Copy the `.pgn` to `koreader/paperknight/studies/` on the Kindle.
+- Copy the `.pgn` to `koreader/paperknight/studies/` on the Kindle. The
+  Studies list follows the folder: a file added while it is open shows up
+  when you come back to the list.
 - Any PGN works; each game is a chapter.
 
 ## What we read from the PGN
@@ -21,7 +24,7 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
 |---|---|
 | `[StudyName]` | Study title (else the file name) |
 | `[ChapterName]` | Chapter title (else `White – Black`, else `Event`, else "Chapter n") |
-| `[Orientation "white"/"black"]` | Board orientation and the student's side in lessons (else White; for a gamebook chapter without the tag, the side to move at the start) |
+| `[Orientation "white"/"black"]` | Board orientation and the student's side in lessons (else White; for a chapter with a set-up `[FEN]`, the side to move). *Flip board* reverses it per chapter |
 | `[ChapterMode "gamebook"]` | Interactive chapter |
 | `[FEN]` + `[SetUp "1"]` | Custom starting position |
 | `{ text }`, `; text` | Comments (a comment before the first move is the chapter intro) |
@@ -44,8 +47,10 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
   line) · ⏭ end of line · *Train*. *Lines* chooses among the alternatives at
   the next move (main move first, then variations). Tapping on the board a
   move that exists as a child follows it; other moves are refused.
-- Chapter list from the title bar (≡). After a finished lesson, *Next* opens
-  the next chapter.
+- Title-bar menu (≡): *Chapters…* (chapter list) and *Flip board*. A flip is
+  remembered per study file and chapter (in `progress.sqlite`) and also sets
+  the side trained in lessons; a running lesson restarts from the new side.
+  After a finished lesson, *Next* opens the next chapter.
 - E-ink: steps refresh the board/panel area; a full refresh happens on chapter
   change, on ⏮/⏭, at lesson start, and every 10 steps.
 - Text is shown with invalid UTF-8 replaced (older Latin-1 PGNs); files over

@@ -211,5 +211,18 @@ return {
         local unresolved = PkPgn.parseMovetext("1. e4 e5").children[1].children[1]
         t.eq(PkStudy.moveLabel(unresolved), "e5", "no fake move number when unresolved")
     end },
+    { "orientation default: set-up position without the tag shows the side to move", function(t)
+        local fen_b = "8/8/8/4k3/8/8/4K3/7R b - - 0 1"
+        local fen_w = "8/8/8/4k3/8/8/4K3/7R w - - 0 1"
+        local function orientation(tags)
+            return PkStudy.fromText(tags .. "\n\n*\n").chapters[1].orientation
+        end
+        t.eq(orientation('[FEN "' .. fen_b .. '"]\n[SetUp "1"]'), "black", "black to move")
+        t.eq(orientation('[FEN "8/8/8/4k3/8/8/4K3/7R b - -"]'), "black", "4-field FEN")
+        t.eq(orientation('[FEN "' .. fen_w .. '"]'), "white", "white to move")
+        t.eq(orientation('[Event "x"]'), "white", "standard start")
+        t.eq(orientation('[FEN "' .. fen_b .. '"]\n[Orientation "white"]'), "white", "tag wins")
+        t.eq(orientation('[Orientation "black"]'), "black", "tag without FEN")
+    end },
 }
 

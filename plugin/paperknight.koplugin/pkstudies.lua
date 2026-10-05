@@ -109,11 +109,10 @@ function PkStudies.openChapter(study, index)
     return view
 end
 
---- Top-level list: study files + "Open a PGN file…".
-function PkStudies.show()
-    local dir = PkStudies.dir()
+-- Items of the top-level list: study files + "Open a PGN file…".
+local function listItems(dir, files)
     local items = {}
-    for _i, file in ipairs(PkStudies.listFiles(dir)) do
+    for _i, file in ipairs(files) do
         items[#items + 1] = {
             text = util.fixUtf8((file:gsub("%.[Pp][Gg][Nn]$", "")), "?"),
             callback = function() PkStudies.openStudy(dir .. "/" .. file) end,
@@ -134,7 +133,32 @@ function PkStudies.show()
     if #items == 1 then
         items[1].text = items[1].text .. "  " .. T(_("(no studies in %1)"), dir)
     end
-    local menu = fullscreenMenu(_("Studies"), items)
+    return items
+end
+
+--- Top-level list. `dir` defaults to PkStudies.dir() (tests pass their own).
+-- The list follows the folder: each repaint (e.g. back from a study) checks
+-- the .pgn files and rebuilds the items if they changed.
+function PkStudies.show(dir)
+    dir = dir or PkStudies.dir()
+    local files = PkStudies.listFiles(dir)
+    local menu = fullscreenMenu(_("Studies"), listItems(dir, files))
+    menu._pk_files = table.concat(files, "\n")
+    local paintTo = menu.paintTo
+    menu.paintTo = function(m, bb, x, y)
+        paintTo(m, bb, x, y)
+        local now = PkStudies.listFiles(dir)
+        local key = table.concat(now, "\n")
+        if key ~= m._pk_files then
+            m._pk_files = key
+            -- not while painting: rebuild on the next tick
+            UIManager:nextTick(function()
+                -- stay on the current page
+                local first = ((m.page or 1) - 1) * (m.perpage or 1) + 1
+                m:switchItemTable(nil, listItems(dir, now), first)
+            end)
+        end
+    end
     UIManager:show(menu)
     return menu
 end

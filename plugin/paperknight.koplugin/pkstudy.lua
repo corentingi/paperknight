@@ -45,8 +45,9 @@ function PkStudy.fromText(text, fallback_name)
         local turn = ch.start_fen:match("^%S+%s+([wb])") or "w"
         local orientation = tags.Orientation and tags.Orientation:lower()
         if orientation ~= "white" and orientation ~= "black" then
-            -- gamebook without Orientation: the student plays the side to move
-            orientation = (ch.gamebook and turn == "b") and "black" or "white"
+            -- no Orientation (e.g. a PGN saved from the website): a set-up
+            -- position ("Black to play") is shown from the side to move
+            orientation = (known(tags.FEN) and turn == "b") and "black" or "white"
         end
         ch.orientation = orientation
     end

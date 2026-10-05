@@ -2,6 +2,7 @@
 -- Tree logic lives in pkstudy.lua; this file only displays and dispatches.
 local Blitbuffer = require("ffi/blitbuffer")
 local ButtonDialog = require("ui/widget/buttondialog")
+local DataStorage = require("datastorage")
 local ButtonTable = require("ui/widget/buttontable")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local Device = require("device")
@@ -24,6 +25,7 @@ local T = require("ffi/util").template
 local Chess = require("chess")
 local ChessBoard = require("board")
 local PkLesson = require("pklesson")
+local PkProgress = require("pkprogress")
 local PkPromotion = require("pkpromotion")
 local PkStudy = require("pkstudy")
 
@@ -37,6 +39,7 @@ local PkStudyView = InputContainer:extend{
     covers_fullscreen = true,
     study = nil,         -- PkStudy
     chapter_index = 1,
+    progress = nil,      -- PkProgress (flip settings); opened here if not given
     reply_delay = REPLY_DELAY,
 }
 
@@ -57,7 +60,7 @@ function PkStudyView:init()
         title_shrink_font_to_fit = true,
         with_bottom_line = true,
         left_icon = "appbar.menu",
-        left_icon_tap_callback = function() self:showChapterMenu() end,
+        left_icon_tap_callback = function() self:showMenu() end,
         close_callback = function() self:onClose() end,
     }
     self.browse_buttons = ButtonTable:new{
@@ -87,11 +90,66 @@ function PkStudyView:init()
     local free_h = self.dimen.h - self.title_bar:getHeight() - self.buttons:getSize().h
     self.board_size = math.min(self.dimen.w, math.floor(free_h * 0.68))
     self.text_h = free_h - self.board_size - 3 * Size.padding.default
+    if not self.progress then
+        local ok, progress = pcall(PkProgress.open, DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+        if ok then
+            self.progress, self._own_progress = progress, true
+        else
+            logger.warn("Paperknight: no progress database, flips are not remembered:", progress)
+        end
+    end
     self:loadChapter(self.chapter_index)
 end
 
+-- Settings key of the current chapter's flip (studies opened from a file only).
+function PkStudyView:_flipKey()
+    local file = self.study.path and self.study.path:match("([^/]+)$")
+    return file and ("study_flip:" .. file .. "#" .. self.chapter_index) or nil
+end
+
+function PkStudyView:isFlipped()
+    -- a flip that could not be saved (no file path, no database) lives here
+    if self._unsaved_flip ~= nil then return self._unsaved_flip end
+    local key = self.progress and self:_flipKey()
+    return key ~= nil and self.progress:getSetting(key) == "1"
+end
+
+--- Side shown at the bottom ("white"/"black"): the chapter's orientation,
+-- reversed if the user flipped this chapter. It is also the side trained.
+function PkStudyView:orientation()
+    local o = self.chapter.orientation
+    if self:isFlipped() then o = (o == "black") and "white" or "black" end
+    return o
+end
+
+--- Flips the board of this chapter and remembers it. A running lesson
+-- restarts from the new side.
+function PkStudyView:toggleFlip()
+    local key = self.progress and self:_flipKey()
+    local saved = false
+    if key then
+        local ok, err = pcall(self.progress.setSetting, self.progress, key, (not self:isFlipped()) and "1" or nil)
+        if ok then saved, self._unsaved_flip = true, nil else logger.warn("Paperknight: cannot save the flip:", err) end
+    end
+    if not saved then
+        self._unsaved_flip = not self:isFlipped()
+    end
+    self:_build()
+    if not self.cursor then -- chapter that cannot be opened: stays locked
+        self.board:updateBoard()
+        self.board:setHighlights({})
+        self.board:setShapes(nil)
+        self.board.locked = true
+    elseif self.lesson then
+        self:startLesson()
+    else
+        self:refresh(nil, true)
+    end
+    UIManager:setDirty(self, "full")
+end
+
 function PkStudyView:_build()
-    local orientation_black = self.chapter.orientation == "black"
+    local orientation_black = self:orientation() == "black"
     if not self.board or self.board.flipped ~= orientation_black then
         if self.board then self.board:free() end
         self.board = ChessBoard:new{
@@ -188,6 +246,7 @@ end
 function PkStudyView:loadChapter(index)
     self:_cancelReply()
     self.lesson = nil
+    self._unsaved_flip = nil
     self.chapter_index = index
     self.chapter = self.study.chapters[index]
     local cursor, err = self.study:cursor(index, self.game)
@@ -337,6 +396,25 @@ function PkStudyView:onBoardMove(move)
     end
 end
 
+--- Title-bar menu: chapters, flip board.
+function PkStudyView:showMenu()
+    local dialog
+    dialog = ButtonDialog:new{
+        buttons = {
+            {{ text = _("Chapters…"), callback = function()
+                UIManager:close(dialog); self.menu_dialog = nil
+                self:showChapterMenu()
+            end }},
+            {{ text = _("Flip board"), callback = function()
+                UIManager:close(dialog); self.menu_dialog = nil
+                self:toggleFlip()
+            end }},
+        },
+    }
+    self.menu_dialog = dialog
+    UIManager:show(dialog)
+end
+
 function PkStudyView:showChapterMenu()
     local items = {}
     for i, ch in ipairs(self.study.chapters) do
@@ -384,7 +462,7 @@ end
 function PkStudyView:startLesson()
     if not self.cursor then return end
     self:_cancelReply()
-    local student = (self.chapter.orientation == "black") and "b" or "w"
+    local student = (self:orientation() == "black") and "b" or "w"
     self.lesson = PkLesson.new(self.cursor, student, { variations_are_mistakes = self.chapter.gamebook == true })
     self.lesson:start()
     self.waiting_next = false
@@ -527,6 +605,10 @@ end
 
 function PkStudyView:onCloseWidget()
     self:_cancelReply()
+    if self._own_progress and self.progress then
+        self.progress:close()
+        self.progress = nil
+    end
     if self.board then self.board:free() end
     if self.text then self.text:free() end
 end

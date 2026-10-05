@@ -11,6 +11,21 @@ return function(h)
         end
     end
 
+    local function dialogButton(dialog, text)
+        for _, row in ipairs(dialog.buttontable.buttons_layout) do
+            for _, btn in ipairs(row) do
+                if btn.text and btn.text:find(text, 1, true) then return btn end
+            end
+        end
+    end
+
+    -- flips are remembered in progress.sqlite: start from a clean state
+    local DataStorage = require("datastorage")
+    local PkProgress = require("pkprogress")
+    local progress = PkProgress.open(DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+    progress:setSetting("study_flip:study.pgn#3", nil)
+    progress:close()
+
     local PkStudies = require("pkstudies")
     local list = PkStudies.show()
     h.wait(1)
@@ -81,8 +96,11 @@ return function(h)
     h.check(iconAt("d5"):find("empty%.svg$") and iconAt("d7"):find("bP%.svg$"), "board redrawn after refusal")
     h.check(#view.game.redo_stack == 0, "no redo entries left by board moves")
 
-    -- chapter menu: black orientation chapter
+    -- title-bar menu → chapters: black orientation chapter
     h.tapWidget(view.title_bar.left_button)
+    h.wait(1)
+    h.check(view.menu_dialog, "title-bar menu open")
+    h.tapWidget(dialogButton(view.menu_dialog, "Chapters"))
     h.wait(1)
     h.tapWidget(menuItem(view.chapter_menu, "Alice"))
     h.wait(1)
@@ -91,9 +109,30 @@ return function(h)
     tapButton("forward")
     h.check(panel():find("^60%.%.%. Ra6%+"), "black move numbering: " .. panel())
     h.shot("study-black")
+
+    -- Flip board: remembered for this chapter, and the lesson trains the side shown
+    h.tapWidget(view.title_bar.left_button)
+    h.wait(1)
+    h.tapWidget(dialogButton(view.menu_dialog, "Flip board"))
+    h.wait(1)
+    h.check(not view.board.flipped and view:orientation() == "white", "flipped to White's side")
+    h.check(view.cursor.node.san == "Ra6+", "position kept after the flip")
+    local study = view.study
     view:onClose()
     h.wait(0.5)
     h.check(top() == chapters, "closing the chapter returns to the chapter list")
+    view = PkStudies.openChapter(study, 3)
+    h.wait(1)
+    h.check(not view.board.flipped, "flip remembered when the chapter is reopened")
+    view:startLesson()
+    h.check(view.lesson.student == "w", "lesson trains the side shown: " .. view.lesson.student)
+    view:loadChapter(1)
+    h.check(not view.board.flipped, "other chapters keep their orientation")
+    view:loadChapter(3)
+    view:toggleFlip()
+    h.check(view.board.flipped, "flipped back to the chapter's orientation")
+    view:onClose()
+    h.wait(0.5)
 
     -- a chapter that cannot be opened (invalid FEN) shows an error and locks input
     local PkStudy = require("pkstudy")
@@ -104,5 +143,32 @@ return function(h)
     h.check(bview.board.locked and not bview.buttons:getButtonById("forward").enabled, "input locked")
     h.tapWidget(bview.buttons:getButtonById("forward")) -- must not crash
     bview:onForward()
+    bview:toggleFlip() -- rebuilds the board: must stay locked
+    h.check(bview.board.flipped and bview.board.locked, "flipped broken chapter stays locked")
     bview:onClose()
+    h.wait(0.5)
+
+    -- the studies list follows its folder (e.g. a PGN copied while it is open)
+    local lfs = require("libs/libkoreader-lfs")
+    local tmp = DataStorage:getSettingsDir() .. "/pk-e2e-studies"
+    lfs.mkdir(tmp)
+    for entry in lfs.dir(tmp) do
+        if entry:match("%.pgn$") then os.remove(tmp .. "/" .. entry) end
+    end
+    local function write(name)
+        local f = assert(io.open(tmp .. "/" .. name, "w"))
+        f:write('[Event "x"]\n\n1. e4 *\n')
+        f:close()
+    end
+    write("first.pgn")
+    local tlist = PkStudies.show(tmp)
+    h.wait(1)
+    h.check(menuItem(tlist, "first") and not menuItem(tlist, "second"), "one study listed")
+    local cover = PkStudies.openChapter(broken, 1) -- something on top of the list
+    h.wait(0.5)
+    write("second.pgn")
+    cover:onClose()
+    h.wait(1)
+    h.check(menuItem(tlist, "second"), "new study listed after returning to the list")
+    UIManager:close(tlist)
 end
