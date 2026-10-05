@@ -9,11 +9,12 @@ Stockfish, PGN load/save) that grows into a training tool:
 - **Puzzles** — rated, themed tactics from the Lichess puzzle database, fully offline.
 - **Studies** — Lichess studies (or any PGN): chapters, variations, comments,
   arrows, and interactive lessons. See [`docs/studies.md`](docs/studies.md).
-- **Openings** — named repertoire lines to drill with spaced repetition.
+- **Openings** — drill your own repertoire (a PGN / Lichess study) with spaced
+  repetition. See [`docs/openings.md`](docs/openings.md).
 - **Master games** — curated notable games, replayed in "guess the move" mode.
 
-> Status: early development — puzzles and studies work in the desktop
-> emulator; not yet tested on a real Kindle. See [`docs/roadmap.md`](docs/roadmap.md).
+> Status: early development — puzzles, studies and the openings trainer work
+> in the desktop emulator; puzzles and studies are tested on a Paperwhite 2. See [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Repository layout
 
@@ -41,9 +42,10 @@ make emulator      # run the plugin in a desktop KOReader window (see docs/devel
    `koreader-kindlepw2-*.zip` release).
 2. Copy `plugin/paperknight.koplugin/` to `/mnt/us/koreader/plugins/`.
 3. Copy the data packs from `build/packs/` to `/mnt/us/koreader/plugins/paperknight.koplugin/packs/`,
-   and study PGNs to `/mnt/us/koreader/paperknight/studies/`.
+   study PGNs to `/mnt/us/koreader/paperknight/studies/`, and repertoire PGNs
+   to `/mnt/us/koreader/paperknight/repertoires/`.
 4. Restart KOReader; **Paperknight** appears in the **Tools** menu, with
-   *Puzzles*, *Studies* and *Play against the engine*. Playing the engine needs a
+   *Puzzles*, *Studies*, *Openings* and *Play against the engine*. Playing the engine needs a
    Stockfish binary at `paperknight.koplugin/bin/stockfish` (not shipped yet).
 
 ## License

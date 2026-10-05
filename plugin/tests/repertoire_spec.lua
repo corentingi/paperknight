@@ -3,7 +3,7 @@ local Chess = require("chess")
 local PkRepertoire = require("pkrepertoire")
 local PkStudy = require("pkstudy")
 
-local FIXTURE = (PK_REPO_ROOT or ".") .. "/plugin/tests/fixtures/repertoire.pgn"
+local FIXTURE = (PK_REPO_ROOT or ".") .. "/plugin/tests/fixtures/repertoires/repertoire.pgn"
 
 local function rep()
     return PkRepertoire.fromStudy(assert(PkStudy.open(FIXTURE)), Chess:new())

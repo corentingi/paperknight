@@ -1,0 +1,141 @@
+-- Openings trainer end to end on plugin/tests/fixtures/repertoires
+-- (PAPERKNIGHT_REPERTOIRES_DIR is set by `make e2e`): list with counts,
+-- learn a line (new moves shown as arrows), a known mistake, then the same
+-- moves tested the same day, a failure saved, counts after the session.
+local UIManager = require("ui/uimanager")
+
+return function(h)
+    local function top() return UIManager._window_stack[#UIManager._window_stack].widget end
+    local function menuItem(menu, text)
+        for _, w in ipairs(menu.item_group) do
+            if w.text and w.text:find(text, 1, true) then return w end
+        end
+    end
+
+    -- start from a clean review history
+    local DataStorage = require("datastorage")
+    local PkProgress = require("pkprogress")
+    local progress = PkProgress.open(DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+    progress.conn:exec("DELETE FROM rep_cards")
+    progress:close()
+
+    local PkOpenings = require("pkopenings")
+    local list = PkOpenings.show()
+    h.wait(1)
+    local item = menuItem(list, "repertoire")
+    h.check(item, "repertoire listed")
+    h.check(item.mandatory == "0 due · 10 new", "counts: " .. tostring(item.mandatory))
+    h.shot("openings-list")
+    h.tapWidget(item)
+    h.wait(1)
+
+    local view = top()
+    h.check(view.name == "paperknight_drill", "drill opened")
+    view.reply_delay = 0.1
+    local drill = view.drill
+    local function panel() return view.panel_text end
+    local function tapSquare(sq)
+        local b = view.board
+        h.tapWidget(b.table:getButtonById(b.toId(sq:byte(1) - 97, tonumber(sq:sub(2, 2)) - 1)))
+    end
+    local function play(uci) tapSquare(uci:sub(1, 2)); tapSquare(uci:sub(3, 4)) end
+    local function waitReply() h.wait(0.5) end
+
+    -- 1. learning the first line: e4, Nf3, Bc4, c3 are shown as arrows
+    h.check(panel():find("New move: play e4", 1, true), "intro: " .. panel())
+    local arrows = view.board.shapes and view.board.shapes.arrows
+    h.check(arrows and arrows[1].from == "e2" and arrows[1].to == "e4", "arrow shows the new move")
+    h.check(not view.board.flipped, "White's repertoire shown from White's side")
+    h.shot("openings-intro")
+    play("e2e4"); waitReply()
+    h.check(drill.cursor.node.move.san == "e5", "opponent replied 1... e5")
+    play("g1f3"); waitReply()
+    play("f1b5")
+    h.check(panel():find("Not in your repertoire", 1, true) and panel():find("Not our line", 1, true),
+        "known mistake explained: " .. panel())
+    play("f1c4"); waitReply()
+    play("c2c3")
+    h.check(drill.state == "end" and panel():find("Line complete", 1, true), "line complete: " .. panel())
+    h.check(view.buttons:getButtonById("next").enabled, "Next line enabled")
+
+    -- 2. the next line keeps learning (new moves under today's cap)
+    h.tapWidget(view.buttons:getButtonById("next"))
+    h.wait(0.5)
+    h.check(drill.state == "play", "next line started")
+
+    -- 3. skip ahead: once the cap is reached, introduced moves are tested
+    drill.introduced_today = drill.new_per_day
+    view:nextLine()
+    h.wait(0.5)
+    h.check(drill:mode() == "test", "introduced moves are tested the same day: " .. tostring(drill:mode()))
+    h.check(drill:expected().move.san == "e4", "first: e4")
+    play("d2d4")
+    h.check(panel():find("Not the move", 1, true), "wrong answer: " .. panel())
+    play("e2e4"); waitReply()
+    local key = drill.line.cards[1]
+    h.check(drill.stored[key].reps == 0, "e4 failed: relearn today")
+    h.shot("openings-test")
+
+    view:onClose()
+    h.wait(1)
+    h.check(top() == list, "back to the list")
+    -- 4 introduced (e4 Nf3 Bc4 c3; line 2 was skipped), all due again today; 6 new left today
+    local after = menuItem(list, "repertoire")
+    h.check(after and after.mandatory == "4 due · 6 new", "counts refreshed: " .. tostring(after and after.mandatory))
+
+    progress = PkProgress.open(DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+    local stored = progress:loadCards("repertoire.pgn")
+    h.check(stored[key] and stored[key].reps == 0 and stored[key].move == "e2e4", "failure saved in progress.sqlite")
+    progress:close()
+    UIManager:close(list)
+    h.wait(0.5)
+
+    -- 4. a Black repertoire: flipped board, the opponent moves first; hint,
+    -- relearning and the end-of-session summary; closing with a reply pending
+    local lfs = require("libs/libkoreader-lfs")
+    local tmp = DataStorage:getSettingsDir() .. "/pk-e2e-repertoires"
+    lfs.mkdir(tmp)
+    local f = assert(io.open(tmp .. "/black.pgn", "w"))
+    f:write('[Event "ck"]\n[Orientation "black"]\n\n1. e4 c6 *\n')
+    f:close()
+    local blist = PkOpenings.show(tmp)
+    h.wait(0.5)
+    h.tapWidget(menuItem(blist, "black"))
+    h.wait(0.2)
+    view = top()
+    h.check(view.name == "paperknight_drill" and view.board.flipped, "Black's side shown")
+    h.check(view.drill.state == "reply" and view.board.locked, "opponent to move first, board locked")
+    view:onClose() -- with the opponent's move pending: must not fire later
+    h.wait(1.5)
+    h.check(top() == blist, "closed cleanly")
+
+    h.tapWidget(menuItem(blist, "black"))
+    view = top()
+    view.reply_delay = 0.1
+    drill = view.drill
+    h.wait(1.5) -- default delay for the first reply
+    h.check(drill.state == "play" and drill:mode() == "intro", "c6 introduced after 1. e4")
+    play("c7c6")
+    h.check(drill.state == "end", "line over")
+    h.tapWidget(view.buttons:getButtonById("next"))
+    h.wait(0.5)
+    h.check(drill:mode() == "test", "c6 tested the same day")
+    h.tapWidget(view.buttons:getButtonById("hint"))
+    h.check(view.board.shapes.circles[1].square == "c7", "hint ring on c7")
+    play("c7c6")
+    h.tapWidget(view.buttons:getButtonById("next"))
+    h.wait(0.5)
+    h.check(drill:mode() == "test", "after a hint the move comes back")
+    play("c7c6")
+    h.tapWidget(view.buttons:getButtonById("next"))
+    h.wait(0.5)
+    h.check(drill.state == "done" and panel():find("All done for today", 1, true), "summary: " .. panel())
+    h.check(panel():find("Reviewed: 2 · Mistakes: 1", 1, true), "session stats: " .. panel())
+    h.check(#view.board.highlighted == 0 and next(view.board.highlighted) == nil, "no stale highlight")
+    h.shot("openings-done")
+    view:onClose()
+    h.wait(0.5)
+    h.check(menuItem(blist, "black").mandatory == "0 due · 0 new", "nothing left today")
+    UIManager:close(blist)
+    os.remove(tmp .. "/black.pgn")
+end

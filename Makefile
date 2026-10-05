@@ -35,7 +35,7 @@ E2E_SCENARIOS := $(wildcard tools/emulator/scenarios/*.lua)
 
 .PHONY: e2e emulator
 e2e: koreader fixture-packs ## Headless end-to-end scenarios (screenshots in build/e2e/)
-	PAPERKNIGHT_PACKS_DIR=$(abspath $(FIXTURE_PACKS)) PAPERKNIGHT_STUDIES_DIR=$(abspath plugin/tests/fixtures) \
+	PAPERKNIGHT_PACKS_DIR=$(abspath $(FIXTURE_PACKS)) PAPERKNIGHT_STUDIES_DIR=$(abspath plugin/tests/fixtures) PAPERKNIGHT_REPERTOIRES_DIR=$(abspath plugin/tests/fixtures/repertoires) \
 		tools/emulator/run.sh e2e $(E2E_SCENARIOS)
 
 emulator: koreader ## Desktop KOReader window with the plugin loaded (needs a display)

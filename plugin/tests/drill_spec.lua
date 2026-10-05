@@ -6,7 +6,7 @@ local PkRepertoire = require("pkrepertoire")
 local PkSrs = require("pksrs")
 local PkStudy = require("pkstudy")
 
-local FIXTURE = (PK_REPO_ROOT or ".") .. "/plugin/tests/fixtures/repertoire.pgn"
+local FIXTURE = (PK_REPO_ROOT or ".") .. "/plugin/tests/fixtures/repertoires/repertoire.pgn"
 local NOON = os.time{ year = 2026, month = 3, day = 10, hour = 12 }
 
 local function setup(opts)

@@ -79,7 +79,7 @@ overkill on a Kindle with a few hundred cards.
 - Renaming a repertoire file orphans its cards (key = file name); editing a
   move creates a new card and the old one is never due again (harmless).
 - A different main move for the same position in one file conflicts: the
-  first one met wins and the other line is cut there (counted, shown to the user).
+  first one met wins and the other line is cut there (counted and logged).
 - Opening names (Milestone 3 item) need the chess-openings TSV later; not
   required by the drill.
 - Revisit with FSRS if users have thousands of cards.

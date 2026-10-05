@@ -27,7 +27,7 @@
 ## Milestone 3 — Openings
 - [ ] Pipeline: lichess chess-openings → `openings.sqlite`
 - [ ] Opening name shown during play
-- [ ] Repertoire drill with spaced repetition
+- [x] Repertoire drill with spaced repetition (repertoire PGNs, ADR-0012)
 
 ## Milestone 4 — Master games
 - [ ] Curated list (Wikipedia seed) → `games.sqlite` with Stockfish key moments
