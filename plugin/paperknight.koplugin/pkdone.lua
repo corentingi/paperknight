@@ -95,4 +95,54 @@ function PkDone.chapterInfo(gamebook, done)
     return gamebook and "lesson" or nil
 end
 
+----------------------------------------------------------------------------
+-- Renames: a study file renamed (e.g. a reorganised collection) keeps its
+-- marks, flips and "Continue" when the old -> new names are known.
+----------------------------------------------------------------------------
+
+local EXACT = { "study_done:", "study_last:" }
+local PER_CHAPTER = { "chapter_done:", "study_flip:" } -- "<prefix><file>#<n>"
+
+--- Moves the state of study file `old` to `new` (file names). Does nothing
+-- if `new` already has state (never overwrites). Returns true if moved.
+function PkDone.rename(progress, old, new)
+    if old == new then return false end
+    local function keysOf(file)
+        local keys = {}
+        for _, p in ipairs(EXACT) do
+            if progress:getSetting(p .. file) ~= nil then keys[#keys + 1] = p .. file end
+        end
+        for _, p in ipairs(PER_CHAPTER) do
+            for _, k in ipairs(progress:settingKeys(p .. file .. "#")) do keys[#keys + 1] = k end
+        end
+        return keys
+    end
+    local old_keys = keysOf(old)
+    if #old_keys == 0 or #keysOf(new) > 0 then return false end
+    progress.conn:exec("BEGIN")
+    local ok, err = pcall(function()
+        for _, k in ipairs(old_keys) do
+            local prefix = k:sub(1, k:find(":", 1, true))
+            local rest = k:sub(#prefix + #old + 1) -- "" or "#<n>"
+            progress:setSetting(prefix .. new .. rest, progress:getSetting(k))
+            progress:setSetting(k, nil)
+        end
+    end)
+    progress.conn:exec(ok and "COMMIT" or "ROLLBACK")
+    if not ok then error(err, 0) end
+    PkDone.version = PkDone.version + 1
+    return true
+end
+
+--- Applies a renames file: one "old name<TAB>new name" per line (file
+-- names, not paths). Returns the number of studies whose state moved.
+function PkDone.applyRenames(progress, text)
+    local n = 0
+    for line in (text or ""):gmatch("[^\r\n]+") do
+        local old, new = line:match("^([^\t]+)\t([^\t]+)$")
+        if old and PkDone.rename(progress, old, new) then n = n + 1 end
+    end
+    return n
+end
+
 return PkDone

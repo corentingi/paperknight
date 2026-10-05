@@ -16,6 +16,10 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
 - Copy the `.pgn` to `koreader/paperknight/studies/` on the Kindle. The
   Studies list follows the folder: a file added while it is open shows up
   when you come back to the list.
+- **Folders**: sub-folders of `studies/` (e.g. `Openings/`, `Endgames/`)
+  are listed first, as `Openings/` with the number of studies inside (and
+  `done/total ✓` once some are done); tap one to open it, Back to return.
+  Folders can be nested.
 - Any PGN works; each game is a chapter.
 
 ## What we read from the PGN
@@ -71,9 +75,15 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
   counts as finishing. For studies with several chapters, the list starts
   with *▶ Continue* once you have opened one: it reopens the last chapter
   you read.
-- Marks, flips and *Continue* are stored by **file name and chapter number**:
-  renaming a file loses them, and if a re-downloaded study gained chapters
-  in the middle, the marks of the later chapters shift.
+- Marks, flips and *Continue* are stored by **file name and chapter number**
+  (not the folder: moving a study to another folder keeps them). Renaming
+  a file loses them, unless the rename is listed in `studies/RENAMES.txt`
+  (one `old name<TAB>new name` per line; the shipped collection uses it
+  when it renames studies): the state moves to the new name when the
+  Studies list opens, if the new name has none yet. Two studies with the
+  same file name in different folders share their marks, and if a
+  re-downloaded study gained chapters in the middle, the marks of the later
+  chapters shift.
 - **Emojis** (common in Lichess studies): KOReader has no emoji font. Copy the
   monochrome Noto Emoji font (OFL; e.g. `NotoEmoji-Regular.ttf`) to
   `koreader/fonts/`: Paperknight adds it to the UI fallback fonts at startup

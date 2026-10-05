@@ -35,22 +35,44 @@ function PkStudies.dir()
     return dir
 end
 
---- Sorted list of .pgn files in `dir`.
-function PkStudies.listFiles(dir)
-    local files = {}
-    if lfs.attributes(dir, "mode") ~= "directory" then return files end
+local function byName(a, b) return a:lower() < b:lower() end
+
+--- Sorted .pgn files and sub-folders (hidden ones skipped) of `dir`.
+function PkStudies.listEntries(dir)
+    local files, folders = {}, {}
+    if lfs.attributes(dir, "mode") ~= "directory" then return files, folders end
     local ok, iter, dir_obj = pcall(lfs.dir, dir) -- throws on unreadable folders
     if not ok then
         logger.warn("Paperknight: cannot list", dir, iter)
-        return files
+        return files, folders
     end
     for entry in iter, dir_obj do
-        if entry:lower():match("%.pgn$") and lfs.attributes(dir .. "/" .. entry, "mode") == "file" then
+        local mode = entry:sub(1, 1) ~= "." and lfs.attributes(dir .. "/" .. entry, "mode")
+        if mode == "file" and entry:lower():match("%.pgn$") then
             files[#files + 1] = entry
+        elseif mode == "directory" then
+            folders[#folders + 1] = entry
         end
     end
-    table.sort(files, function(a, b) return a:lower() < b:lower() end)
-    return files
+    table.sort(files, byName)
+    table.sort(folders, byName)
+    return files, folders
+end
+
+--- Sorted list of .pgn files in `dir`.
+function PkStudies.listFiles(dir)
+    return (PkStudies.listEntries(dir))
+end
+
+-- Study files under `dir` (sub-folders included, a few levels deep).
+local function studiesUnder(dir, depth, out)
+    out = out or {}
+    local files, folders = PkStudies.listEntries(dir)
+    for _i, f in ipairs(files) do out[#out + 1] = f end
+    if depth > 0 then
+        for _i, d in ipairs(folders) do studiesUnder(dir .. "/" .. d, depth - 1, out) end
+    end
+    return out
 end
 
 local function fullscreenMenu(title, items)
@@ -159,10 +181,21 @@ function PkStudies.openChapter(study, index)
     return view
 end
 
--- Items of the top-level list: study files (✓ when done) + "Open a PGN file…".
-local function listItems(dir, files)
+-- Items of a studies list: sub-folders (with "done/total" on the right),
+-- study files (✓ when done), and at the top level "Open a PGN file…".
+local function listItems(dir, files, folders, is_root)
     local items = {}
     local done = withProgress(PkDone.doneSet) or {}
+    for _i, folder in ipairs(folders) do
+        local all = studiesUnder(dir .. "/" .. folder, 3)
+        local n_done = 0
+        for _j, f in ipairs(all) do if done[f] then n_done = n_done + 1 end end
+        items[#items + 1] = {
+            text = util.fixUtf8(folder, "?") .. "/",
+            mandatory = n_done > 0 and T("%1/%2 %3", n_done, #all, PkDone.MARK) or tostring(#all),
+            callback = function() PkStudies.show(dir .. "/" .. folder, folder) end,
+        }
+    end
     for _i, file in ipairs(files) do
         items[#items + 1] = {
             text = util.fixUtf8((file:gsub("%.[Pp][Gg][Nn]$", "")), "?"),
@@ -170,6 +203,10 @@ local function listItems(dir, files)
             _pk_file = file,
             callback = function() PkStudies.openStudy(dir .. "/" .. file) end,
         }
+    end
+    if not is_root then
+        if #items == 0 then items[1] = { text = _("(empty folder)"), callback = function() end } end
+        return items
     end
     items[#items + 1] = {
         text = _("Open a PGN file…"),
@@ -183,7 +220,7 @@ local function listItems(dir, files)
             })
         end,
     }
-    if #items == 1 then
+    if #items == 1 and #folders == 0 then
         items[1].text = items[1].text .. "  " .. T(_("(no studies in %1)"), dir)
     end
     return items
@@ -199,38 +236,60 @@ function PkStudies.toggleDone(file)
     end)
 end
 
---- Top-level list. `dir` defaults to PkStudies.dir() (tests pass their own).
--- The list follows the folder and the done marks: each repaint (e.g. back
--- from a study) rebuilds the items if the .pgn files or the marks changed.
--- Long-press on a study toggles its done mark.
-function PkStudies.show(dir)
+-- Renames shipped with a collection (old -> new file names, see
+-- PkDone.applyRenames): applied when the top-level list opens.
+local RENAMES_FILE = "RENAMES.txt"
+
+local function applyRenames(dir)
+    local f = io.open(dir .. "/" .. RENAMES_FILE, "rb")
+    if not f then return end
+    local text = f:read("*a")
+    f:close()
+    local n = withProgress(function(progress)
+        return progress and PkDone.applyRenames(progress, text) or 0
+    end)
+    if n and n > 0 then logger.info("Paperknight: kept the marks of", n, "renamed studies") end
+end
+
+local function entriesKey(files, folders)
+    return table.concat(files, "\n") .. "|" .. table.concat(folders, "\n") .. "|" .. PkDone.version
+end
+
+--- Studies list of `dir` (default PkStudies.dir(), the top level; tests
+-- pass their own); `title`: a sub-folder's name. Sub-folders open their
+-- own list. The list follows the folder and the done marks: each repaint
+-- (e.g. back from a study) rebuilds the items if the files, folders or
+-- marks changed. Long-press on a study toggles its done mark.
+function PkStudies.show(dir, title)
+    local is_root = title == nil
     dir = dir or PkStudies.dir()
-    local files = PkStudies.listFiles(dir)
-    local menu = fullscreenMenu(_("Studies"), listItems(dir, files))
-    menu._pk_files = table.concat(files, "\n") .. "|" .. PkDone.version
+    if is_root then applyRenames(dir) end
+    local files, folders = PkStudies.listEntries(dir)
+    local menu = fullscreenMenu(title and util.fixUtf8(title, "?") or _("Studies"),
+        listItems(dir, files, folders, is_root))
+    menu._pk_files = entriesKey(files, folders)
+    local function rebuild(m, now_files, now_folders)
+        local first = ((m.page or 1) - 1) * (m.perpage or 1) + 1 -- stay on the current page
+        m:switchItemTable(nil, listItems(dir, now_files, now_folders, is_root), first)
+    end
     menu.onMenuHold = function(m, item)
         if item and item._pk_file and PkStudies.toggleDone(item._pk_file) ~= nil then
             -- rebuild now (one refresh), on the same page
-            local now = PkStudies.listFiles(dir)
-            m._pk_files = table.concat(now, "\n") .. "|" .. PkDone.version
-            local first = ((m.page or 1) - 1) * (m.perpage or 1) + 1
-            m:switchItemTable(nil, listItems(dir, now), first)
+            local now_files, now_folders = PkStudies.listEntries(dir)
+            m._pk_files = entriesKey(now_files, now_folders)
+            rebuild(m, now_files, now_folders)
         end
         return true
     end
     local paintTo = menu.paintTo
     menu.paintTo = function(m, bb, x, y)
         paintTo(m, bb, x, y)
-        local now = PkStudies.listFiles(dir)
-        local key = table.concat(now, "\n") .. "|" .. PkDone.version
+        local now_files, now_folders = PkStudies.listEntries(dir)
+        local key = entriesKey(now_files, now_folders)
         if key ~= m._pk_files then
             m._pk_files = key
             -- not while painting: rebuild on the next tick
-            UIManager:nextTick(function()
-                -- stay on the current page
-                local first = ((m.page or 1) - 1) * (m.perpage or 1) + 1
-                m:switchItemTable(nil, listItems(dir, now), first)
-            end)
+            UIManager:nextTick(function() rebuild(m, now_files, now_folders) end)
         end
     end
     UIManager:show(menu)
