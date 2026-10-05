@@ -80,9 +80,9 @@ function PkDrill:_lineFor(key)
         if idx then
             first = first or line
             local clean = true
-            for k = 1, idx - 1 do
-                local node = line.nodes[k]
-                if isUserNode(line, node) and PkSrs.isNew(self:card(self:_keyOf(node))) then
+            for j, k in ipairs(line.card_nodes) do
+                if k >= idx then break end
+                if PkSrs.isNew(self:card(line.cards[j])) then
                     clean = false
                     break
                 end

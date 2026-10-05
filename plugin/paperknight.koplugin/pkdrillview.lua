@@ -1,6 +1,7 @@
 -- Openings drill screen (ADR-0012, docs/openings.md): board + panel + buttons
 -- over a PkDrill session. Logic lives in pkdrill.lua; this file displays.
 local Blitbuffer = require("ffi/blitbuffer")
+local ButtonDialog = require("ui/widget/buttondialog")
 local ButtonTable = require("ui/widget/buttontable")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local Device = require("device")
@@ -32,6 +33,7 @@ local PkDrillView = InputContainer:extend{
     title = nil,     -- repertoire name
     reply_delay = REPLY_DELAY,
     on_close = nil,  -- called after the screen closes (e.g. close the database)
+    on_flip = nil,   -- function(chapter): play the other side in that chapter
 }
 
 function PkDrillView:init()
@@ -46,6 +48,8 @@ function PkDrillView:init()
         subtitle = "",
         title_shrink_font_to_fit = true,
         with_bottom_line = true,
+        left_icon = "appbar.menu",
+        left_icon_tap_callback = function() self:showMenu() end,
         close_callback = function() self:onClose() end,
     }
     self.buttons = ButtonTable:new{
@@ -150,6 +154,7 @@ end
 --- Starts the next line of the session, or shows the summary when done.
 function PkDrillView:nextLine()
     self:_cancelReply()
+    self._last_line = self.drill.line or self._last_line
     local line = self.drill:nextLine()
     if not line then
         self.game.reset()
@@ -266,6 +271,28 @@ end
 function PkDrillView:solution()
     local verdict, node = self.drill:solution()
     if verdict then self:_afterVerdict(verdict, node) end
+end
+
+--- Title-bar menu: switch the side played in the current line's chapter
+-- (e.g. a PGN saved from the Lichess website without [Orientation]).
+function PkDrillView:showMenu()
+    local line = self.drill.line or self._last_line
+    local chapter = line and line.chapter
+    local dialog
+    dialog = ButtonDialog:new{
+        buttons = {
+            {{ text = chapter and T(_("Play the other side (chapter %1)"), chapter) or _("Play the other side"),
+               enabled = chapter ~= nil and self.on_flip ~= nil,
+               callback = function()
+                   UIManager:close(dialog); self.menu_dialog = nil
+                   local on_flip = self.on_flip
+                   self:onClose()
+                   on_flip(chapter)
+               end }},
+        },
+    }
+    self.menu_dialog = dialog
+    UIManager:show(dialog)
 end
 
 function PkDrillView:onClose()

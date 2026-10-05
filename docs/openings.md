@@ -9,7 +9,9 @@ easiest way is a Lichess study:
 
 - one chapter per opening (or per opponent reply), with
   `Orientation` set to the side you play (Lichess sets it from the chapter's
-  board orientation; `make study ID=…` keeps it);
+  board orientation; `make study ID=…` keeps it). Without the tag a chapter is
+  played as White (or, from a set-up `[FEN]`, as the side to move); the drill's
+  ≡ menu → *Play the other side* switches a chapter, and is remembered;
 - at **your** turn, the main move is your repertoire move. Other moves at your
   turn are treated as known mistakes: playing one shows its comment;
 - at the **opponent's** turn, every variation is a reply to learn.
@@ -24,7 +26,8 @@ you can still learn today (10 per day and per repertoire).
 
 ## A session
 
-The trainer plays lines from the start position. The opponent's moves are
+The trainer plays lines from the chapter's start (the initial position, or
+its `[FEN]`). The opponent's moves are
 played automatically; you play yours on the board.
 
 - **New move**: shown as an arrow ("New move: play Nf3"), with the PGN's

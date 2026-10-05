@@ -73,23 +73,49 @@ local function turnOf(fen)
 end
 
 --- Builds a repertoire from a PkStudy. `game` is a Chess instance used to
--- resolve moves. `orientation(i)` optionally overrides chapter i's side
+-- resolve moves (its position is changed). `orientation(i)` optionally overrides chapter i's side
 -- ("white"/"black"), e.g. after a flip. Unresolvable moves end their line.
 function PkRepertoire.fromStudy(study, game, orientation)
     local self = setmetatable({ study = study, lines = {}, cards = {}, order = {}, conflicts = 0 }, PkRepertoire)
     self.name = study.path and study.path:match("([^/]+)$") or study.name
     for i, ch in ipairs(study.chapters) do
-        local cursor = study:cursor(i, game)
-        if cursor then
+        local root = study:tree(i)
+        if game.load(root.fen) then
             local side = (orientation and orientation(i)) or ch.orientation
             local student = (side == "black") and "b" or "w"
-            self:_walk(i, student, cursor, cursor.root, {})
+            self:_walk(i, student, game, root, {})
         end
     end
     return self
 end
 
-function PkRepertoire:_walk(chapter, student, cursor, node, path)
+-- Resolves `child` (a move from the game's current position, which is its
+-- parent's) and plays it on `game`. Same caching as PkStudy's Cursor:resolve,
+-- but walking the tree with move/undo instead of reloading FENs (about 3x
+-- faster: this walk visits every followed node of the repertoire).
+local function playChild(game, child)
+    if child.error then return false end
+    local move = game.move(child.move and { from = child.move.from, to = child.move.to,
+                                            promotion = child.move.promotion } or child.san)
+    if not move then
+        child.error = "illegal move " .. tostring(child.san)
+        return false
+    end
+    if not child.fen then
+        child.move = move
+        child.fen = game.fen()
+        child.ply = child.parent.ply + 1
+    end
+    return true
+end
+
+local function undo(game)
+    game.undo()
+    -- the plugin's undo keeps a redo stack: drop this internal entry
+    if game.redo_stack then table.remove(game.redo_stack) end
+end
+
+function PkRepertoire:_walk(chapter, student, game, node, path)
     local followed = {}
     if node.children[1] then
         if turnOf(node.fen) == student then
@@ -100,11 +126,12 @@ function PkRepertoire:_walk(chapter, student, cursor, node, path)
     end
     local any = false
     for _, child in ipairs(followed) do
-        if cursor:resolve(child) then
+        if playChild(game, child) then
             any = true
             path[#path + 1] = child
-            self:_walk(chapter, student, cursor, child, path)
+            self:_walk(chapter, student, game, child, path)
             path[#path] = nil
+            undo(game)
         end
     end
     if not any and #path > 0 then
@@ -113,7 +140,7 @@ function PkRepertoire:_walk(chapter, student, cursor, node, path)
 end
 
 function PkRepertoire:_addLine(chapter, student, path)
-    local line = { chapter = chapter, student = student, nodes = {}, cards = {} }
+    local line = { chapter = chapter, student = student, nodes = {}, cards = {}, card_nodes = {} }
     local last_user = 0
     for k, node in ipairs(path) do
         if turnOf(node.parent.fen) == student then
@@ -130,6 +157,7 @@ function PkRepertoire:_addLine(chapter, student, path)
                 self.order[#self.order + 1] = key
             end
             line.cards[#line.cards + 1] = key
+            line.card_nodes[#line.card_nodes + 1] = k
             last_user = k
         end
         line.nodes[k] = node
@@ -142,10 +170,8 @@ end
 
 --- Index (in the line) of the node that answers card `key`, or nil.
 function PkRepertoire.cardIndex(line, key)
-    for k, node in ipairs(line.nodes) do
-        if turnOf(node.parent.fen) == line.student and PkRepertoire.normalizeFen(node.parent.fen) == key then
-            return k
-        end
+    for j, k in ipairs(line.cards) do
+        if k == key then return line.card_nodes[j] end
     end
     return nil
 end

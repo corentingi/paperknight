@@ -48,32 +48,100 @@ local function openProgress()
     return nil, progress
 end
 
--- Parsed repertoires by path, reused while the file is unchanged (parsing
--- and resolving every move is slow on an e-reader).
-local cache = {}
+-- Parsing a repertoire and resolving every move is slow on an e-reader, and
+-- a parsed tree is big. Kept per path while the file and its flips are
+-- unchanged: a small summary (enough for the list's counts) for every file,
+-- the full repertoire only for the last one opened.
+local summaries = {} -- path -> { stamp, summary, err }
+local full = nil     -- { path, stamp, rep }
 
---- Loads a repertoire file. Returns rep, or nil and an error message.
-function PkOpenings.load(path)
+local function fileStamp(path)
     local attr = lfs.attributes(path) or {}
-    local stamp = tostring(attr.modification) .. ":" .. tostring(attr.size)
-    local hit = cache[path]
-    if hit and hit.stamp == stamp then return hit.rep, hit.err end
-    local rep, err = PkOpenings._load(path, attr.size)
-    cache[path] = { stamp = stamp, rep = rep, err = err }
+    return tostring(attr.modification) .. ":" .. tostring(attr.size), attr.size
+end
+
+-- Flip settings of a repertoire file: key "rep_flip:<file>#<chapter>".
+local function flipKey(file, chapter)
+    return "rep_flip:" .. file .. "#" .. chapter
+end
+
+local function flips(progress, file)
+    local set = {}
+    if progress then
+        for _, key in ipairs(progress:settingKeys(flipKey(file, ""))) do
+            set[tonumber(key:match("#(%d+)$")) or 0] = true
+        end
+    end
+    return set
+end
+
+local function flipStamp(set)
+    local list = {}
+    for i in pairs(set) do list[#list + 1] = i end
+    table.sort(list)
+    return table.concat(list, ",")
+end
+
+--- Loads a repertoire file. Returns rep (or its summary { name, order,
+-- cards } when `summary_only`), or nil and an error message.
+function PkOpenings.load(path, progress, summary_only)
+    local file = path:match("([^/]+)$") or path
+    local fstamp, size = fileStamp(path)
+    local set = flips(progress, file)
+    local stamp = fstamp .. "|" .. flipStamp(set)
+    if full and full.path == path and full.stamp == stamp then
+        return summary_only and summaries[path].summary or full.rep
+    end
+    local hit = summaries[path]
+    if summary_only and hit and hit.stamp == stamp then return hit.summary, hit.err end
+    local rep, err = PkOpenings._load(path, size, set)
+    local summary
+    if rep then
+        local cards = {}
+        for key, c in pairs(rep.cards) do cards[key] = { uci = c.uci } end
+        summary = { name = rep.name, order = rep.order, cards = cards }
+        full = { path = path, stamp = stamp, rep = rep }
+    end
+    summaries[path] = { stamp = stamp, summary = summary, err = err }
+    if summary_only then return summary, err end
     return rep, err
 end
 
-function PkOpenings._load(path, size)
+--- True if loading `path` would parse it (used to show a loading message).
+function PkOpenings.needsParse(path, progress)
+    local file = path:match("([^/]+)$") or path
+    local stamp = fileStamp(path) .. "|" .. flipStamp(flips(progress, file))
+    local hit = summaries[path]
+    return not (hit and hit.stamp == stamp)
+end
+
+function PkOpenings._load(path, size, flipped)
     if size and size > MAX_BYTES then
         return nil, T(_("too large for a repertoire (%1 MB, limit 2 MB)"), string.format("%.1f", size / 1048576))
     end
     local ok, study, err = pcall(PkStudy.open, path)
     if not ok then study, err = nil, study end
     if not study then return nil, tostring(err) end
-    local rep_ok, rep = pcall(PkRepertoire.fromStudy, study, Chess:new())
+    local function orientation(i)
+        if not flipped or not flipped[i] then return nil end
+        return study.chapters[i].orientation == "black" and "white" or "black"
+    end
+    local rep_ok, rep = pcall(PkRepertoire.fromStudy, study, Chess:new(), orientation)
     if not rep_ok then return nil, tostring(rep) end
     if #rep.lines == 0 then return nil, _("no moves to train for the side of each chapter") end
     return rep
+end
+
+--- Switches the side played in chapter `chapter` of a repertoire file.
+function PkOpenings.toggleFlip(path, chapter)
+    local progress = openProgress()
+    if not progress then return false end
+    local key = flipKey(path:match("([^/]+)$") or path, chapter)
+    local ok = pcall(function()
+        progress:setSetting(key, progress:getSetting(key) ~= "1" and "1" or nil)
+    end)
+    progress:close()
+    return ok
 end
 
 -- A drill over `rep`, with its stored cards.
@@ -96,16 +164,23 @@ end
 function PkOpenings.openRepertoire(path)
     if PkOpenings.view then return nil end -- e.g. a double tap on slow e-ink
     local name = path:match("([^/]+)$") or path
-    local rep, err = PkOpenings.load(path)
+    local progress, db_err = openProgress()
+    local rep, err = PkOpenings.load(path, progress)
     if not rep then
+        if progress then progress:close() end
         UIManager:show(InfoMessage:new{ text = T(_("Cannot open %1:\n%2"), util.fixUtf8(name, "?"), err) })
         return nil
     end
-    local progress, db_err = openProgress()
     local ok, view = pcall(function()
         return PkDrillView:new{
             drill = newDrill(rep, progress),
             title = (rep.study.name or name),
+            on_flip = function(chapter)
+                -- after the view closed (and its database handle with it)
+                UIManager:nextTick(function()
+                    if PkOpenings.toggleFlip(path, chapter) then PkOpenings.openRepertoire(path) end
+                end)
+            end,
             on_close = function()
                 if progress then progress:close() end
                 PkOpenings.view = nil
@@ -133,28 +208,42 @@ end
 local function listItems(dir)
     local items = {}
     local progress = openProgress()
-    for _i, file in ipairs(PkStudies.listFiles(dir)) do
-        local path = dir .. "/" .. file
-        local rep, err = PkOpenings.load(path)
-        local info
-        local ok, c = false, nil
-        if rep then
-            ok, c = pcall(function() return newDrill(rep, progress):counts() end)
-            if not ok then err = c end
+    local ok, err = pcall(function()
+        local files = PkStudies.listFiles(dir)
+        local loading
+        for _i, file in ipairs(files) do
+            if PkOpenings.needsParse(dir .. "/" .. file, progress) then
+                -- parsing takes seconds for big files on an e-reader: say so
+                loading = InfoMessage:new{ text = _("Loading repertoires…") }
+                UIManager:show(loading)
+                UIManager:forceRePaint()
+                break
+            end
         end
-        if ok then
-            info = T(_("%1 due · %2 new"), c.due, c.new_today)
-        else
-            logger.warn("Paperknight: cannot read repertoire", path, err)
-            info = _("error")
+        for _i, file in ipairs(files) do
+            local path = dir .. "/" .. file
+            local summary, load_err = PkOpenings.load(path, progress, true)
+            local info
+            local c_ok, c = false, load_err
+            if summary then
+                c_ok, c = pcall(function() return newDrill(summary, progress):counts() end)
+            end
+            if c_ok then
+                info = T(_("%1 due · %2 new"), c.due, c.new_today)
+            else
+                logger.warn("Paperknight: cannot read repertoire", path, c)
+                info = _("error")
+            end
+            items[#items + 1] = {
+                text = util.fixUtf8((file:gsub("%.[Pp][Gg][Nn]$", "")), "?"),
+                mandatory = info,
+                callback = function() PkOpenings.openRepertoire(path) end,
+            }
         end
-        items[#items + 1] = {
-            text = util.fixUtf8((file:gsub("%.[Pp][Gg][Nn]$", "")), "?"),
-            mandatory = info,
-            callback = function() PkOpenings.openRepertoire(path) end,
-        }
-    end
+        if loading then UIManager:close(loading) end
+    end)
     if progress then progress:close() end
+    if not ok then error(err, 0) end
     if #items == 0 then
         items[1] = { text = T(_("No repertoires in %1"), dir), callback = function() end }
     end
@@ -172,9 +261,14 @@ end
 --- Repertoire list. `dir` defaults to PkOpenings.dir().
 function PkOpenings.show(dir)
     dir = dir or PkOpenings.dir()
+    local ok, items = pcall(listItems, dir)
+    if not ok then
+        logger.warn("Paperknight: cannot list repertoires:", items)
+        items = { { text = T(_("Cannot list %1"), dir), callback = function() end } }
+    end
     local menu = Menu:new{
         title = _("Openings"),
-        item_table = listItems(dir),
+        item_table = items,
         covers_fullscreen = true,
         is_borderless = true,
         is_popout = false,

@@ -136,6 +136,46 @@ return function(h)
     view:onClose()
     h.wait(0.5)
     h.check(menuItem(blist, "black").mandatory == "0 due · 0 new", "nothing left today")
-    UIManager:close(blist)
     os.remove(tmp .. "/black.pgn")
+
+    -- 5. a PGN without [Orientation] is drilled as White; the title-bar menu
+    -- switches the chapter to Black (remembered), and back
+    f = assert(io.open(tmp .. "/noside.pgn", "w"))
+    f:write('[Event "x"]\n\n1. e4 c6 2. d4 d5 *\n')
+    f:close()
+    local function clearFlip()
+        local p = PkProgress.open(DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+        p:setSetting("rep_flip:noside.pgn#1", nil)
+        p:close()
+    end
+    clearFlip()
+    PkOpenings.refreshList()
+    h.wait(0.5)
+    h.tapWidget(menuItem(blist, "noside"))
+    h.wait(0.5)
+    view = top()
+    h.check(not view.board.flipped and view.drill.line.student == "w", "default: White")
+    h.tapWidget(view.title_bar.left_button)
+    h.wait(0.5)
+    local flip_btn
+    for _, row in ipairs(view.menu_dialog.buttontable.buttons_layout) do
+        for _, btn in ipairs(row) do if btn.text and btn.text:find("other side", 1, true) then flip_btn = btn end end
+    end
+    h.check(flip_btn, "flip action in the menu")
+    h.tapWidget(flip_btn)
+    h.wait(1)
+    view = top()
+    h.check(view.name == "paperknight_drill" and view.board.flipped, "reopened from Black's side")
+    h.check(view.drill.line.student == "b", "Black's moves are drilled")
+    view:onClose()
+    h.wait(0.5)
+    h.tapWidget(menuItem(blist, "noside"))
+    h.wait(0.5)
+    view = top()
+    h.check(view.board.flipped, "the side is remembered")
+    view:onClose()
+    h.wait(0.5)
+    clearFlip()
+    UIManager:close(blist)
+    os.remove(tmp .. "/noside.pgn")
 end

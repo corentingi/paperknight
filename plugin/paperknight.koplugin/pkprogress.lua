@@ -74,6 +74,17 @@ function PkProgress:getSetting(key)
     return row and row[1] or nil
 end
 
+--- Keys (without the "setting." prefix) of settings starting with `prefix`.
+function PkProgress:settingKeys(prefix)
+    local keys = {}
+    local stmt = self.conn:prepare("SELECT key FROM kv WHERE substr(key, 1, ?) = ?")
+    local full = "setting." .. prefix
+    stmt:reset():bind(#full, full)
+    for row in stmt:rows() do keys[#keys + 1] = row[1]:sub(#"setting." + 1) end
+    stmt:close()
+    return keys
+end
+
 function PkProgress:setSetting(key, value)
     local stmt
     if value == nil then
