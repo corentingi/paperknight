@@ -54,6 +54,22 @@ return function(h)
     -- 2. Mate in two for White: correct move, opponent replies, finishing move.
     view:loadPuzzle(view.pack:get("0042j"))
     h.wait(1)
+    -- selection frame on the puzzle board (the board repaints through the view)
+    do
+        local Screen = require("device").screen
+        local function shown(x, y)
+            local c = Screen.bb:getPixel(x, y)
+            if Screen.bb:getInverse() == 1 or Screen.night_mode then c = c:invert() end
+            return c:getColor8().a
+        end
+        local r = view.board.table:getButtonById(view.board.chessToId("a2")).dimen
+        tapSquare("a2"); h.wait(0.5)
+        h.check(shown(r.x + 1, r.y + math.floor(r.h / 2)) == 0x00, "selection frame shown on the puzzle board")
+        tapSquare("b2"); h.wait(0.5) -- another own piece: selection moves
+        h.check(view.board.selected == "b2", "selection switched to b2")
+        h.check(shown(r.x + 1, r.y + math.floor(r.h / 2)) ~= 0x00, "a2 frame gone")
+        tapSquare("b2"); h.wait(0.3)
+    end
     h.check(not view.board.flipped, "board shows White's side")
     r, f = labels(view.board)
     h.check(r == "81" and f == "ah", "labels top-down 8..1, a..h: " .. r .. " " .. f)

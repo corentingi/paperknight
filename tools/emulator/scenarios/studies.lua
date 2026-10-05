@@ -214,6 +214,39 @@ return function(h)
     UIManager:close(dlist)
     h.wait(0.5)
 
+    -- selection: tapping another own piece selects it; no border is left on
+    -- the neighbours (the old frame border spilled over them and crashed)
+    local Screen = require("device").screen
+    local sel_study = PkStudy.fromText('[Event "sel"]\n[FEN "4k3/8/8/8/8/1P6/P7/4K3 w - - 0 1"]\n\n1. a4 *\n', "sel")
+    local sview = PkStudies.openChapter(sel_study, 1)
+    h.wait(1)
+    local function tapSq(sq)
+        local b = sview.board
+        h.tapWidget(b.table:getButtonById(b.toId(sq:byte(1) - 97, tonumber(sq:sub(2, 2)) - 1)))
+    end
+    local function shown(x, y)
+        local c = Screen.bb:getPixel(x, y)
+        if Screen.bb:getInverse() == 1 or Screen.night_mode then c = c:invert() end
+        return c:getColor8().a
+    end
+    local function rectOf(sq) return sview.board.table:getButtonById(sview.board.chessToId(sq)).dimen end
+    tapSq("a2"); h.wait(0.3)
+    h.check(sview.board.selected == "a2" and sview.board.selected_mark == "a2", "a2 selected")
+    local a2 = rectOf("a2")
+    h.check(shown(a2.x + 1, a2.y + math.floor(a2.h / 2)) == 0x00, "selection frame drawn inside a2")
+    tapSq("b3"); h.wait(0.5)
+    h.check(sview.board.selected == "b3", "tapping another own piece selects it: " .. tostring(sview.board.selected))
+    local b2 = rectOf("b2")
+    h.check(shown(b2.x + 3, b2.y + math.floor(b2.h / 2)) == 0xBB, "no border left on b2: "
+        .. string.format("%x", shown(b2.x + 3, b2.y + math.floor(b2.h / 2))))
+    h.check(shown(a2.x + 1, a2.y + math.floor(a2.h / 2)) ~= 0x00, "a2 frame removed")
+    tapSq("b3"); h.wait(0.3)
+    h.check(sview.board.selected == nil and sview.board.selected_mark == nil, "tap again: unselected")
+    tapSq("a2"); tapSq("a4"); h.wait(0.5)
+    h.check(sview.cursor.node.san == "a4", "then a move still plays: " .. tostring(sview.cursor.node.san))
+    sview:onClose()
+    h.wait(0.3)
+
     -- links: short in the panel; a tap on one shows its QR code; ≡ → Links…
     local lstudy = PkStudy.fromText('[Event "links"]\n\n{ Watch https://lichess.org/study/abcdefgh then see www.example.com/page. }\n1. e4 *\n', "links")
     local lview = PkStudies.openChapter(lstudy, 1)

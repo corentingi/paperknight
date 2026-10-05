@@ -99,6 +99,7 @@ function PkPuzzleView:_prepareBoard(flipped)
         width = self.board_size,
         height = self.board_size,
         flipped = flipped,
+        show_parent = self, -- the board repaints through this window (selection overlay)
         moveCallback = function(move) self:onUserMove(move) end,
         onPromotionNeeded = function(from, to, color)
             PkPromotion.show(color, function(letter)
@@ -329,6 +330,7 @@ function PkPuzzleView:onHint()
     self:_flushReply()
     local square = self.session:hint()
     if not square then return end
+    self.board:clearSelection()
     self.board:setHighlights({ square })
     self:_setStatus(T(_("Hint: move the piece on %1."), square))
 end
@@ -337,6 +339,7 @@ function PkPuzzleView:onSolution()
     if not self.session or self.session:isOver() then return end
     self:_cancelReply() -- the reply is already in the game; the redraw below shows it
     local played = self.session:revealSolution()
+    self.board:clearSelection()
     self.board:updateBoard()
     local last = played[#played]
     if last then self.board:setHighlights({ last.from, last.to }) end

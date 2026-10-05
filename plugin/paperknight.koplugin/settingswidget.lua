@@ -246,10 +246,10 @@ function SettingsWidget:buildTimeGroups()
             save_callback   = function(txt)
                 local nb, ni = txt:match("^(%d+)%s*+%s*(%d+)$")
                 if not nb or not ni then
-                    UIManager:showMessage(
-                      _("Invalid Time Format"),
-                      _("Enter 'minutes + seconds' (e.g. '5 + 0').")
-                    )
+                    -- Paperknight: UIManager has no showMessage (crashed)
+                    UIManager:show(require("ui/widget/infomessage"):new{
+                      text = _("Invalid Time Format") .. "\n" .. _("Enter 'minutes + seconds' (e.g. '5 + 0')."),
+                    })
                     return
                 end
                 nb = math.max(self.min_base_min, math.min(self.max_base_min, tonumber(nb)))

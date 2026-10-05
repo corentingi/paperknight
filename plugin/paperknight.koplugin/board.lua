@@ -210,10 +210,19 @@ function Board:handleClick(file, rank)
 
     if self.selected then
         -- A piece is already selected, this click is a move attempt
+        local target = self.game.get(square)
         if self.selected == square then
             -- Clicked the same square again, unselect it
             self:unmarkSelected(square)
             self.selected = nil
+        elseif target and target.color == self.game.turn() then
+            -- Paperknight: another piece of the side to move: select it instead
+            -- (a move onto an own piece is never legal)
+            local previous = self.selected
+            self.selected = square
+            self.selected_mark = square
+            self:_repaintSquare(previous)
+            self:_repaintSquare(square)
         else
             -- Attempt to move the selected piece to the new square
             self:handleMove(self.selected, square)
@@ -251,6 +260,15 @@ function Board:handleMove(from, to)
            (piece.color == Chess.BLACK and to_rank_num == 1) then
             is_pawn_promotion = true
         end
+    end
+
+    if is_pawn_promotion then
+        -- Paperknight: only offer the promotion dialog for a legal move
+        local legal = false
+        for _, m in ipairs(self.game.moves({ square = from, verbose = true })) do
+            if m.to == to then legal = true; break end
+        end
+        is_pawn_promotion = legal
     end
 
     if is_pawn_promotion and self.onPromotionNeeded then
@@ -305,17 +323,6 @@ function Board:setShapes(shapes)
     self.shapes = shapes
 end
 
--- A single-square refresh (selection border) paints only that button and
--- would erase shapes crossing it: repaint the whole board when shapes exist.
--- (`square`: the repainted square; a badge is erased only if it is there)
-function Board:_repaintShapes(square)
-    local shapes = self.shapes
-    local badge_hit = self.badge and self.badge.square == square
-    if badge_hit or (shapes and ((shapes.circles and #shapes.circles > 0) or (shapes.arrows and #shapes.arrows > 0))) then
-        UIManager:setDirty(self.show_parent or self, "ui", self.dimen)
-    end
-end
-
 function Board:paintTo(bb, x, y)
     -- night mode toggled since the last paint: switch palettes and piece sets
     -- (no per-square refresh: the whole board is being painted)
@@ -327,6 +334,7 @@ function Board:paintTo(bb, x, y)
     self._shape_color = Board.paintColor(Board.palette().shape)
     if self.shapes then self:_paintShapes(bb) end
     if self.badge then self:_paintBadge(bb) end
+    if self.selected_mark and not self.locked then self:_paintSelection(bb) end
 end
 
 -- Paperknight: move-mark badge ("!!", "?"…) on a square, like Lichess. Good
@@ -501,34 +509,52 @@ function Board:handleMoveFlags(move, to)
     end
 end
 
---- Board:markSelected(square)
--- Visually marks a square as selected by adding a border.
--- @param square String, algebraic notation of the square to mark.
+--- Board:markSelected(square) / unmarkSelected(square)
+-- Paperknight: the selected square gets a frame drawn *inside* the square by
+-- the board's overlay (paintTo). Changing the button's own border made its
+-- frame larger than the square: it painted over the neighbours and left
+-- pieces of border behind when removed.
 function Board:markSelected(square)
-    local id_result = Board.chessToId(square)
-    if not id_result then
-        logger.info(_("Chess: Invalid square to select: " .. tostring(square)))
+    if not Board.chessToId(square) then
+        logger.info("Chess: Invalid square to select: " .. tostring(square))
         return
     end
-    local button = self.table:getButtonById(id_result)
-    button.frame.bordersize = Screen:scaleBySize(SELECTED_BORDER)
-    button:refresh()
-    self:_repaintShapes(square)
+    self.selected_mark = square
+    self:_repaintSquare(square)
 end
 
---- Board:unmarkSelected(square)
--- Visually unmarks a square by removing its border.
--- @param square String, algebraic notation of the square to unmark.
 function Board:unmarkSelected(square)
-    local id_result = Board.chessToId(square)
-    if not id_result then
-        logger.info(_("Chess: Invalid square to unselect: " .. tostring(square)))
-        return
+    if self.selected_mark == nil then return end
+    self.selected_mark = nil
+    self:_repaintSquare(square)
+end
+
+-- Repaints the board and refreshes only `square` on screen (the overlays are
+-- drawn by paintTo, so the whole window is painted, but the e-ink refresh is
+-- limited to the square).
+function Board:_repaintSquare(square)
+    local rect = square and self:_squareRect(square)
+    if rect and rect.w then
+        -- "ui", not "fast": the fast (DU) waveform is black and white only
+        -- and would degrade the grey squares
+        UIManager:setDirty(self.show_parent or self, "ui", rect)
+    else
+        UIManager:setDirty(self.show_parent or self, "ui", self.dimen)
     end
-    local button = self.table:getButtonById(id_result)
-    button.frame.bordersize = 0
-    button:refresh()
-    self:_repaintShapes(square)
+end
+
+--- Removes the selection (e.g. before the board is locked).
+function Board:clearSelection()
+    local square = self.selected_mark
+    self.selected, self.selected_mark = nil, nil
+    if square then self:_repaintSquare(square) end
+end
+
+function Board:_paintSelection(bb)
+    local r = self:_squareRect(self.selected_mark)
+    if not (r and r.w) then return end
+    -- stored black: shown black, or white once night mode inverts the screen
+    bb:paintBorder(r.x, r.y, r.w, r.h, Screen:scaleBySize(SELECTED_BORDER), Blitbuffer.COLOR_BLACK)
 end
 
 --- Board:placePiece(square, piece, color)

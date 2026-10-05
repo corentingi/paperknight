@@ -168,6 +168,9 @@ function Paperknight:addToMainMenu(menu_items)
             },
             {
                 text = _("Play against the engine"),
+                -- Paperknight: no engine binary ships for the Kindle yet; the
+                -- inherited game screen misbehaves without one
+                enabled_func = function() return lfs.attributes(UCI_ENGINE_PATH, "mode") == "file" end,
                 callback = function() self:startGame() end,
             },
         },
@@ -351,6 +354,7 @@ function Paperknight:initializeBoard()
         game = self.game,
         width = self.full_width,
         height = math.floor(0.7 * self.full_height), -- Calculate board height
+        show_parent = self, -- Paperknight: repaints go through this window
         -- Callback for when any move (human or engine) has been executed and needs UI updates.
         moveCallback = function(move) self:onMoveExecuted(move) end,
         holdCallback = nil,
