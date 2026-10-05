@@ -1,0 +1,22 @@
+[Event "Paperknight test repertoire: White e4"]
+[StudyName "Paperknight test repertoire"]
+[ChapterName "White: 1. e4"]
+[Orientation "white"]
+
+{ Our answers to 1... e5 and 1... c5. }
+1. e4 e5 (1... c5 2. Nf3 d6 (2... Nc6 3. d4) 3. d4) 2. Nf3 Nc6 (2... d6 3. d4)
+3. Bc4 (3. Bb5?! { Not our line. }) 3... Bc5 4. c3 *
+
+[Event "Paperknight test repertoire: Black Caro-Kann"]
+[StudyName "Paperknight test repertoire"]
+[ChapterName "Black: Caro-Kann"]
+[Orientation "black"]
+
+1. e4 c6 2. d4 d5 3. e5 (3. Nc3 dxe4 4. Nxe4 Bf5) 3... Bf5 *
+
+[Event "Paperknight test repertoire: White vs 1... Nc6"]
+[StudyName "Paperknight test repertoire"]
+[ChapterName "White: 1... Nc6 move order"]
+[Orientation "white"]
+
+1. e4 Nc6 2. Nf3 e5 3. Bc4 *
