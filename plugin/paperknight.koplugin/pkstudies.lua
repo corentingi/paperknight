@@ -75,6 +75,22 @@ local ERRORS = {
     not_pgn = _("This file is not a PGN file."),
 }
 
+-- Runs fn(progress) with the progress database (nil if it cannot be opened).
+local function withProgress(fn)
+    local ok, progress = pcall(PkProgress.open, DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+    if not ok then
+        logger.warn("Paperknight: cannot open progress database:", progress)
+        progress = nil
+    end
+    local res_ok, res = pcall(fn, progress)
+    if progress then progress:close() end
+    if not res_ok then
+        logger.warn("Paperknight:", res)
+        return nil
+    end
+    return res
+end
+
 --- Opens a study file and shows its chapter list. Returns the chapter menu.
 function PkStudies.openStudy(path)
     local name = path:match("([^/]+)$") or path
@@ -92,39 +108,55 @@ function PkStudies.openStudy(path)
             ERRORS[err] or tostring(err)) })
         return nil
     end
+    local menu = fullscreenMenu(util.fixUtf8(study.name, "?"), PkStudies.chapterItems(study))
+    -- the marks and "Continue" change while a chapter is open: rebuild the
+    -- list when coming back to it
+    menu._pk_version = PkDone.version
+    local paintTo = menu.paintTo
+    menu.paintTo = function(m, bb, x, y)
+        paintTo(m, bb, x, y)
+        if m._pk_version ~= PkDone.version then
+            m._pk_version = PkDone.version
+            UIManager:nextTick(function()
+                local first = ((m.page or 1) - 1) * (m.perpage or 1) + 1
+                m:switchItemTable(nil, PkStudies.chapterItems(study), first)
+            end)
+        end
+    end
+    UIManager:show(menu)
+    return menu, study
+end
+
+--- Chapter list items: "▶ Continue" (last chapter opened), then each
+-- chapter with "lesson" / "✓" on the right.
+function PkStudies.chapterItems(study)
+    local file = PkDone.fileOf(study.path)
+    local done, last = {}, nil
+    withProgress(function(progress)
+        done = PkDone.chapterDoneSet(progress, file)
+        last = PkDone.lastChapter(progress, file)
+    end)
     local items = {}
+    if last and study.chapters[last] and #study.chapters > 1 then
+        items[1] = {
+            text = T(_("▶ Continue: %1. %2"), last, util.fixUtf8(study.chapters[last].title, "?")),
+            callback = function() PkStudies.openChapter(study, last) end,
+        }
+    end
     for i, ch in ipairs(study.chapters) do
         items[#items + 1] = {
             text = T("%1. %2", i, util.fixUtf8(ch.title, "?")),
-            mandatory = ch.gamebook and _("lesson") or nil,
+            mandatory = PkDone.chapterInfo(ch.gamebook, done[i]),
             callback = function() PkStudies.openChapter(study, i) end,
         }
     end
-    local menu = fullscreenMenu(util.fixUtf8(study.name, "?"), items)
-    UIManager:show(menu)
-    return menu, study
+    return items
 end
 
 function PkStudies.openChapter(study, index)
     local view = PkStudyView:new{ study = study, chapter_index = index }
     UIManager:show(view)
     return view
-end
-
--- Runs fn(progress) with the progress database (nil if it cannot be opened).
-local function withProgress(fn)
-    local ok, progress = pcall(PkProgress.open, DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
-    if not ok then
-        logger.warn("Paperknight: cannot open progress database:", progress)
-        progress = nil
-    end
-    local res_ok, res = pcall(fn, progress)
-    if progress then progress:close() end
-    if not res_ok then
-        logger.warn("Paperknight:", res)
-        return nil
-    end
-    return res
 end
 
 -- Items of the top-level list: study files (✓ when done) + "Open a PGN file…".

@@ -177,4 +177,18 @@ return {
         t.eq(d4:counts().new_today, 0, "cap counted from the database")
         p:close(); os.remove(path)
     end },
+    { "settings by prefix with non-ASCII file names", function(t)
+        local PkDone = require("pkdone")
+        local path = os.tmpname()
+        local p = PkProgress.open(path)
+        PkDone.setChapterDone(p, "♞ Étude.pgn", 2, true)
+        PkDone.setChapterDone(p, "♞ Étude.pgn", 10, true)
+        PkDone.setChapterDone(p, "♞ Étude.pgn.bak", 3, true)
+        local set = PkDone.chapterDoneSet(p, "♞ Étude.pgn")
+        t.ok(set[2] and set[10] and not set[1] and not set[3], "chapters 2 and 10 of the right file")
+        t.eq(#p:settingKeys("rep_flip:♞"), 0, "no false matches")
+        t.eq(PkDone.setChapterDone(p, "solo.pgn", 1, true, 1), true, "last chapter done marks the study done")
+        t.ok(PkDone.isDone(p, "solo.pgn"), "study done")
+        p:close(); os.remove(path)
+    end },
 }

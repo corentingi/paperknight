@@ -256,6 +256,9 @@ function PkStudyView:loadChapter(index)
     self.lesson = nil
     self._unsaved_flip = nil
     self.chapter_index = index
+    -- remembered for "Continue" in the chapter list
+    local file = PkDone.fileOf(self.study.path)
+    if file and self.progress then pcall(PkDone.setLastChapter, self.progress, file, index) end
     self.chapter = self.study.chapters[index]
     local cursor, err = self.study:cursor(index, self.game)
     if not cursor then
@@ -418,6 +421,14 @@ function PkStudyView:showMenu()
     buttons[#buttons + 1] = PkLinks.menuRow(self.links, close)
     local file = PkDone.fileOf(self.study.path)
     if file and self.progress then
+        local ch_done = PkDone.isChapterDone(self.progress, file, self.chapter_index)
+        buttons[#buttons + 1] = {{
+            text = ch_done and _("Mark chapter as not done") or _("Mark chapter as done ✓"),
+            callback = function()
+                close()
+                self:setChapterDone(not ch_done)
+            end,
+        }}
         local done = PkDone.isDone(self.progress, file)
         buttons[#buttons + 1] = {{
             text = done and _("Mark study as not done") or _("Mark study as done ✓"),
@@ -439,14 +450,31 @@ function PkStudyView:showMenu()
     UIManager:show(dialog)
 end
 
+--- Marks the current chapter done (or not) and says so; marking the last
+-- remaining chapter marks the whole study done too.
+function PkStudyView:setChapterDone(done)
+    local file = PkDone.fileOf(self.study.path)
+    if not (file and self.progress) then return end
+    local ok, study_done = pcall(PkDone.setChapterDone, self.progress, file, self.chapter_index, done, #self.study.chapters)
+    if not ok then
+        logger.warn("Paperknight: cannot save the chapter mark:", study_done)
+        return
+    end
+    local text = done and _("Chapter marked as done.") or _("Chapter marked as not done.")
+    if study_done then text = _("All chapters done: study marked as done ✓") end
+    UIManager:show(Notification:new{ text = text })
+end
+
 function PkStudyView:showChapterMenu()
     local items = {}
+    local done = {}
+    pcall(function() done = PkDone.chapterDoneSet(self.progress, PkDone.fileOf(self.study.path)) end)
     for i, ch in ipairs(self.study.chapters) do
         local text = ch.title
-        if i == self.chapter_index then text = "✓ " .. text end
+        if i == self.chapter_index then text = "▶ " .. text end -- the chapter shown
         items[#items + 1] = {
             text = text,
-            mandatory = ch.gamebook and _("lesson") or nil,
+            mandatory = PkDone.chapterInfo(ch.gamebook, done[i]),
             callback = function() self:loadChapter(i) end,
         }
     end
@@ -538,6 +566,15 @@ function PkStudyView:_lessonRefresh(prefix)
     local has_next_chapter = self.chapter_index < #self.study.chapters
     local parts = status
     if lesson.state == "end" then
+        -- a finished lesson marks its chapter done (once per lesson; a
+        -- chapter without moves is not "finished" by opening it)
+        if not lesson._marked_done and self.cursor.node ~= self.cursor.root then
+            lesson._marked_done = true
+            local file = PkDone.fileOf(self.study.path)
+            if file and self.progress and not PkDone.isChapterDone(self.progress, file, self.chapter_index) then
+                self:setChapterDone(true)
+            end
+        end
         local summary
         if lesson.mistakes == 0 and not lesson.used_help then
             summary = _("Lesson complete — perfect!")

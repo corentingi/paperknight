@@ -54,6 +54,12 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
 - **Done marks**: long-press a study in the Studies list, or ≡ → *Mark study
   as done*, to put a ✓ at the right of its name (again to remove it). Marks are
   kept in `progress.sqlite`, by file name.
+- **Chapter progress**: a finished lesson puts a ✓ next to its chapter in the
+  chapter list (≡ → *Mark chapter as done* does it by hand); when every
+  chapter is done the study gets its ✓ too (it stays until you remove it).
+  For studies with several chapters, the list starts with *▶ Continue*
+  once you have opened one: it reopens the last chapter you read. In the
+  study's own chapter menu, ▶ marks the chapter shown.
 - **Emojis** (common in Lichess studies): KOReader has no emoji font. Copy the
   monochrome Noto Emoji font (OFL; e.g. `NotoEmoji-Regular.ttf`) to
   `koreader/fonts/`: Paperknight adds it to the UI fallback fonts at startup

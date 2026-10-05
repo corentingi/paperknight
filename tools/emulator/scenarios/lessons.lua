@@ -5,6 +5,17 @@
 return function(h)
     local PkStudy = require("pkstudy")
     local PkStudies = require("pkstudies")
+    -- chapter marks are remembered in progress.sqlite: start clean
+    local DataStorage = require("datastorage")
+    local PkProgress = require("pkprogress")
+    local PkDone = require("pkdone")
+    local function withDb(fn)
+        local p = PkProgress.open(DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+        local r = fn(p)
+        p:close()
+        return r
+    end
+    withDb(function(p) p.conn:exec("DELETE FROM kv WHERE key LIKE 'setting.chapter_done:%' OR key LIKE 'setting.study_last:%'") end)
     local study = assert(PkStudy.open(os.getenv("PAPERKNIGHT_STUDIES_DIR") .. "/study.pgn"))
     local view
     local function panel() return view.panel_text end
@@ -41,6 +52,7 @@ return function(h)
     h.check(view.cursor.node.san == "Qxd8" and not view.board.locked, "Next played the reply")
     tapSquare("d1"); tapSquare("d8")
     h.check(panel():find("Lesson complete. Mistakes: 2 %(with hints or solutions%)"), "summary: " .. panel())
+    h.check(view.progress and PkDone.isChapterDone(view.progress, "study.pgn", 2), "finished lesson marks the chapter done")
     h.check(panel():find("^Correct!"), "status first: " .. panel())
     h.check(view.buttons:getButtonById("next").enabled, "Next offers the next chapter")
     h.check(panel():find("Back%-rank mate"), "final comment shown")
@@ -108,4 +120,31 @@ return function(h)
     h.check(view.lesson.state == "error" and panel():find("illegal move"), "error state: " .. panel())
     h.check(not view._reply_task and view.board.locked, "no timer loop, board locked")
     view:onClose()
+
+    -- chapter list: ✓ on the finished chapter, "Continue" opens the last one
+    local chapters = PkStudies.openStudy(os.getenv("PAPERKNIGHT_STUDIES_DIR") .. "/study.pgn")
+    h.wait(1)
+    local function item(text)
+        for _, w in ipairs(chapters.item_group) do
+            if w.text and (w.text:sub(1, #text) == text or (text == "Continue:" and w.text:find(text, 1, true))) then return w end
+        end
+    end
+    h.check(item("2. Mate in two") and item("2. Mate in two").mandatory == "lesson ✓", "✓ next to the finished lesson: "
+        .. tostring(item("2. Mate in two") and item("2. Mate in two").mandatory))
+    local cont = item("Continue:")
+    h.check(cont, "Continue entry")
+    h.shot("chapters-progress")
+    h.tapWidget(cont)
+    h.wait(1)
+    local last_view = require("ui/uimanager")._window_stack[#require("ui/uimanager")._window_stack].widget
+    h.check(last_view.name == "paperknight_study", "Continue opens a chapter: " .. tostring(last_view.name))
+    -- manual toggle from the ≡ menu, and back in the list
+    last_view:loadChapter(1)
+    last_view:setChapterDone(true)
+    h.check(PkDone.isChapterDone(last_view.progress, "study.pgn", 1), "chapter 1 marked by hand")
+    last_view:onClose()
+    h.wait(1)
+    h.check(item("1. Italian ideas").mandatory == "✓", "list updated: " .. tostring(item("1. Italian ideas").mandatory))
+    h.check(item("Continue:") and item("Continue:").text:find("Continue: 1.", 1, true), "Continue follows the last chapter opened")
+    require("ui/uimanager"):close(chapters)
 end
