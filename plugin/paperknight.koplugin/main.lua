@@ -122,6 +122,10 @@ function Paperknight:init()
     self.dimensions = Geometry:new{ w = self.full_width, h = self.full_height }
     self.covers_fullscreen = true -- Indicates this widget should cover the entire screen
 
+    -- emojis in studies render if a Noto Emoji font is installed
+    local ok, err = pcall(function() require("pkfonts").addEmojiFallback() end)
+    if not ok then Logger.warn("Paperknight: emoji font:", err) end
+
     -- Register a dispatcher action to allow starting Paperknight from elsewhere
     Dispatcher:registerAction("paperknight", {
         category = "none",

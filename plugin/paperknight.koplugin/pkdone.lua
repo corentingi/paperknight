@@ -1,7 +1,7 @@
 -- "Done" marks on studies (a ✓ in the Studies list), stored as settings in
 -- progress.sqlite: key "study_done:<file name>". `version` changes on every
 -- toggle so open lists know to redraw.
-local PkDone = { version = 0, MARK = "✓ " }
+local PkDone = { version = 0, MARK = "✓" }
 
 local function key(file) return "study_done:" .. file end
 

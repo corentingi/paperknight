@@ -52,8 +52,12 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
   the side trained in lessons; a running lesson restarts from the new side.
   After a finished lesson, *Next* opens the next chapter.
 - **Done marks**: long-press a study in the Studies list, or ≡ → *Mark study
-  as done*, to put a ✓ in front of its name (again to remove it). Marks are
+  as done*, to put a ✓ at the right of its name (again to remove it). Marks are
   kept in `progress.sqlite`, by file name.
+- **Emojis** (common in Lichess studies): KOReader has no emoji font. Copy the
+  monochrome Noto Emoji font (OFL; e.g. `NotoEmoji-Regular.ttf`) to
+  `koreader/fonts/`: Paperknight adds it to the UI fallback fonts at startup
+  (the color Noto Color Emoji cannot be drawn and is ignored).
 - E-ink: steps refresh the board/panel area; a full refresh happens on chapter
   change, on ⏮/⏭, at lesson start, and every 10 steps.
 - Text is shown with invalid UTF-8 replaced (older Latin-1 PGNs); files over

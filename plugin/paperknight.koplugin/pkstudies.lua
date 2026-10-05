@@ -133,7 +133,8 @@ local function listItems(dir, files)
     local done = withProgress(PkDone.doneSet) or {}
     for _i, file in ipairs(files) do
         items[#items + 1] = {
-            text = (done[file] and PkDone.MARK or "") .. util.fixUtf8((file:gsub("%.[Pp][Gg][Nn]$", "")), "?"),
+            text = util.fixUtf8((file:gsub("%.[Pp][Gg][Nn]$", "")), "?"),
+            mandatory = done[file] and PkDone.MARK or nil, -- ✓ on the far right
             _pk_file = file,
             callback = function() PkStudies.openStudy(dir .. "/" .. file) end,
         }
