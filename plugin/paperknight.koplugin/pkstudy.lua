@@ -212,6 +212,16 @@ function Cursor:onMainline(node)
     return true
 end
 
+local MOVE_MARKS = { [1] = "!", [2] = "?", [3] = "!!", [4] = "??", [5] = "!?", [6] = "?!" }
+
+--- The move mark of a node ("!!", "?"…) for the board badge, or nil.
+function PkStudy.moveMark(node)
+    for _, nag in ipairs(node and node.glyphs or {}) do
+        if MOVE_MARKS[nag] then return MOVE_MARKS[nag] end
+    end
+    return nil
+end
+
 --- "12. Nf3" / "12... Nf6" for a resolved node (standard SAN from pksan).
 function PkStudy.moveLabel(node, with_glyphs)
     if not node.parent then return "" end

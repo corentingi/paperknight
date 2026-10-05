@@ -56,6 +56,12 @@ return function(h)
     h.check(panel():find("^2%.%.%. Nc6"), "after 4 forwards: " .. panel())
     h.check(panel():find("3. Bc4!? (main)", 1, true) and panel():find("3. Bb5", 1, true), "alternatives listed: " .. panel())
     h.check(view.buttons:getButtonById("lines").enabled, "Lines enabled at a branch")
+    tapButton("forward") -- 3. Bc4!?
+    local badge = view.board.badge
+    h.check(badge and badge.square == "c4" and badge.text == "!?", "move-mark badge on c4: " .. tostring(badge and badge.text))
+    h.shot("study-badge")
+    tapButton("back")
+    h.check(view.board.badge == nil, "no badge on a move without a mark")
 
     tapButton("lines")
     h.wait(1)

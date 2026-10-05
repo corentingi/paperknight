@@ -144,6 +144,7 @@ function PkStudyView:toggleFlip()
         self.board:updateBoard()
         self.board:setHighlights({})
         self.board:setShapes(nil)
+        self.board:setBadge(nil)
         self.board.locked = true
     elseif self.lesson then
         self:startLesson()
@@ -265,6 +266,7 @@ function PkStudyView:loadChapter(index)
         self.board:updateBoard()
         self.board:setHighlights({})
         self.board:setShapes(nil)
+        self.board:setBadge(nil)
         self.board.locked = true
         self:_setButtons(self.browse_buttons)
         for _, id in ipairs({ "start", "back", "lines", "forward", "end", "train" }) do
@@ -338,6 +340,7 @@ function PkStudyView:refresh(prefix, full)
     -- move to find: hide shapes while it's the student's turn
     local hide_shapes = self.lesson and not self.lesson.variations_are_mistakes and self.lesson.state == "play"
     self.board:setShapes(not hide_shapes and node.shapes or nil)
+    self.board:setBadge(node.move and node.move.to, PkStudy.moveMark(node))
     self.board.locked = false
     self.title_bar:setSubTitle(T(_("%1 · Chapter %2/%3"), self.study.name, self.chapter_index, #self.study.chapters))
     if self.lesson then

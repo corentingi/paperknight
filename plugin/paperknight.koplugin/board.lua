@@ -307,9 +307,11 @@ end
 
 -- A single-square refresh (selection border) paints only that button and
 -- would erase shapes crossing it: repaint the whole board when shapes exist.
-function Board:_repaintShapes()
+-- (`square`: the repainted square; a badge is erased only if it is there)
+function Board:_repaintShapes(square)
     local shapes = self.shapes
-    if shapes and ((shapes.circles and #shapes.circles > 0) or (shapes.arrows and #shapes.arrows > 0)) then
+    local badge_hit = self.badge and self.badge.square == square
+    if badge_hit or (shapes and ((shapes.circles and #shapes.circles > 0) or (shapes.arrows and #shapes.arrows > 0))) then
         UIManager:setDirty(self.show_parent or self, "ui", self.dimen)
     end
 end
@@ -324,6 +326,39 @@ function Board:paintTo(bb, x, y)
     FrameContainer.paintTo(self, bb, x, y)
     self._shape_color = Board.paintColor(Board.palette().shape)
     if self.shapes then self:_paintShapes(bb) end
+    if self.badge then self:_paintBadge(bb) end
+end
+
+-- Paperknight: move-mark badge ("!!", "?"…) on a square, like Lichess. Good
+-- marks are a filled black disc with white text, bad ones a white disc with
+-- a black ring: told apart without colours on e-ink.
+local GOOD_MARKS = { ["!"] = true, ["!!"] = true, ["!?"] = true }
+
+--- Board:setBadge(square, text): shows `text` in the top-right corner of
+-- `square`; setBadge(nil) removes it. The caller repaints.
+function Board:setBadge(square, text)
+    self.badge = (square and text) and { square = square, text = text } or nil
+end
+
+function Board:_paintBadge(bb)
+    local r = self:_squareRect(self.badge.square)
+    if not r then return end
+    local d = math.floor(self.button_size * 0.42)
+    local bx, by = r.x + r.w - d, r.y
+    local good = GOOD_MARKS[self.badge.text]
+    local black, white = Board.paintColor(Blitbuffer.COLOR_BLACK), Board.paintColor(Blitbuffer.COLOR_WHITE)
+    bb:paintRoundedRect(bx, by, d, d, good and black or white, math.floor(d / 2))
+    if not good then
+        bb:paintBorder(bx, by, d, d, math.max(2, math.floor(d / 10)), black, math.floor(d / 2))
+    end
+    -- font sizes are scaled by screen DPI: convert the wanted pixel height
+    local px = d * 0.55
+    local face = Font:getFace("infont", math.max(6, math.floor(px * 1000 / Screen:scaleBySize(1000))))
+    local label = TextWidget:new{ text = self.badge.text, face = face, bold = true,
+                                  fgcolor = good and white or black }
+    local size = label:getSize()
+    label:paintTo(bb, bx + math.floor((d - size.w) / 2), by + math.floor((d - size.h) / 2))
+    label:free()
 end
 
 function Board:_squareRect(square)
@@ -478,7 +513,7 @@ function Board:markSelected(square)
     local button = self.table:getButtonById(id_result)
     button.frame.bordersize = Screen:scaleBySize(SELECTED_BORDER)
     button:refresh()
-    self:_repaintShapes()
+    self:_repaintShapes(square)
 end
 
 --- Board:unmarkSelected(square)
@@ -493,7 +528,7 @@ function Board:unmarkSelected(square)
     local button = self.table:getButtonById(id_result)
     button.frame.bordersize = 0
     button:refresh()
-    self:_repaintShapes()
+    self:_repaintShapes(square)
 end
 
 --- Board:placePiece(square, piece, color)

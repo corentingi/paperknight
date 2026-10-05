@@ -183,6 +183,7 @@ function PkDrillView:refresh(prefix, full)
     local node = drill.state ~= "done" and drill.cursor and drill.cursor.node or nil
     board:setHighlights(node and node.move and { node.move.from, node.move.to } or {})
     board:setShapes(nil)
+    board:setBadge(node and node.move and node.move.to, PkStudy.moveMark(node))
     local counts = drill:counts()
     self.title_bar:setSubTitle(T(_("Due: %1 · New today: %2"), counts.due, counts.new_today))
 
