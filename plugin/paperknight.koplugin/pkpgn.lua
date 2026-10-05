@@ -160,8 +160,9 @@ function PkPgn.isWrapped(movetext)
     return full >= 0.75 * (#lens - 1)
 end
 
+-- (not "12. Nf3": in wrapped movetext a numbered line is usually a move)
 local function startsItem(line)
-    return line:match("^[-*•–] ") or line:match("^%d+[.)] ")
+    return line:match("^[-*•–] ") ~= nil
 end
 
 --- Joins the single newlines of a wrapped comment (paragraphs and list

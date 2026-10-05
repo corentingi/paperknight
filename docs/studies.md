@@ -33,7 +33,7 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
 | `[%cal Ge2e4]` | Arrows: brush letter + from + to |
 | `[%clk …]`, `[%eval …]`, `[%emt …]` | Ignored (stripped) |
 | `!`, `?`, `!!`, `??`, `!?`, `?!`, `$1`–`$6` | Move glyphs, attached to the move (`Bc4!?`) |
-| `$7`, `$10`, `$13`–`$19`, `$22`, `$32`…`$146` | Position glyphs in ASCII/Latin-1 (`=`, `+=`, `±`, `+-`, `unclear`, `(counterplay)`, …) since e-reader fonts may lack chess symbols; other codes show as `$n` |
+| `$7`, `$10`, `$13`–`$19`, `$22`, `$32`…`$146` | Position glyphs: in words in the text panel ("White is slightly better"), compact ASCII/Latin-1 (`+=`, `±`, `+-`, …) in move lists; other codes show as `$n` |
 | `( … )` | Variations (nested to any depth) |
 
 ## Viewer
@@ -41,13 +41,23 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
 - Board (orientation from the chapter), last move tinted, circles drawn as a
   dark ring on the square, arrows drawn as thick dark lines with a head
   (brush colours are not distinguishable on e-ink; all shapes use one style).
-- Text panel: the current move (`12... Nf6!?`), its glyphs and comment; the
-  chapter intro at the start; a hint when the next move has alternatives.
+  The move's mark (`!`, `!!`, `!?` / `?`, `??`, `?!`) is a badge in the corner
+  of its square: a black disc for good marks, a white ringed disc for bad ones.
+- Text panel: the current move (`12... Nf6!?`), the position assessment in
+  words, then the comment; the chapter intro at the start; a hint when the
+  next move has alternatives.
+- Comments keep their line breaks (lists, short lines) as written on Lichess;
+  a PGN wrapped at 80 columns by a tool (every movetext line ≤ 80 characters
+  and filled) has its lines joined back into paragraphs.
+- Web addresses are shown short (`youtube.com ↗`). Tap one to see a QR code of
+  the full address (scan it with a phone), or use ≡ → *Links…*.
 - Navigation: ⏮ start · ◀ back · *Lines* · ▶ forward (follows the current
   line) · ⏭ end of line · *Train*. *Lines* chooses among the alternatives at
   the next move (main move first, then variations). Tapping on the board a
   move that exists as a child follows it; other moves are refused.
-- Title-bar menu (≡): *Chapters…* (chapter list) and *Flip board*. A flip is
+- Title-bar menu (≡): *Chapters…* (chapter list; • marks the chapter shown),
+  *Flip board*, *Links…* (when the panel has links), *Mark chapter as done*,
+  *Mark study as done*. A flip is
   remembered per study file and chapter (in `progress.sqlite`) and also sets
   the side trained in lessons; a running lesson restarts from the new side.
   After a finished lesson, *Next* opens the next chapter.
@@ -57,9 +67,13 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
 - **Chapter progress**: a finished lesson puts a ✓ next to its chapter in the
   chapter list (≡ → *Mark chapter as done* does it by hand); when every
   chapter is done the study gets its ✓ too (it stays until you remove it).
-  For studies with several chapters, the list starts with *▶ Continue*
-  once you have opened one: it reopens the last chapter you read. In the
-  study's own chapter menu, ▶ marks the chapter shown.
+  Chapters without moves (intros) don't count. Using *Solution* still
+  counts as finishing. For studies with several chapters, the list starts
+  with *▶ Continue* once you have opened one: it reopens the last chapter
+  you read.
+- Marks, flips and *Continue* are stored by **file name and chapter number**:
+  renaming a file loses them, and if a re-downloaded study gained chapters
+  in the middle, the marks of the later chapters shift.
 - **Emojis** (common in Lichess studies): KOReader has no emoji font. Copy the
   monochrome Noto Emoji font (OFL; e.g. `NotoEmoji-Regular.ttf`) to
   `koreader/fonts/`: Paperknight adds it to the UI fallback fonts at startup

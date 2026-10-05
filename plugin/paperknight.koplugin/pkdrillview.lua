@@ -211,7 +211,7 @@ function PkDrillView:refresh(prefix, full)
         end
     end
     if node and node.parent then
-        parts[#parts + 1] = PkStudy.moveLabel(node)
+        parts[#parts + 1] = PkStudy.moveLabel(node, "move")
         parts[#parts + 1] = PkPgn.positionWords(node.glyphs)
         if node.comment then parts[#parts + 1] = node.comment end
     end

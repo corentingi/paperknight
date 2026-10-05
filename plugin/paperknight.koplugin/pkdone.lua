@@ -52,14 +52,21 @@ function PkDone.isChapterDone(progress, file, i)
     return progress ~= nil and file ~= nil and progress:getSetting(chapterKey(file, i)) == "1"
 end
 
---- Marks chapter `i` done or not. With `n_chapters`, marking the last
--- remaining chapter also marks the whole study done; returns true then.
-function PkDone.setChapterDone(progress, file, i, done, n_chapters)
+--- Marks chapter `i` done or not. With `counted` (a list of the chapter
+-- indexes that count, e.g. those with moves; or a number n for 1..n),
+-- marking the last remaining one also marks the whole study done; returns
+-- true then.
+function PkDone.setChapterDone(progress, file, i, done, counted)
     progress:setSetting(chapterKey(file, i), done and "1" or nil)
     PkDone.version = PkDone.version + 1
-    if done and n_chapters then
+    if done and counted then
+        if type(counted) == "number" then
+            local list = {}
+            for c = 1, counted do list[c] = c end
+            counted = list
+        end
         local set = PkDone.chapterDoneSet(progress, file)
-        for c = 1, n_chapters do
+        for _, c in ipairs(counted) do
             if not set[c] then return false end
         end
         if not PkDone.isDone(progress, file) then

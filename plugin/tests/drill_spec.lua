@@ -188,6 +188,9 @@ return {
         t.ok(set[2] and set[10] and not set[1] and not set[3], "chapters 2 and 10 of the right file")
         t.eq(#p:settingKeys("rep_flip:♞"), 0, "no false matches")
         t.eq(PkDone.setChapterDone(p, "solo.pgn", 1, true, 1), true, "last chapter done marks the study done")
+        -- an intro chapter without moves (1) doesn't count
+        t.eq(PkDone.setChapterDone(p, "intro.pgn", 2, true, { 2, 3 }), false, "chapter 3 still to do")
+        t.eq(PkDone.setChapterDone(p, "intro.pgn", 3, true, { 2, 3 }), true, "done without the intro")
         t.ok(PkDone.isDone(p, "solo.pgn"), "study done")
         p:close(); os.remove(path)
     end },

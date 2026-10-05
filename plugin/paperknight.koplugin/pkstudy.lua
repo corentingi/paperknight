@@ -238,7 +238,8 @@ function PkStudy.moveLabel(node, with_glyphs)
             table.insert(nag <= 6 and move_g or pos_g, nag)
         end
         label = label .. PkPgn.glyphText(move_g):gsub(" ", "")
-        if #pos_g > 0 then label = label .. " " .. PkPgn.glyphText(pos_g) end
+        -- with_glyphs == "move": position marks are shown elsewhere (in words)
+        if #pos_g > 0 and with_glyphs ~= "move" then label = label .. " " .. PkPgn.glyphText(pos_g) end
     end
     return label
 end

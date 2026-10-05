@@ -305,7 +305,7 @@ function PkStudyView:_panelText()
     if node == self.cursor.root then
         parts[#parts + 1] = self.chapter.gamebook and _("Interactive lesson") or _("Start of the chapter")
     else
-        parts[#parts + 1] = PkStudy.moveLabel(node)
+        parts[#parts + 1] = PkStudy.moveLabel(node, "move")
         parts[#parts + 1] = PkPgn.positionWords(node.glyphs)
     end
     local children = node.children
@@ -455,7 +455,13 @@ end
 function PkStudyView:setChapterDone(done)
     local file = PkDone.fileOf(self.study.path)
     if not (file and self.progress) then return end
-    local ok, study_done = pcall(PkDone.setChapterDone, self.progress, file, self.chapter_index, done, #self.study.chapters)
+    -- chapters without moves (intros) can't be finished: they don't count
+    local counted = {}
+    for i in ipairs(self.study.chapters) do
+        local ok_tree, root = pcall(self.study.tree, self.study, i)
+        if ok_tree and #root.children > 0 then counted[#counted + 1] = i end
+    end
+    local ok, study_done = pcall(PkDone.setChapterDone, self.progress, file, self.chapter_index, done, counted)
     if not ok then
         logger.warn("Paperknight: cannot save the chapter mark:", study_done)
         return
@@ -470,8 +476,8 @@ function PkStudyView:showChapterMenu()
     local done = {}
     pcall(function() done = PkDone.chapterDoneSet(self.progress, PkDone.fileOf(self.study.path)) end)
     for i, ch in ipairs(self.study.chapters) do
-        local text = ch.title
-        if i == self.chapter_index then text = "▶ " .. text end -- the chapter shown
+        local text = T("%1. %2", i, util.fixUtf8(ch.title, "?"))
+        if i == self.chapter_index then text = "• " .. text end -- the chapter shown
         items[#items + 1] = {
             text = text,
             mandatory = PkDone.chapterInfo(ch.gamebook, done[i]),
@@ -596,7 +602,7 @@ function PkStudyView:_lessonRefresh(prefix)
         if self.waiting_next then parts[#parts + 1] = _("Tap Next to continue.") end
     end
     if node ~= self.cursor.root then
-        parts[#parts + 1] = PkStudy.moveLabel(node)
+        parts[#parts + 1] = PkStudy.moveLabel(node, "move")
         parts[#parts + 1] = PkPgn.positionWords(node.glyphs)
     end
     if node.comment then parts[#parts + 1] = node.comment end

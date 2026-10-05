@@ -40,6 +40,9 @@ played automatically; you play yours on the board.
 - *Next line* after a finished line; when nothing is due and today's new moves
   are learned, the session ends with a summary.
 
+The panel and board work as in studies: move-mark badges, position
+assessments in words, short links with a QR code (≡ → *Links…*).
+
 Positions reached by different move orders share their review (one card per
 position). If two lines of a file play different moves in the same position,
 the first one wins and the other line stops there.
