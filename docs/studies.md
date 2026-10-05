@@ -88,8 +88,12 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
   monochrome Noto Emoji font (OFL; e.g. `NotoEmoji-Regular.ttf`) to
   `koreader/fonts/`: Paperknight adds it to the UI fallback fonts at startup
   (the color Noto Color Emoji cannot be drawn and is ignored).
-- E-ink: steps refresh the board/panel area; a full refresh happens on chapter
-  change, on ⏮/⏭, at lesson start, and every 10 steps.
+- E-ink: like page turns in KOReader, steps use non-flickering "partial"
+  refreshes (the board-to-buttons area; the whole screen on a new chapter,
+  ⏮/⏭ or a lesson start), and KOReader flashes the screen once every N of
+  them, N being your *Screen → E-ink → Full refresh rate* setting ("Never"
+  works too; *Avoid flashing* is honoured). The openings drill and the
+  puzzles do the same.
 - Text is shown with invalid UTF-8 replaced (older Latin-1 PGNs); files over
   2 MB are refused (game databases are not studies).
 

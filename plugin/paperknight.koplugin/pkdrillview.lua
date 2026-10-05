@@ -22,12 +22,12 @@ local T = require("ffi/util").template
 local ChessBoard = require("pkboard")
 local PkLinks = require("pklinks")
 local PkPromotion = require("pkpromotion")
+local PkRefresh = require("pkrefresh")
 local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
 local PkText = require("pktext")
 
 local REPLY_DELAY = 0.8 -- seconds before the opponent's move
-local FULL_REFRESH_EVERY = 10
 
 local PkDrillView = InputContainer:extend{
     name = "paperknight_drill",
@@ -135,21 +135,11 @@ function PkDrillView:_setText(text)
     self.vgroup:resetLayout()
 end
 
--- Partial refresh below the title bar; full every FULL_REFRESH_EVERY steps.
-function PkDrillView:_redraw(full)
-    self._steps = (self._steps or 0) + 1
-    if full or self._steps >= FULL_REFRESH_EVERY then
-        self._steps = 0
-        UIManager:setDirty(self, "full")
-        return
-    end
-    local region
-    if self.board.dimen and self.buttons.dimen then
-        local top = self.board.dimen.y
-        region = Geometry:new{ x = 0, y = top, w = self.dimen.w,
-                               h = self.buttons.dimen.y + self.buttons.dimen.h - top }
-    end
-    UIManager:setDirty(self, "ui", region)
+-- The area below the title bar after a step, the whole view for a new line
+-- (`page`); see pkrefresh.lua.
+function PkDrillView:_redraw(page)
+    if page then return PkRefresh.page(self) end
+    PkRefresh.step(self, self.board, self.buttons)
 end
 
 local function sideName(color)

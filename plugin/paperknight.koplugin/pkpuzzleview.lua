@@ -21,6 +21,7 @@ local T = require("ffi/util").template
 local Chess = require("pkchess")
 local ChessBoard = require("pkboard")
 local PkPromotion = require("pkpromotion")
+local PkRefresh = require("pkrefresh")
 local PkPuzzle = require("pkpuzzle")
 local PkThemes = require("pkthemes")
 local Menu = require("ui/widget/menu")
@@ -142,7 +143,7 @@ end
 
 function PkPuzzleView:_setStatus(text)
     self.status:setText(text)
-    UIManager:setDirty(self, "ui")
+    PkRefresh.page(self) -- board and status (see pkrefresh.lua: no flicker)
 end
 
 local function sideName(color)
@@ -168,7 +169,7 @@ function PkPuzzleView:loadPuzzle(puzzle)
     self:_updateTitle()
     self:_setStatus(self:_toMoveText())
     logger.info("Paperknight: puzzle", puzzle.id, "rating", puzzle.rating)
-    UIManager:setDirty(self, "full") -- new position: full refresh clears e-ink ghosting
+    PkRefresh.page(self) -- new position (KOReader's full refresh rate applies)
 end
 
 function PkPuzzleView:_packHasTheme(theme)

@@ -30,14 +30,12 @@ local PkLesson = require("pklesson")
 local PkLinks = require("pklinks")
 local PkProgress = require("pkprogress")
 local PkPromotion = require("pkpromotion")
+local PkRefresh = require("pkrefresh")
 local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
 local PkText = require("pktext")
 
 local REPLY_DELAY = 0.8 -- seconds before the opponent's reply in a lesson
--- E-ink: partial refreshes of the board/panel area, and a full refresh every
--- FULL_REFRESH_EVERY steps (and on jumps) to clear ghosting.
-local FULL_REFRESH_EVERY = 10
 
 local PkStudyView = InputContainer:extend{
     name = "paperknight_study",
@@ -151,7 +149,7 @@ function PkStudyView:toggleFlip()
     else
         self:refresh(nil, true)
     end
-    UIManager:setDirty(self, "full")
+    PkRefresh.page(self)
 end
 
 function PkStudyView:_build()
@@ -232,22 +230,12 @@ function PkStudyView:_setText(text)
     self.vgroup:resetLayout()
 end
 
---- Schedules the screen update after a step. Partial ("ui") refresh of the
--- area below the title bar; "full" when forced or every FULL_REFRESH_EVERY steps.
-function PkStudyView:_redraw(full)
-    self._steps = (self._steps or 0) + 1
-    if full or self._steps >= FULL_REFRESH_EVERY then
-        self._steps = 0
-        UIManager:setDirty(self, "full")
-        return
-    end
-    local region
-    if self.board.dimen and self.buttons.dimen then
-        local top = self.board.dimen.y
-        region = Geometry:new{ x = 0, y = top, w = self.dimen.w,
-                               h = self.buttons.dimen.y + self.buttons.dimen.h - top }
-    end
-    UIManager:setDirty(self, "ui", region)
+--- Schedules the screen update after a step: the area below the title bar,
+-- or the whole view for a jump (`page`). See pkrefresh.lua (no flicker;
+-- KOReader's own full refresh rate applies).
+function PkStudyView:_redraw(page)
+    if page then return PkRefresh.page(self) end
+    PkRefresh.step(self, self.board, self.buttons)
 end
 
 --- Opens chapter `index` at its start position.
@@ -277,7 +265,7 @@ function PkStudyView:loadChapter(index)
         end
         self.title_bar:setTitle(util.fixUtf8(self.chapter.title, "?"))
         self:_setText(T(_("Cannot open this chapter: %1"), tostring(err)))
-        UIManager:setDirty(self, "full")
+        PkRefresh.page(self)
         return
     end
     for _, id in ipairs({ "start", "back", "forward", "end" }) do
@@ -294,8 +282,7 @@ function PkStudyView:loadChapter(index)
         self:_setButtons(self.browse_buttons)
         self:refresh()
     end
-    self._steps = 0
-    UIManager:setDirty(self, "full")
+    PkRefresh.page(self)
 end
 
 -- Text panel: current move (or intro), comment, then what comes next.

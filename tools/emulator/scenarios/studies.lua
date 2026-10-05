@@ -52,6 +52,15 @@ return function(h)
     h.check(view.board.shapes and #view.board.shapes.circles == 2, "intro circles set")
     h.shot("study-intro")
 
+    -- e-ink: browsing (steps and jumps) only asks for "partial" refreshes
+    -- of the view (no flicker; KOReader's full refresh rate applies)
+    local modes = {}
+    local setDirty = UIManager.setDirty
+    UIManager.setDirty = function(um, widget, mode, ...)
+        if widget == view and type(mode) == "string" then modes[#modes + 1] = mode end
+        return setDirty(um, widget, mode, ...)
+    end
+
     for _ = 1, 4 do tapButton("forward") end
     h.check(panel():find("^2%.%.%. Nc6"), "after 4 forwards: " .. panel())
     h.check(panel():find("3. Bc4!? (main)", 1, true) and panel():find("3. Bb5", 1, true), "alternatives listed: " .. panel())
@@ -90,6 +99,9 @@ return function(h)
 
     -- moves played on the board follow the study
     tapButton("start")
+    UIManager.setDirty = setDirty
+    h.check(#modes >= 6, "refreshes recorded: " .. #modes)
+    for _, m in ipairs(modes) do h.check(m == "partial", "browsing refresh: " .. m) end
     tapSquare("e2"); tapSquare("e4")
     h.check(panel():find("^1%. e4"), "board move followed the study: " .. panel())
     h.check(#view.board.shapes.arrows == 1, "e4 arrow shown")
