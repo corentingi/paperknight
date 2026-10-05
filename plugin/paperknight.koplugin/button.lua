@@ -10,6 +10,7 @@ local Size = require("ui/size")
 local TextBoxWidget = require("ui/widget/textboxwidget")
 local TextWidget = require("ui/widget/textwidget")
 local _ = require("gettext")
+local Screen = require("device").screen
 
 -- Paperknight: subclass instead of patching KOReader's global Button:init
 local Button = require("ui/widget/button"):extend{}
@@ -177,6 +178,19 @@ function Button:init()
     }
     if self.preselect then
         self.frame.invert = true
+    end
+    -- Paperknight: day_colors keeps the original look in night mode, like
+    -- KOReader does for images: night mode inverts the whole screen, so paint
+    -- inverted. Hooked on the frame because Button:refresh repaints it directly.
+    if self.day_colors then
+        local paint = self.frame.paintTo
+        self.frame.paintTo = function(frame, bb, x, y)
+            paint(frame, bb, x, y)
+            if Screen.night_mode then
+                local size = frame:getSize()
+                bb:invertRect(x, y, size.w, size.h)
+            end
+        end
     end
     self.dimen = self.frame:getSize()
     self[1] = self.frame

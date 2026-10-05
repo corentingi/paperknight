@@ -39,6 +39,7 @@ function PkPromotion.show(pawn_color, on_chosen)
             icon = PkIcons.pieces[PIECE[letter]][pawn_color],
             icon_width = icon_size,
             icon_height = icon_size,
+            day_colors = true, -- white pieces stay white in night mode
             id = "promote_" .. letter,
             callback = function()
                 UIManager:close(dialog)

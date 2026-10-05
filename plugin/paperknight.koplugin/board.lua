@@ -21,16 +21,31 @@ local SELECTED_BORDER = 5
 -- light squares are white and dark squares a light grey so pieces stay crisp.
 -- The last-move tint sits two levels from both (a border would be partly
 -- painted over by neighbouring squares in the ButtonTable).
-local LIGHT_SQUARE = Blitbuffer.COLOR_WHITE      -- 0xFF
-local DARK_SQUARE = Blitbuffer.COLOR_GRAY_B      -- 0xBB
-local HIGHLIGHT_COLOR = Blitbuffer.COLOR_GRAY_D  -- 0xDD
+-- Night mode (KOReader inverts the whole screen) gets its own palette: the
+-- squares are mid-dark greys, light enough for the black pieces. Values are
+-- what the panel shows: the board is painted with their inverse, and the piece
+-- sets are swapped (an inverted black piece shows as a white one; inverted
+-- white pieces give black ones a light outline that reads on dark squares).
+local PALETTES = {
+    day = {
+        light = Blitbuffer.COLOR_WHITE,        -- 0xFF
+        dark = Blitbuffer.COLOR_GRAY_B,        -- 0xBB
+        highlight = Blitbuffer.COLOR_GRAY_D,   -- 0xDD
+        -- study shapes ([%csl] circles, [%cal] arrows). Brush colours can't be
+        -- told apart on e-ink, so all shapes share one style (docs/studies.md).
+        shape = Blitbuffer.COLOR_GRAY_4,
+    },
+    night = {
+        light = Blitbuffer.Color8(0x66),
+        dark = Blitbuffer.Color8(0x44),
+        highlight = Blitbuffer.Color8(0x88),
+        shape = Blitbuffer.Color8(0xCC),
+    },
+}
 -- Thin frame around the squares, a bit darker than the dark squares, so the
 -- white edge squares don't blend into the page.
 local BOARD_BORDER_COLOR = Blitbuffer.COLOR_DARK_GRAY -- 0x88
 local BOARD_BORDER_SIZE = 2 -- scaled by screen DPI
--- Study shapes ([%csl] circles, [%cal] arrows). Brush colours can't be told
--- apart on e-ink, so all shapes share one dark style (docs/studies.md).
-local SHAPE_COLOR = Blitbuffer.COLOR_GRAY_4
 
 local PkIcons = require("pkicons")
 local icons = { empty = PkIcons.empty }
@@ -50,6 +65,17 @@ local Board = FrameContainer:extend{
     bordersize = 0,  -- Paperknight: the grey frame is drawn around the squares only
     background = Blitbuffer.COLOR_WHITE,
 }
+
+--- Board.palette(): colours for the current mode (night mode follows Screen),
+-- as the panel shows them.
+function Board.palette()
+    return Screen.night_mode and PALETTES.night or PALETTES.day
+end
+
+--- Board.paintColor(color): value to paint so the panel shows `color`.
+function Board.paintColor(color)
+    return Screen.night_mode and color:invert() or color
+end
 
 function Board:getSize()
     return Geom:new{ x = 0, y = 0, w = self.width, h = self.height }
@@ -162,12 +188,11 @@ function Board:createSquareButton(file, rank)
 end
 
 function Board:applySquareColors()
+    self._night = Screen.night_mode
     for rank = 0, BOARD_SIZE - 1 do
         for file = 0, BOARD_SIZE - 1 do
             local button = self.table:getButtonById(Board.toId(file, rank))
-            button.frame.background = ((file + rank) % 2 == 1)
-                and LIGHT_SQUARE
-                or DARK_SQUARE
+            button.frame.background = self:squareColor(string.char(97 + file) .. (rank + 1))
         end
     end
 end
@@ -290,7 +315,14 @@ function Board:_repaintShapes()
 end
 
 function Board:paintTo(bb, x, y)
+    -- night mode toggled since the last paint: switch palettes and piece sets
+    -- (no per-square refresh: the whole board is being painted)
+    if self._night ~= Screen.night_mode then
+        self:updateBoard(true)
+        self:applySquareColors()
+    end
     FrameContainer.paintTo(self, bb, x, y)
+    self._shape_color = Board.paintColor(Board.palette().shape)
     if self.shapes then self:_paintShapes(bb) end
 end
 
@@ -307,7 +339,7 @@ function Board:_paintShapes(bb)
         if r then
             local inset = math.floor(self.button_size / 12)
             local w = r.w - 2 * inset
-            bb:paintBorder(r.x + inset, r.y + inset, w, w, ring, SHAPE_COLOR, math.floor(w / 2))
+            bb:paintBorder(r.x + inset, r.y + inset, w, w, ring, self._shape_color, math.floor(w / 2))
         end
     end
     local thick = math.max(3, math.floor(self.button_size / 9))
@@ -331,7 +363,7 @@ function Board:_paintArrow(bb, x1, y1, x2, y2, thick)
     -- shaft: overlapping squares every half thickness (cheap on slow CPUs)
     local step = math.max(1, math.floor(half / 2))
     for i = 0, math.floor(len - head), step do
-        bb:paintRect(math.floor(x1 + ux * i) - half, math.floor(y1 + uy * i) - half, thick, thick, SHAPE_COLOR)
+        bb:paintRect(math.floor(x1 + ux * i) - half, math.floor(y1 + uy * i) - half, thick, thick, self._shape_color)
     end
     -- head: filled triangle, one horizontal span per scanline
     local px, py = -uy, ux
@@ -356,7 +388,7 @@ function Board:_fillTriangle(bb, ax, ay, bx, by, cx, cy)
         end
         if #xs == 2 then
             local x0, x1 = math.floor(math.min(xs[1], xs[2])), math.ceil(math.max(xs[1], xs[2]))
-            bb:paintRect(x0, y, x1 - x0 + 1, 1, SHAPE_COLOR)
+            bb:paintRect(x0, y, x1 - x0 + 1, 1, self._shape_color)
         end
     end
 end
@@ -374,10 +406,12 @@ function Board:setHighlights(squares)
     for sq in pairs(self.highlighted) do self:_applyBackground(sq) end
 end
 
---- Board:squareColor(square): background for a square, highlight included.
+--- Board:squareColor(square): background to paint for a square, highlight included.
 function Board:squareColor(square)
-    if self.highlighted and self.highlighted[square] then return HIGHLIGHT_COLOR end
-    return Board.positionToColor(square)
+    if self.highlighted and self.highlighted[square] then
+        return Board.paintColor(Board.palette().highlight)
+    end
+    return Board.paintColor(Board.positionToColor(square))
 end
 
 function Board:_applyBackground(square)
@@ -467,7 +501,9 @@ end
 -- @param square String, algebraic notation of the square.
 -- @param piece String, the piece type (e.g., Chess.PAWN, Chess.QUEEN) or nil to clear.
 -- @param color String, the piece color (Chess.WHITE or Chess.BLACK), only required if `piece` is not nil.
-function Board:placePiece(square, piece, color)
+function Board:placePiece(square, piece, color, no_refresh)
+    -- night mode inverts the screen: show the other set, inverted
+    if Screen.night_mode and color then color = (color == "w") and "b" or "w" end
     local icon = (piece and icons[piece] and icons[piece][color]) or icons.empty
     local id_result = Board.chessToId(square)
     if not id_result then
@@ -479,7 +515,7 @@ function Board:placePiece(square, piece, color)
     if button.icon == icon then return end
     button:setIcon(icon, self.button_size)
     button.frame.background = self:squareColor(square) -- Re-apply background color in case it was changed
-    button:refresh()
+    if not no_refresh then button:refresh() end
 end
 
 --- Board:updateSquare(square)
@@ -496,7 +532,7 @@ end
 
 --- Board:updateBoard()
 -- Refreshes the entire chess board display based on the current game state.
-function Board:updateBoard()
+function Board:updateBoard(no_refresh)
     logger.dbg("Chess: Update entire board")
     local board_fen = self.game.board() -- Get the current board state from the game logic
     for file_idx = 0, BOARD_SIZE - 1 do
@@ -508,9 +544,9 @@ function Board:updateBoard()
             local element = board_fen[BOARD_SIZE - rank_idx][file_idx + 1]
             local square = Board.idToPosition(Board.toId(file_idx, rank_idx))
             if element then
-                self:placePiece(square, element.type, element.color)
+                self:placePiece(square, element.type, element.color, no_refresh)
             else
-                self:placePiece(square) -- Clear the square if no piece
+                self:placePiece(square, nil, nil, no_refresh) -- Clear the square if no piece
             end
         end
     end
@@ -561,7 +597,7 @@ end
 --- Board.positionToColor(position)
 -- Determines the background color of a square based on its algebraic position.
 -- @param position String, algebraic notation (e.g., "e4").
--- @return LIGHT_SQUARE or DARK_SQUARE.
+-- @return the light or dark square colour of the current palette.
 function Board.positionToColor(position)
     if type(position) == "string" and #position == 2 then
         local file_char = position:sub(1, 1)
@@ -569,7 +605,8 @@ function Board.positionToColor(position)
         if 'a' <= file_char and file_char <= 'h' and '1' <= rank_char and rank_char <= '8' then
             local file_idx = string.byte(file_char) - string.byte('a')
             local rank_idx = tonumber(rank_char) - 1
-            return (file_idx + rank_idx) % 2 == 1 and LIGHT_SQUARE or DARK_SQUARE
+            local palette = Board.palette()
+            return (file_idx + rank_idx) % 2 == 1 and palette.light or palette.dark
         end
     end
     return nil -- Or a default color, depending on desired behavior for invalid input
