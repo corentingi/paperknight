@@ -20,3 +20,4 @@ Template: [`0000-template.md`](0000-template.md).
 | [0010](0010-puzzle-rating.md) | Local Elo-style puzzle rating in progress.sqlite | accepted |
 | [0011](0011-studies-from-pgn.md) | Studies are PGN files read on the device, parsed lazily | accepted |
 | [0012](0012-openings-trainer.md) | Openings trainer: repertoire PGNs, per-move cards, SM-2 | accepted |
+| [0013](0013-fast-san-resolver.md) | Dedicated SAN resolver for PGN moves; chess.lua for play | accepted |
