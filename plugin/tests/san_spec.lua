@@ -25,6 +25,7 @@ local function both(t, fen, san, where)
     if move and ref then
         t.eq(move.from .. move.to .. (move.promotion or ""), ref.from .. ref.to .. (ref.promotion or ""), where .. " " .. san)
         t.eq(after, game.fen(), where .. " FEN after " .. san)
+        t.eq(move.san, ref.san, where .. " standard SAN of " .. san)
     end
     return move, after
 end
@@ -71,6 +72,7 @@ return {
                         t.ok(move and move.from == m.from and move.to == m.to
                             and move.promotion == m.promotion, "game " .. gi .. " " .. m.san .. " in " .. fen)
                         t.eq(move and move.flags, m.flags, "flags of " .. m.san)
+                        t.eq(move and move.san, m.san, "SAN of " .. m.san)
                         game.move(m.san)
                         t.eq(after, game.fen(), "FEN after " .. m.san)
                         game.undo()
@@ -110,6 +112,11 @@ return {
         t.eq(m.from, "b1", "the free knight moves")
         local over = PkSan.play(pinned, "Nbd2")
         t.eq(over and over.from, "b1", "over-disambiguated SAN accepted (lenient)")
+        t.eq(over and over.san, "Nd2", "and written in standard form")
+        local long = PkSan.play(START, "Ng1f3")
+        t.eq(long and long.san, "Nf3", "long form normalised")
+        local nocheck = PkSan.play("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", "Ra8")
+        t.eq(nocheck and nocheck.san, "Ra8+", "missing check mark added")
         local rooks = "4k3/8/8/8/8/8/4K3/R6R w - - 0 1"
         t.ok(rejects(t, rooks, "Rd1", "two rooks"):find("ambiguous"), "ambiguity reported")
         t.eq(both(t, rooks, "Rad1", "file disambiguation").from, "a1", "a-rook")

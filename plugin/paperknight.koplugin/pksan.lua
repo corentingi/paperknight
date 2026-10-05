@@ -6,6 +6,9 @@
 --   local move, fen = PkSan.play(fen, "Nf3")   -- nil, error if illegal
 --   move = { from = "g1", to = "f3", promotion = nil|"q"…, piece = "n",
 --            color = "w"|"b", captured = nil|"p"…, flags = "n"…, san = "Nf3" }
+-- `san` is rewritten in standard form (minimal disambiguation, "x", "=Q",
+-- "+"), like chess.lua's; "#" is kept when the PGN wrote it (detecting mate
+-- would need the full move list).
 -- Conventions follow chess.lua: the en passant square is set after every
 -- double pawn push; `flags` uses chess.lua's letters (n c b e p k q, e.g.
 -- "np" / "cp" for promotions).
@@ -208,6 +211,14 @@ local function pieceOrigins(pos, t, to)
     return out
 end
 
+-- "+" if the side that just moved gives check; "#" if the PGN said mate.
+local function checkMark(pos, move, written)
+    local after = PkSan.apply(pos, move)
+    local k = kingSquare(after.board, after.turn)
+    if not (k and attacked(after.board, k, pos.turn)) then return "" end
+    return written:find("#", 1, true) and "#" or "+"
+end
+
 local function castle(pos, side, san)
     local color = pos.turn
     local r = (color == "w") and 0 or 7
@@ -226,8 +237,10 @@ local function castle(pos, side, san)
     for _, f in ipairs(crossing) do
         if attacked(pos.board, r * 8 + f, enemy) then return nil, "castling through check" end
     end
-    return { from = name(king_from), to = name(r * 8 + (side == "k" and 6 or 2)), piece = "k",
-             color = color, flags = side, san = san }
+    local move = { from = name(king_from), to = name(r * 8 + (side == "k" and 6 or 2)), piece = "k",
+                   color = color, flags = side }
+    move.san = (side == "k" and "O-O" or "O-O-O") .. checkMark(pos, move, san)
+    return move
 end
 
 --- Resolves `san` in position `pos`. Returns a move, or nil and an error.
@@ -279,11 +292,17 @@ function PkSan.resolve(pos, san)
         origins = pieceOrigins(pos, t, to)
     end
     local found
+    local others = {} -- other legal origins (for the disambiguation in SAN)
     for _, s in ipairs(origins) do
         local sf, sr = char(97 + s % 8), char(49 + math.floor(s / 8))
-        if (df == "" or df == sf) and (dr == "" or dr == sr) and legal(pos, s, to, ep_capture) then
-            if found then return nil, "ambiguous move " .. san end
-            found = s
+        local fits = (df == "" or df == sf) and (dr == "" or dr == sr)
+        if (fits or #origins > 1) and legal(pos, s, to, ep_capture) then
+            if fits then
+                if found then return nil, "ambiguous move " .. san end
+                found = s
+            else
+                others[#others + 1] = s
+            end
         end
     end
     if not found then return nil, "illegal move " .. san end
@@ -295,11 +314,36 @@ function PkSan.resolve(pos, san)
     else
         flags = (occupant and "c" or "n") .. (promo ~= "" and "p" or "")
     end
-    return {
+    local move = {
         from = name(found), to = target, piece = t, color = color,
         captured = occupant and typeOf(occupant) or (ep_capture and "p") or nil,
-        promotion = promo ~= "" and lower(promo) or nil, flags = flags, san = san,
+        promotion = promo ~= "" and lower(promo) or nil, flags = flags,
     }
+    -- standard SAN
+    local capture = move.captured ~= nil
+    local prefix
+    if t == "p" then
+        prefix = capture and sub(move.from, 1, 1) or ""
+    else
+        prefix = upper(t)
+        if #others > 0 then
+            local same_file, same_rank = false, false
+            for _, o in ipairs(others) do
+                if o % 8 == found % 8 then same_file = true end
+                if math.floor(o / 8) == math.floor(found / 8) then same_rank = true end
+            end
+            if not same_file then
+                prefix = prefix .. sub(move.from, 1, 1)
+            elseif not same_rank then
+                prefix = prefix .. sub(move.from, 2, 2)
+            else
+                prefix = prefix .. move.from
+            end
+        end
+    end
+    move.san = prefix .. (capture and "x" or "") .. target
+        .. (move.promotion and ("=" .. upper(move.promotion)) or "") .. checkMark(pos, move, san)
+    return move
 end
 
 local CORNER_RIGHT = { [0] = "Q", [7] = "K", [56] = "q", [63] = "k" }
@@ -338,9 +382,37 @@ function PkSan.apply(pos, move)
     }
 end
 
+-- Parsed positions by FEN (positions are never modified: apply copies). A
+-- tree walk resolves all children of a node in turn, and comes back to the
+-- node after each subtree: a small cache avoids re-parsing it each time.
+local CACHE_SIZE = 64
+local cache, cache_keys, cache_next = {}, {}, 1
+
+local function parsed(fen)
+    local pos = cache[fen]
+    if pos then return pos end
+    pos = PkSan.parseFen(fen)
+    if pos then
+        local old = cache_keys[cache_next]
+        if old then cache[old] = nil end
+        cache_keys[cache_next], cache[fen] = fen, pos
+        cache_next = cache_next % CACHE_SIZE + 1
+    end
+    return pos
+end
+
+--- Resolves `san` from a parsed position. Returns move, position after it,
+-- FEN after it; or nil, error. (Tree walks pass positions down.)
+function PkSan.playPos(pos, san)
+    local move, err = PkSan.resolve(pos, san)
+    if not move then return nil, err end
+    local after = PkSan.apply(pos, move)
+    return move, after, PkSan.toFen(after)
+end
+
 --- Resolves `san` from `fen`. Returns move, fen after it; or nil, error.
 function PkSan.play(fen, san)
-    local pos = PkSan.parseFen(fen)
+    local pos = parsed(fen)
     if not pos then return nil, "invalid FEN" end
     local move, err = PkSan.resolve(pos, san)
     if not move then return nil, err end

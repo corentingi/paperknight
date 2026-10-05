@@ -10,6 +10,9 @@
 -- If another line plays a different move in a position that already has a
 -- card, the first move met wins and that line stops before the other move.
 -- Lines end on a user move (trailing opponent moves are dropped).
+local PkSan = require("pksan")
+local PkStudy = require("pkstudy")
+
 local PkRepertoire = {}
 PkRepertoire.__index = PkRepertoire
 
@@ -72,53 +75,30 @@ local function turnOf(fen)
     return fen:match("^%S+%s+([wb])") or "w"
 end
 
---- Builds a repertoire from a PkStudy. `game` is a Chess instance used to
--- resolve moves (its position is changed). `orientation(i)` optionally overrides chapter i's side
+--- Builds a repertoire from a PkStudy. Moves are resolved with pksan
+-- (ADR-0013); `game` (a Chess instance) only validates chapter start FENs. `orientation(i)` optionally overrides chapter i's side
 -- ("white"/"black"), e.g. after a flip. Unresolvable moves end their line.
 function PkRepertoire.fromStudy(study, game, orientation)
     local self = setmetatable({ study = study, lines = {}, cards = {}, order = {}, conflicts = 0 }, PkRepertoire)
     self.name = study.path and study.path:match("([^/]+)$") or study.name
     for i, ch in ipairs(study.chapters) do
         local root = study:tree(i)
-        if game.load(root.fen) then
+        local pos = PkSan.parseFen(root.fen)
+        -- the drill shows positions with chess.lua: both must accept the FEN
+        if pos and (not game or game.load(root.fen)) then
             local side = (orientation and orientation(i)) or ch.orientation
             local student = (side == "black") and "b" or "w"
-            self:_walk(i, student, game, root, {})
+            self:_walk(i, student, root, pos, {})
         end
     end
     return self
 end
 
--- Resolves `child` (a move from the game's current position, which is its
--- parent's) and plays it on `game`. Same caching as PkStudy's Cursor:resolve,
--- but walking the tree with move/undo instead of reloading FENs (about 3x
--- faster: this walk visits every followed node of the repertoire).
-local function playChild(game, child)
-    if child.error then return false end
-    local move = game.move(child.move and { from = child.move.from, to = child.move.to,
-                                            promotion = child.move.promotion } or child.san)
-    if not move then
-        child.error = "illegal move " .. tostring(child.san)
-        return false
-    end
-    if not child.fen then
-        child.move = move
-        child.fen = game.fen()
-        child.ply = child.parent.ply + 1
-    end
-    return true
-end
-
-local function undo(game)
-    game.undo()
-    -- the plugin's undo keeps a redo stack: drop this internal entry
-    if game.redo_stack then table.remove(game.redo_stack) end
-end
-
-function PkRepertoire:_walk(chapter, student, game, node, path)
+-- `pos`: node's position parsed by pksan (passed down, never re-parsed).
+function PkRepertoire:_walk(chapter, student, node, pos, path)
     local followed = {}
     if node.children[1] then
-        if turnOf(node.fen) == student then
+        if pos.turn == student then
             followed[1] = node.children[1] -- the repertoire move
         else
             followed = node.children       -- every opponent reply
@@ -126,12 +106,12 @@ function PkRepertoire:_walk(chapter, student, game, node, path)
     end
     local any = false
     for _, child in ipairs(followed) do
-        if playChild(game, child) then
+        local ok, child_pos = PkStudy.resolveNode(child, pos)
+        if ok then
             any = true
             path[#path + 1] = child
-            self:_walk(chapter, student, game, child, path)
+            self:_walk(chapter, student, child, child_pos, path)
             path[#path] = nil
-            undo(game)
         end
     end
     if not any and #path > 0 then

@@ -1,7 +1,8 @@
 -- Study model (ADR-0011): chapters of a PGN file, and a cursor walking a
--- chapter's move tree. SAN is resolved with the rules engine only along the
+-- chapter's move tree. SAN is resolved (pksan, ADR-0013) only along the
 -- path the user visits; each visited node caches its move and FEN.
 local PkPgn = require("pkpgn")
+local PkSan = require("pksan")
 
 local START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
@@ -39,9 +40,15 @@ function PkStudy.fromText(text, fallback_name)
         ch.title = PkStudy.chapterTitle(tags, i, self.name)
         ch.gamebook = tags.ChapterMode == "gamebook"
         ch.start_fen = (known(tags.FEN)) or START_FEN
-        -- some tools write 4-field FENs: add halfmove/fullmove counters
-        local n_fields = select(2, ch.start_fen:gsub("%S+", ""))
-        if n_fields == 4 then ch.start_fen = ch.start_fen .. " 0 1" end
+        -- some tools write 4- or 5-field FENs, or a move number 0: repair the
+        -- counters so both pksan and chess.lua accept the position
+        local f = {}
+        for part in ch.start_fen:gmatch("%S+") do f[#f + 1] = part end
+        if #f >= 4 then
+            f[5] = tonumber(f[5]) and f[5] or "0"
+            f[6] = (tonumber(f[6]) or 0) >= 1 and f[6] or "1"
+            ch.start_fen = table.concat(f, " ", 1, 6)
+        end
         local turn = ch.start_fen:match("^%S+%s+([wb])") or "w"
         local orientation = tags.Orientation and tags.Orientation:lower()
         if orientation ~= "white" and orientation ~= "black" then
@@ -106,32 +113,34 @@ function PkStudy:cursor(i, game)
     return c
 end
 
+--- Resolves a node's SAN against its parent's position (cached in the
+-- node: move, fen, ply). Returns true, or false if the SAN is illegal there.
+-- Pure: no game object is involved (pksan, ADR-0013).
+-- `parent_pos` (optional): the parent's position parsed by pksan, so a tree
+-- walk need not re-parse FENs; the child's position is then returned too.
+function PkStudy.resolveNode(child, parent_pos)
+    if child.fen then return true, parent_pos and PkSan.parseFen(child.fen) end
+    if child.error then return false end
+    local parent = child.parent
+    if not parent.fen and not PkStudy.resolveNode(parent) then return false end
+    local move, pos, fen
+    if parent_pos then
+        move, pos, fen = PkSan.playPos(parent_pos, child.san)
+    else
+        move, fen = PkSan.play(parent.fen, child.san)
+    end
+    if move then
+        child.move, child.fen, child.ply = move, fen, parent.ply + 1
+        return true, pos
+    end
+    child.error = "illegal move " .. tostring(child.san)
+    return false
+end
+
 --- Resolves a child's SAN against its parent's position (cached).
 -- Returns true, or false if the SAN is illegal there.
 function Cursor:resolve(child)
-    if child.fen then return true end
-    if child.error then return false end
-    local parent = child.parent
-    if not parent.fen and not self:resolve(parent) then return false end
-    -- the game normally sits on self.node: only reload for other parents
-    local at_parent = (parent == self.node)
-    if not at_parent then self.game.load(parent.fen) end
-    local move = self.game.move(child.san)
-    if move then
-        child.move = move
-        child.fen = self.game.fen()
-        child.ply = parent.ply + 1
-    else
-        child.error = "illegal move " .. tostring(child.san)
-    end
-    if at_parent and move then
-        self.game.undo()
-        -- the plugin's undo keeps a redo stack: drop this internal entry
-        if self.game.redo_stack then table.remove(self.game.redo_stack) end
-    elseif not at_parent then
-        self.game.load(self.node.fen)
-    end
-    return move ~= nil
+    return PkStudy.resolveNode(child)
 end
 
 function Cursor:_goto(node)
@@ -158,17 +167,11 @@ function Cursor:toStart()
 end
 
 --- Follows the current line (first children) to its end or first bad move.
--- Resolves step by step and loads the board once at the end.
+-- Loads the board once at the end.
 function Cursor:toEnd()
     local node = self.node
-    while node.children[1] do
-        local child = node.children[1]
-        if not child.fen then
-            self.game.load(node.fen)
-            self.node = node -- resolve() works relative to the game's position
-            if not self:resolve(child) then break end
-        end
-        node = child
+    while node.children[1] and self:resolve(node.children[1]) do
+        node = node.children[1]
     end
     return self:_goto(node)
 end
@@ -209,7 +212,7 @@ function Cursor:onMainline(node)
     return true
 end
 
---- "12. Nf3" / "12... Nf6" for a resolved node (SAN from the rules engine).
+--- "12. Nf3" / "12... Nf6" for a resolved node (standard SAN from pksan).
 function PkStudy.moveLabel(node, with_glyphs)
     if not node.parent then return "" end
     local san = node.move and node.move.san or node.san

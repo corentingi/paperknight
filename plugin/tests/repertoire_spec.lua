@@ -70,4 +70,13 @@ return {
         t.eq(#bad.lines, 1, "line ends at the illegal move")
         t.eq(sans(bad.lines[1]), "e4", "up to the last user move (trailing replies dropped)")
     end },
+    { "start FENs: counters repaired so both engines accept the chapter", function(t)
+        local s = PkStudy.fromText('[Event "a"]\n[FEN "4k3/8/8/8/8/8/4P3/4K3 w - - 0 0"]\n\n1. e4 Kd7 *\n\n'
+            .. '[Event "b"]\n[FEN "4k3/8/8/8/8/8/4P3/4K3 w - - 3"]\n\n1. e4 *\n')
+        t.eq(s.chapters[1].start_fen, "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1", "move number 0 → 1")
+        t.eq(s.chapters[2].start_fen, "4k3/8/8/8/8/8/4P3/4K3 w - - 3 1", "5-field FEN completed")
+        local r = PkRepertoire.fromStudy(s, Chess:new())
+        t.eq(#r.lines, 2, "both chapters drillable")
+        t.ok(s:cursor(1, Chess:new()), "chess.lua accepts the repaired FEN")
+    end },
 }
