@@ -59,5 +59,11 @@ chess.lua's letters.
 - A rules bug could make pksan accept or reject a move differently from
   chess.lua: the oracle specs are the guard; any mismatch found on a real
   PGN becomes a fixture.
-- An on-device cache of resolved repertoires (iteration after) removes even
-  this cost on later sessions.
+- An on-device cache of resolved repertoires removes even this cost on
+  later sessions (`pkrescache.lua`; in `settings/paperknight/cache/`, keyed
+  by file name + modification time + size + `PkSan.VERSION` (bump it when
+  pksan's output changes), each chapter's start FEN and each line's SAN
+  checked against the PGN so a mismatched file is refused whole). Measured on the 8
+  shipped repertoires (desktop): 1.07 s cold, 0.33 s with resolved moves
+  cached (PGN parsing is most of what remains); the list uses a cached
+  summary and reads no PGN.

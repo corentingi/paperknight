@@ -16,6 +16,10 @@ local PkStudy = require("pkstudy")
 local PkRepertoire = {}
 PkRepertoire.__index = PkRepertoire
 
+-- Bump when cards, keys or lines change: it invalidates the cached list
+-- summaries (pkopenings.lua).
+PkRepertoire.VERSION = 1
+
 local function fields(fen)
     local f = {}
     for part in fen:gmatch("%S+") do f[#f + 1] = part end
@@ -83,8 +87,8 @@ function PkRepertoire.fromStudy(study, game, orientation)
     self.name = study.path and study.path:match("([^/]+)$") or study.name
     for i, ch in ipairs(study.chapters) do
         local root = study:tree(i)
-        local pos = PkSan.parseFen(root.fen)
         -- the drill shows positions with chess.lua: both must accept the FEN
+        local pos = PkSan.parseFen(root.fen)
         if pos and (not game or game.load(root.fen)) then
             local side = (orientation and orientation(i)) or ch.orientation
             local student = (side == "black") and "b" or "w"
@@ -94,11 +98,12 @@ function PkRepertoire.fromStudy(study, game, orientation)
     return self
 end
 
--- `pos`: node's position parsed by pksan (passed down, never re-parsed).
+-- `pos`: node's position parsed by pksan, or nil when not needed yet (its
+-- children already resolved, e.g. from PkResCache): parsed only to resolve.
 function PkRepertoire:_walk(chapter, student, node, pos, path)
     local followed = {}
     if node.children[1] then
-        if pos.turn == student then
+        if turnOf(node.fen) == student then
             followed[1] = node.children[1] -- the repertoire move
         else
             followed = node.children       -- every opponent reply
@@ -106,7 +111,13 @@ function PkRepertoire:_walk(chapter, student, node, pos, path)
     end
     local any = false
     for _, child in ipairs(followed) do
-        local ok, child_pos = PkStudy.resolveNode(child, pos)
+        local ok, child_pos
+        if child.fen then
+            ok = true
+        else
+            pos = pos or PkSan.parseFen(node.fen)
+            ok, child_pos = PkStudy.resolveNode(child, pos)
+        end
         if ok then
             any = true
             path[#path + 1] = child

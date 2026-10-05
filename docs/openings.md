@@ -24,6 +24,15 @@ Copy the `.pgn` to the folder (USB, or `wget`/`curl` from kterm), then open
 Each repertoire shows `N due · M new`: moves to review today and new moves
 you can still learn today (10 per day and per repertoire).
 
+Reading a repertoire takes seconds on an e-reader (every move is checked).
+The first time, the list says *Loading repertoires…*; the result is cached
+in `koreader/settings/paperknight/cache/` (per file: the list summary,
+`.sum`, and the checked moves, `.res`). Later the list opens without
+reading the files, and opening a repertoire skips the move checks. A file
+that changes (date or size) is read again, and so is every file after an
+update that changes how moves are checked; the cache folder can be deleted
+at any time.
+
 ## A session
 
 The trainer plays lines from the chapter's start (the initial position, or

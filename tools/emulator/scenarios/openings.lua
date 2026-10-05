@@ -20,11 +20,25 @@ return function(h)
     progress:close()
 
     local PkOpenings = require("pkopenings")
+    local lfs = require("libs/libkoreader-lfs")
+    local cache = PkOpenings.cacheDir()
+    os.remove(cache .. "/repertoire.pgn.sum"); os.remove(cache .. "/repertoire.pgn.res")
+    PkOpenings._clearMemory()
     local list = PkOpenings.show()
     h.wait(1)
     local item = menuItem(list, "repertoire")
     h.check(item, "repertoire listed")
     h.check(item.mandatory == "0 due · 10 new", "counts: " .. tostring(item.mandatory))
+    -- the on-disk cache: after a restart the list is built without parsing
+    h.check(lfs.attributes(cache .. "/repertoire.pgn.sum", "size"), "summary cached")
+    h.check(lfs.attributes(cache .. "/repertoire.pgn.res", "size"), "resolved moves cached")
+    PkOpenings._clearMemory()
+    local dir = os.getenv("PAPERKNIGHT_REPERTOIRES_DIR")
+    h.check(not PkOpenings.needsParse(dir .. "/repertoire.pgn"), "no parse after a restart")
+    PkOpenings.refreshList()
+    item = menuItem(list, "repertoire")
+    h.check(item.mandatory == "0 due · 10 new", "same counts from the cache: " .. tostring(item.mandatory))
+    PkOpenings._clearMemory() -- the drill below starts from the .res cache
     h.shot("openings-list")
     h.tapWidget(item)
     h.wait(1)
@@ -92,7 +106,6 @@ return function(h)
 
     -- 4. a Black repertoire: flipped board, the opponent moves first; hint,
     -- relearning and the end-of-session summary; closing with a reply pending
-    local lfs = require("libs/libkoreader-lfs")
     local tmp = DataStorage:getSettingsDir() .. "/pk-e2e-repertoires"
     lfs.mkdir(tmp)
     local f = assert(io.open(tmp .. "/black.pgn", "w"))

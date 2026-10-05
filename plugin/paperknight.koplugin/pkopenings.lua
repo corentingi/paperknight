@@ -17,6 +17,8 @@ local PkDrill = require("pkdrill")
 local PkDrillView = require("pkdrillview")
 local PkProgress = require("pkprogress")
 local PkRepertoire = require("pkrepertoire")
+local PkResCache = require("pkrescache")
+local PkSan = require("pksan")
 local PkSrs = require("pksrs")
 local PkStudies = require("pkstudies")
 local PkStudy = require("pkstudy")
@@ -82,6 +84,67 @@ local function flipStamp(set)
     return table.concat(list, ",")
 end
 
+-- On-disk cache (objective 20), in <settings>/paperknight/cache: per file,
+-- its resolved moves (keyed by the file stamp, see pkrescache.lua) and the
+-- list summary (keyed by the file stamp and flips). Stale or unreadable
+-- files are ignored and rewritten.
+local cache_dir
+function PkOpenings.cacheDir()
+    local dir = DataStorage:getSettingsDir() .. "/paperknight/cache"
+    if cache_dir == dir then return dir end
+    cache_dir = dir
+    if lfs.attributes(dir, "mode") ~= "directory" then
+        lfs.mkdir(DataStorage:getSettingsDir() .. "/paperknight")
+        lfs.mkdir(dir)
+    end
+    return dir
+end
+
+local function cachePath(file, ext)
+    -- percent-encoded: distinct names never share a cache file
+    local name = file:gsub("[^%w%-_.]", function(c) return string.format("%%%02X", c:byte()) end)
+    return PkOpenings.cacheDir() .. "/" .. name .. ext
+end
+
+local SUMMARY_VERSION = "pksum 1." .. PkRepertoire.VERSION .. "." .. PkSan.VERSION
+
+local function writeSummary(file, stamp, summary)
+    local out = { SUMMARY_VERSION .. " " .. file .. "|" .. stamp, tostring(#summary.order), summary.name or "" }
+    for _, key in ipairs(summary.order) do out[#out + 1] = key .. "\t" .. summary.cards[key].uci end
+    out[#out + 1] = ""
+    local ok, err = PkResCache.write(cachePath(file, ".sum"), table.concat(out, "\n"))
+    if not ok then logger.warn("Paperknight: cannot write the repertoire cache:", err) end
+end
+
+local function readSummary(file, stamp)
+    local text = PkResCache.read(cachePath(file, ".sum"))
+    if not text then return nil end
+    local lines = {}
+    for line in text:gmatch("([^\n]*)\n") do lines[#lines + 1] = line end
+    if lines[1] ~= SUMMARY_VERSION .. " " .. file .. "|" .. stamp then return nil end
+    if tonumber(lines[2]) ~= #lines - 3 then return nil end -- truncated
+    local summary = { name = lines[3], order = {}, cards = {} }
+    for k = 4, #lines do
+        local key, uci = lines[k]:match("^([^\t]+)\t(%w+)$")
+        if not key or summary.cards[key] then return nil end
+        summary.order[#summary.order + 1] = key
+        summary.cards[key] = { uci = uci }
+    end
+    return summary
+end
+
+-- Summary from memory or disk for this stamp (memoized), or nil.
+local function knownSummary(path, file, stamp)
+    local hit = summaries[path]
+    if hit and hit.stamp == stamp then return hit end
+    local ok, summary = pcall(readSummary, file, stamp)
+    if ok and summary then
+        summaries[path] = { stamp = stamp, summary = summary }
+        return summaries[path]
+    end
+    return nil
+end
+
 --- Loads a repertoire file. Returns rep (or its summary { name, order,
 -- cards } when `summary_only`), or nil and an error message.
 function PkOpenings.load(path, progress, summary_only)
@@ -92,30 +155,54 @@ function PkOpenings.load(path, progress, summary_only)
     if full and full.path == path and full.stamp == stamp then
         return summary_only and summaries[path].summary or full.rep
     end
-    local hit = summaries[path]
-    if summary_only and hit and hit.stamp == stamp then return hit.summary, hit.err end
-    local rep, err = PkOpenings._load(path, size, set)
+    if summary_only then
+        local hit = knownSummary(path, file, stamp)
+        if hit then return hit.summary, hit.err end
+    end
+    local rep, err = PkOpenings._load(path, size, set, fstamp)
     local summary
     if rep then
         local cards = {}
         for key, c in pairs(rep.cards) do cards[key] = { uci = c.uci } end
         summary = { name = rep.name, order = rep.order, cards = cards }
         full = { path = path, stamp = stamp, rep = rep }
+        local hit = summaries[path]
+        if not (hit and hit.stamp == stamp and hit.summary) then writeSummary(file, stamp, summary) end
     end
     summaries[path] = { stamp = stamp, summary = summary, err = err }
     if summary_only then return summary, err end
     return rep, err
 end
 
+--- Forgets the in-memory caches (tests: as after a restart).
+function PkOpenings._clearMemory()
+    summaries, full = {}, nil
+end
+
 --- True if loading `path` would parse it (used to show a loading message).
 function PkOpenings.needsParse(path, progress)
     local file = path:match("([^/]+)$") or path
     local stamp = fileStamp(path) .. "|" .. flipStamp(flips(progress, file))
-    local hit = summaries[path]
-    return not (hit and hit.stamp == stamp)
+    return knownSummary(path, file, stamp) == nil
 end
 
-function PkOpenings._load(path, size, flipped)
+-- Applies the resolved-moves cache to `study`; after building the
+-- repertoire, saves it again if more moves were resolved.
+local function withResCache(study, fstamp, build)
+    local file = study.path:match("([^/]+)$") or study.path
+    local res_path, key = cachePath(file, ".res"), file .. "|" .. fstamp
+    local ok, applied = pcall(function() return PkResCache.apply(study, PkResCache.read(res_path), key) end)
+    applied = ok and applied or 0
+    local result = { build() }
+    local d_ok, text, resolved = pcall(PkResCache.dump, study, key)
+    if d_ok and resolved > applied then
+        local w_ok, err = PkResCache.write(res_path, text)
+        if not w_ok then logger.warn("Paperknight: cannot write the repertoire cache:", err) end
+    end
+    return unpack(result)
+end
+
+function PkOpenings._load(path, size, flipped, fstamp)
     if size and size > MAX_BYTES then
         return nil, T(_("too large for a repertoire (%1 MB, limit 2 MB)"), string.format("%.1f", size / 1048576))
     end
@@ -126,7 +213,9 @@ function PkOpenings._load(path, size, flipped)
         if not flipped or not flipped[i] then return nil end
         return study.chapters[i].orientation == "black" and "white" or "black"
     end
-    local rep_ok, rep = pcall(PkRepertoire.fromStudy, study, Chess:new(), orientation)
+    local rep_ok, rep = withResCache(study, fstamp or fileStamp(path), function()
+        return pcall(PkRepertoire.fromStudy, study, Chess:new(), orientation)
+    end)
     if not rep_ok then return nil, tostring(rep) end
     if #rep.lines == 0 then return nil, _("no moves to train for the side of each chapter") end
     return rep

@@ -19,6 +19,10 @@
 -- (castling needs the rook on its square) and allows kingless diagrams.
 local PkSan = {}
 
+-- Bump when the output changes (moves, FENs, SAN, legality): it
+-- invalidates the resolved-moves caches (pkrescache.lua).
+PkSan.VERSION = 1
+
 local byte, char, sub, upper, lower = string.byte, string.char, string.sub, string.upper, string.lower
 
 -- Squares are 0..63: index = rank0 * 8 + file0 (a1 = 0, h1 = 7, a8 = 56).
