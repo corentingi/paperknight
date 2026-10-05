@@ -22,6 +22,19 @@ CREATE TABLE IF NOT EXISTS attempts (
     rating_after  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS attempts_puzzle_ts ON attempts (puzzle_id, ts);
+CREATE TABLE IF NOT EXISTS rep_cards (
+    rep        TEXT NOT NULL,     -- repertoire file name
+    fen        TEXT NOT NULL,     -- normalized FEN (pkrepertoire)
+    move       TEXT NOT NULL,     -- expected move (UCI)
+    due        INTEGER NOT NULL,  -- day number (pksrs)
+    interval   INTEGER NOT NULL,
+    ease       REAL NOT NULL,
+    reps       INTEGER NOT NULL,
+    lapses     INTEGER NOT NULL,
+    last       INTEGER NOT NULL,  -- timestamp
+    introduced INTEGER NOT NULL,  -- day number
+    PRIMARY KEY (rep, fen)
+);
 ]]
 
 --- Pure rating update. Returns the new rating (integer).
@@ -102,6 +115,44 @@ function PkProgress:record(result)
     end
     self.conn:exec("COMMIT")
     return before, after
+end
+
+----------------------------------------------------------------------------
+-- Repertoire cards (ADR-0012)
+----------------------------------------------------------------------------
+
+--- Stored cards of repertoire `rep`: fen -> { move, due, interval, ease, reps,
+-- lapses, last, introduced } (never-seen cards are absent).
+function PkProgress:loadCards(rep)
+    local cards = {}
+    local stmt = self.conn:prepare("SELECT fen, move, due, interval, ease, reps, lapses, last, introduced"
+        .. " FROM rep_cards WHERE rep = ?")
+    stmt:reset():bind(rep)
+    for row in stmt:rows() do
+        cards[row[1]] = {
+            move = row[2], due = tonumber(row[3]), interval = tonumber(row[4]), ease = tonumber(row[5]),
+            reps = tonumber(row[6]), lapses = tonumber(row[7]), last = tonumber(row[8]),
+            introduced = tonumber(row[9]),
+        }
+    end
+    stmt:close()
+    return cards
+end
+
+--- Saves the state of one card (an introduced or reviewed card).
+function PkProgress:saveCard(rep, fen, move, card)
+    local stmt = self.conn:prepare("INSERT OR REPLACE INTO rep_cards VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    stmt:reset():bind(rep, fen, move, card.due, card.interval, card.ease, card.reps, card.lapses,
+        card.last, card.introduced or card.due):step()
+    stmt:close()
+end
+
+--- Number of cards of `rep` introduced on day `day` (daily new-card cap).
+function PkProgress:introducedOn(rep, day)
+    local stmt = self.conn:prepare("SELECT count(*) FROM rep_cards WHERE rep = ? AND introduced = ?")
+    local row = stmt:reset():bind(rep, day):step()
+    stmt:close()
+    return tonumber(row[1])
 end
 
 function PkProgress:close()
