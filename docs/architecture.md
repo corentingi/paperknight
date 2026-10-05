@@ -39,8 +39,11 @@ Paperknight modules (prefixed `pk` to avoid `package.loaded` clashes, ADR-0009):
 |---|---|
 | `pkpuzzleview.lua` | Puzzle screen: board, status line, Hint / Solution / Retry / Next |
 | `pkpuzzle.lua` | Puzzle session state machine (pure logic, unit-tested) |
+| `pkpuzzlereview.lua` | Missed-puzzle review ladder (pure logic, ADR-0014) |
+| `pkrefresh.lua` | E-ink refresh policy of the board screens ("partial", like page turns) |
+| `pkrescache.lua` | On-device cache of resolved repertoire moves (ADR-0013) |
 | `pkpuzzlepack.lua` | Read-only access to `puzzles.sqlite` (indexed random picks) |
-| `pkprogress.lua` | User rating + attempt history in `progress.sqlite` (ADR-0010) |
+| `pkprogress.lua` | `progress.sqlite`: rating + attempts (ADR-0010), puzzle reviews (ADR-0014), repertoire cards, settings |
 | `pkpromotion.lua` | Promotion piece chooser shared by both screens |
 | `pkicons.lua` | Absolute paths of the piece icons inside the plugin folder |
 | `pkthemes.lua` | Puzzle theme labels and menu order |

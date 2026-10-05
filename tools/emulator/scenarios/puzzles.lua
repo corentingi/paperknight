@@ -49,6 +49,11 @@ return function(h)
     h.check(view.progress:attemptCount() == 1, "attempt recorded")
     h.check(view.progress:rating() < 1200, "failed attempt lowers rating: " .. view.progress:rating())
     h.check(status():find("Solved, after a mistake") and status():find("Rating 1200"), "status: " .. status())
+    h.check(status():find("come back tomorrow", 1, true), "review announced: " .. status())
+    local PkSrs = require("pksrs")
+    local today = PkSrs.today()
+    local card = view.progress:getReview("004JD")
+    h.check(card and card.due == today + 1 and card.step == 0, "missed puzzle scheduled for tomorrow")
     h.shot("puzzle-1-solved")
 
     -- 2. Mate in two for White: correct move, opponent replies, finishing move.
@@ -187,5 +192,52 @@ return function(h)
     h.check(status():find("invalid move", 1, true), "status: " .. status())
     view.progress.record = record
     h.check(view:nextPuzzle() and view.session, "Next works after a broken puzzle")
+
+    -- 7. Reviews of missed puzzles (ADR-0014): served first when due, no
+    -- rating change; clean solve -> 3 days; 4th clean solve -> mastered;
+    -- a miss -> tomorrow again; an untouched review is not served twice.
+    local function makeDue(step, lapses)
+        -- as in a new session (a review is shown once per session)
+        view._skipped, view.review = {}, nil
+        local c = view.progress:getReview("004JD") or { missed = os.time() }
+        view.progress:saveReview("004JD", { step = step, due = today, lapses = lapses or 0, missed = c.missed })
+    end
+    view:setTheme(nil)
+    makeDue(0)
+    h.check(view:nextPuzzle() and view.puzzle.id == "004JD" and view.review, "due review served first")
+    h.check(status():find("Review: you missed this puzzle", 1, true), "review status: " .. status())
+    h.check(view.title_bar.subtitle_widget.text:find("Reviews: 1", 1, true), "due count in the subtitle: "
+        .. view.title_bar.subtitle_widget.text)
+    h.shot("puzzle-review")
+    local rating, attempts = view.progress:rating(), view.progress:attemptCount()
+    tapSquare("a3"); tapSquare("c2")
+    h.check(view.session.state == "solved", "review solved")
+    h.check(status():find("Next review in 3 days", 1, true), "status: " .. status())
+    h.check(view.progress:getReview("004JD").due == today + 3, "rescheduled in 3 days")
+    h.check(view.progress:rating() == rating and view.progress:attemptCount() == attempts, "no rating change")
+    h.check(not status():find("Rating", 1, true), "no rating line for a review")
+
+    makeDue(3)
+    view:nextPuzzle()
+    h.wait(0.5) -- painted: the squares have their positions
+    h.check(view.puzzle.id == "004JD" and view.review, "served again")
+    tapSquare("a3"); tapSquare("c2")
+    h.check(status():find("Mastered", 1, true) and not view.progress:getReview("004JD"), "mastered: " .. status())
+
+    view.progress:saveReview("004JD", { step = 2, due = today, lapses = 0, missed = os.time() })
+    view._skipped, view.review = {}, nil
+    view:nextPuzzle()
+    h.wait(0.5)
+    tapButton("solution")
+    h.check(status():find("come back tomorrow", 1, true), "missed review: " .. status())
+    card = view.progress:getReview("004JD")
+    h.check(card.step == 0 and card.lapses == 1 and card.due == today + 1, "starts over, one lapse")
+
+    makeDue(0, 1)
+    view:nextPuzzle()
+    h.check(view.review, "review shown")
+    view:nextPuzzle() -- skipped without a move
+    h.check(view.puzzle.id ~= "004JD" and not view.review, "an untouched review is not served twice")
+    h.check(view.progress:getReview("004JD").due == today, "and stays due")
     view:onClose()
 end

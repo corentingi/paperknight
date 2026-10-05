@@ -35,6 +35,14 @@ CREATE TABLE IF NOT EXISTS rep_cards (
     introduced INTEGER NOT NULL,  -- day number
     PRIMARY KEY (rep, fen)
 );
+CREATE TABLE IF NOT EXISTS puzzle_reviews (
+    puzzle_id TEXT PRIMARY KEY,
+    due       INTEGER NOT NULL,  -- day number (pksrs)
+    step      INTEGER NOT NULL,  -- clean solves in a row (pkpuzzlereview)
+    lapses    INTEGER NOT NULL,
+    missed    INTEGER NOT NULL   -- timestamp of the first miss
+);
+CREATE INDEX IF NOT EXISTS puzzle_reviews_due ON puzzle_reviews (due);
 ]]
 
 --- Pure rating update. Returns the new rating (integer).
@@ -166,6 +174,84 @@ function PkProgress:introducedOn(rep, day)
     local row = stmt:reset():bind(rep, day):step()
     stmt:close()
     return tonumber(row[1])
+end
+
+----------------------------------------------------------------------------
+-- Missed-puzzle reviews (ADR-0014)
+----------------------------------------------------------------------------
+
+local function reviewRow(row)
+    return { puzzle_id = row[1], due = tonumber(row[2]), step = tonumber(row[3]),
+             lapses = tonumber(row[4]), missed = tonumber(row[5]) }
+end
+
+function PkProgress:getReview(puzzle_id)
+    local stmt = self.conn:prepare("SELECT puzzle_id, due, step, lapses, missed FROM puzzle_reviews WHERE puzzle_id = ?")
+    local row = stmt:reset():bind(puzzle_id):step()
+    stmt:close()
+    return row and reviewRow(row) or nil
+end
+
+function PkProgress:saveReview(puzzle_id, card)
+    local stmt = self.conn:prepare("INSERT OR REPLACE INTO puzzle_reviews VALUES (?, ?, ?, ?, ?)")
+    stmt:reset():bind(puzzle_id, card.due, card.step, card.lapses, card.missed):step()
+    stmt:close()
+end
+
+function PkProgress:removeReview(puzzle_id)
+    local stmt = self.conn:prepare("DELETE FROM puzzle_reviews WHERE puzzle_id = ?")
+    stmt:reset():bind(puzzle_id):step()
+    stmt:close()
+end
+
+--- Reviews due on day `today`, the longest overdue first.
+function PkProgress:dueReviews(today)
+    local out = {}
+    local stmt = self.conn:prepare("SELECT puzzle_id, due, step, lapses, missed FROM puzzle_reviews"
+        .. " WHERE due <= ? ORDER BY due, missed")
+    stmt:reset():bind(today)
+    for row in stmt:rows() do out[#out + 1] = reviewRow(row) end
+    stmt:close()
+    return out
+end
+
+function PkProgress:reviewDueCount(today)
+    local stmt = self.conn:prepare("SELECT count(*) FROM puzzle_reviews WHERE due <= ?")
+    local row = stmt:reset():bind(today):step()
+    stmt:close()
+    return tonumber(row[1])
+end
+
+--- Once: puzzles missed in the last `days` days (their latest attempt was
+-- not a clean solve) become reviews, spread over a week. Returns how many.
+function PkProgress:seedReviews(now, days)
+    if self:getSetting("reviews_seeded") then return 0 end
+    local PkPuzzleReview = require("pkpuzzlereview")
+    local PkSrs = require("pksrs")
+    local ids, at = {}, {}
+    local stmt = self.conn:prepare([[
+        SELECT a.puzzle_id, a.ts FROM attempts a
+        WHERE a.ts >= ? AND (a.solved = 0 OR a.mistakes > 0 OR a.used_help = 1)
+          AND a.ts = (SELECT max(ts) FROM attempts b WHERE b.puzzle_id = a.puzzle_id)
+          AND a.puzzle_id NOT IN (SELECT puzzle_id FROM puzzle_reviews)
+        ORDER BY a.ts DESC]])
+    stmt:reset():bind(now - days * 86400)
+    for row in stmt:rows() do
+        if not at[row[1]] then
+            ids[#ids + 1] = row[1]
+            at[row[1]] = tonumber(row[2])
+        end
+    end
+    stmt:close()
+    local cards = PkPuzzleReview.seed(ids, at, PkSrs.today(now), 7)
+    self.conn:exec("BEGIN")
+    local ok, err = pcall(function()
+        for _, id in ipairs(ids) do self:saveReview(id, cards[id]) end
+        self:setSetting("reviews_seeded", "1")
+    end)
+    self.conn:exec(ok and "COMMIT" or "ROLLBACK")
+    if not ok then error(err, 0) end
+    return #ids
 end
 
 function PkProgress:close()
