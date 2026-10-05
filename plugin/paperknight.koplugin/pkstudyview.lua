@@ -27,6 +27,7 @@ local Chess = require("chess")
 local ChessBoard = require("board")
 local PkDone = require("pkdone")
 local PkLesson = require("pklesson")
+local PkLinks = require("pklinks")
 local PkProgress = require("pkprogress")
 local PkPromotion = require("pkpromotion")
 local PkPgn = require("pkpgn")
@@ -222,6 +223,7 @@ function PkStudyView:_setText(text)
     self.panel_text = text
     local old = self.text
     self.text = self:_textWidget(text)
+    PkLinks.attach(self.text, self.links) -- tap a link: QR code
     for i, w in ipairs(self.vgroup) do
         if w == old then self.vgroup[i] = self.text end
     end
@@ -410,6 +412,7 @@ function PkStudyView:showMenu()
         {{ text = _("Chapters…"), callback = function() close(); self:showChapterMenu() end }},
         {{ text = _("Flip board"), callback = function() close(); self:toggleFlip() end }},
     }
+    buttons[#buttons + 1] = PkLinks.menuRow(self.links, close)
     local file = PkDone.fileOf(self.study.path)
     if file and self.progress then
         local done = PkDone.isDone(self.progress, file)

@@ -20,6 +20,7 @@ local _ = require("gettext")
 local T = require("ffi/util").template
 
 local ChessBoard = require("board")
+local PkLinks = require("pklinks")
 local PkPromotion = require("pkpromotion")
 local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
@@ -126,6 +127,7 @@ function PkDrillView:_setText(text)
     self.panel_text = text
     local old = self.text
     self.text = self:_textWidget(text)
+    PkLinks.attach(self.text, self.links) -- tap a link: QR code
     for i, w in ipairs(self.vgroup) do
         if w == old then self.vgroup[i] = self.text end
     end
@@ -283,18 +285,19 @@ function PkDrillView:showMenu()
     local line = self.drill.line or self._last_line
     local chapter = line and line.chapter
     local dialog
-    dialog = ButtonDialog:new{
-        buttons = {
-            {{ text = chapter and T(_("Play the other side (chapter %1)"), chapter) or _("Play the other side"),
-               enabled = chapter ~= nil and self.on_flip ~= nil,
-               callback = function()
-                   UIManager:close(dialog); self.menu_dialog = nil
-                   local on_flip = self.on_flip
-                   self:onClose()
-                   on_flip(chapter)
-               end }},
-        },
+    local function close() UIManager:close(dialog); self.menu_dialog = nil end
+    local buttons = {
+        {{ text = chapter and T(_("Play the other side (chapter %1)"), chapter) or _("Play the other side"),
+           enabled = chapter ~= nil and self.on_flip ~= nil,
+           callback = function()
+               close()
+               local on_flip = self.on_flip
+               self:onClose()
+               on_flip(chapter)
+           end }},
     }
+    buttons[#buttons + 1] = PkLinks.menuRow(self.links, close)
+    dialog = ButtonDialog:new{ buttons = buttons }
     self.menu_dialog = dialog
     UIManager:show(dialog)
 end

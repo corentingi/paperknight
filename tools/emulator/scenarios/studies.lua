@@ -206,4 +206,71 @@ return function(h)
     item = menuItem(dlist, "study")
     h.check(top() == dlist and item.mandatory == nil, "unmarked from the study menu: " .. tostring(item.mandatory))
     UIManager:close(dlist)
+    h.wait(0.5)
+
+    -- links: short in the panel; a tap on one shows its QR code; ≡ → Links…
+    local lstudy = PkStudy.fromText('[Event "links"]\n\n{ Watch https://lichess.org/study/abcdefgh then see www.example.com/page. }\n1. e4 *\n', "links")
+    local lview = PkStudies.openChapter(lstudy, 1)
+    h.wait(1)
+    h.check(lview.panel_text:find("lichess.org ↗ then see example.com ↗.", 1, true), "links shown short: " .. lview.panel_text)
+    h.check(#lview.links == 2, "two links")
+    local tw = lview.text.text_widget
+    local x, y = tw:_getXYForCharPos(lview.links[1].first + 2)
+    h.tap(tw.dimen.x + x + 2, tw.dimen.y + y + math.floor(tw.line_height_px / 2))
+    h.wait(1)
+    local qr = top()
+    h.check(qr ~= lview and qr.text == "https://lichess.org/study/abcdefgh", "tap on the link shows its QR code: " .. tostring(qr.text))
+    h.shot("study-link-qr")
+    UIManager:close(qr)
+    h.wait(0.5)
+    h.tapWidget(lview.title_bar.left_button)
+    h.wait(0.5)
+    local links_btn = dialogButton(lview.menu_dialog, "Links (2)")
+    h.check(links_btn, "≡ menu offers the links")
+    h.tapWidget(links_btn)
+    h.wait(0.5)
+    local PkLinks = require("pklinks")
+    h.tapWidget(dialogButton(PkLinks.dialog, "example.com"))
+    h.wait(0.5)
+    h.check(top().text == "https://www.example.com/page", "QR of a www address gets a scheme: " .. tostring(top().text))
+    UIManager:close(top())
+    h.wait(0.3)
+    -- a tap elsewhere in the panel still scrolls (no QR)
+    h.tap(tw.dimen.x + 2, tw.dimen.y + tw.dimen.h - 2)
+    h.wait(0.5)
+    h.check(top() == lview, "no QR for a tap outside links")
+    lview:onClose()
+    h.wait(0.3)
+    -- a tap in the blank right of a soft-wrapped line must not open the link
+    -- that starts the next line (getCharPosAtXY returns cursor positions)
+    local TextBoxWidget = require("ui/widget/textboxwidget")
+    local Font = require("ui/font")
+    local Geom = require("ui/geometry")
+    local PkText = require("pktext")
+    local found
+    for n = 1, 60 do
+        local text, links = PkText.linkify(string.rep("word ", n) .. "https://lichess.org/practice")
+        local box = TextBoxWidget:new{ text = text, face = Font:getFace("cfont", 18), width = 400 }
+        box.dimen = Geom:new{ x = 0, y = 0, w = 400, h = box:getSize().h }
+        local cx, cy = box:_getXYForCharPos(links[1].first)
+        if cx <= 1 and cy > 0 then found = { box = box, links = links, row = math.floor(cy / box.line_height_px) }; break end
+        box:free()
+    end
+    h.check(found, "a text where the link starts a wrapped line")
+    local lh = found.box.line_height_px
+    local blank = { pos = { x = 395, y = (found.row - 1) * lh + math.floor(lh / 2) } }
+    h.check(PkLinks.linkAtTap(found.box, found.links, blank) == nil, "blank right of the previous line: no link")
+    local on_link = { pos = { x = 5, y = found.row * lh + math.floor(lh / 2) } }
+    h.check(PkLinks.linkAtTap(found.box, found.links, on_link) ~= nil, "tap on the link itself")
+    -- a panel shorter than its text: the strip under the last visible line
+    -- maps to the next, hidden line
+    local text2, links2 = PkText.linkify("first line\nhttps://lichess.org/hidden")
+    local short = TextBoxWidget:new{ text = text2, face = Font:getFace("cfont", 18), width = 400,
+                                     height = math.floor(lh * 1.6) }
+    short.dimen = Geom:new{ x = 0, y = 0, w = 400, h = math.floor(lh * 1.6) }
+    h.check(short:getVisLineCount() == 1, "one visible line")
+    local strip = { pos = { x = 5, y = math.floor(lh * 1.3) } }
+    h.check(PkLinks.linkAtTap(short, links2, strip) == nil, "strip below the last visible line: hidden link not opened")
+    short:free()
+    found.box:free()
 end
