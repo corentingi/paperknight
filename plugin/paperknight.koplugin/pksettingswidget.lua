@@ -19,7 +19,7 @@ local ButtonWidget    = require("ui/widget/button")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local MovableContainer = require("ui/widget/container/movablecontainer")
 
-local Chess = require("chess")
+local Chess = require("pkchess")
 local _ = require("gettext") -- Localization function
 
 local BACKGROUND_COLOR = Blitbuffer.COLOR_WHITE

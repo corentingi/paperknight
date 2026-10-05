@@ -23,8 +23,8 @@ local util = require("util")
 local _ = require("gettext")
 local T = require("ffi/util").template
 
-local Chess = require("chess")
-local ChessBoard = require("board")
+local Chess = require("pkchess")
+local ChessBoard = require("pkboard")
 local PkDone = require("pkdone")
 local PkLesson = require("pklesson")
 local PkLinks = require("pklinks")

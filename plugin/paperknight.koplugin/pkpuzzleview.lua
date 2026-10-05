@@ -18,8 +18,8 @@ local logger = require("logger")
 local _ = require("gettext")
 local T = require("ffi/util").template
 
-local Chess = require("chess")
-local ChessBoard = require("board")
+local Chess = require("pkchess")
+local ChessBoard = require("pkboard")
 local PkPromotion = require("pkpromotion")
 local PkPuzzle = require("pkpuzzle")
 local PkThemes = require("pkthemes")
@@ -128,7 +128,8 @@ function PkPuzzleView:_prepareBoard(flipped)
 end
 
 function PkPuzzleView:_updateTitle()
-    local rating = self.progress:rating()
+    local ok, rating = pcall(self.progress.rating, self.progress)
+    if not ok then rating = "?" end
     local subtitle = T(_("Your rating: %1"), rating)
     if self.puzzle then
         subtitle = subtitle .. " · " .. T(_("Puzzle %1"), self.puzzle.rating)
@@ -177,25 +178,58 @@ function PkPuzzleView:_packHasTheme(theme)
     return false
 end
 
---- Picks and loads the next puzzle. Returns true on success.
+local MAX_LOAD_TRIES = 5
+
+--- Picks and loads the next puzzle. Returns true on success. A puzzle that
+-- cannot be set up (bad pack data) is skipped for the session.
 function PkPuzzleView:nextPuzzle()
     local since = os.time() - RECENT_DAYS * 86400
-    local puzzle = self.pack:pickNear(self.progress:rating(), {
-        random = self.random,
-        theme = self.theme,
-        accept = function(p)
-            return not (self.puzzle and p.id == self.puzzle.id)
-                and not self.progress:wasAttemptedSince(p.id, since)
-        end,
-    })
-    if not puzzle then
-        self:_updateTitle()
-        self:_setStatus(self.theme and _("No puzzles with this theme in the pack.")
-            or _("No puzzles found in the pack."))
-        return false
+    self._bad = self._bad or {}
+    local err
+    for _try = 1, MAX_LOAD_TRIES do
+        local ok, puzzle = pcall(function()
+            return self.pack:pickNear(self.progress:rating(), {
+                random = self.random,
+                theme = self.theme,
+                accept = function(p)
+                    return not (self.puzzle and p.id == self.puzzle.id)
+                        and not self._bad[p.id]
+                        and not self.progress:wasAttemptedSince(p.id, since)
+                end,
+            })
+        end)
+        if not ok then
+            err = puzzle
+            break -- the database itself: retrying will not help
+        end
+        if not puzzle then
+            self:_updateTitle()
+            self:_setStatus(self.theme and _("No puzzles with this theme in the pack.")
+                or _("No puzzles found in the pack."))
+            return false
+        end
+        local l_ok, l_err = pcall(self.loadPuzzle, self, puzzle)
+        if l_ok then return true end
+        err = l_err
+        logger.warn("Paperknight: skipping puzzle", puzzle.id, l_err)
+        self._bad[puzzle.id] = true
+        self.session, self.puzzle = nil, nil
     end
-    self:loadPuzzle(puzzle)
-    return true
+    logger.warn("Paperknight: cannot load a puzzle:", err)
+    if self.board then self.board.locked = true end
+    self:_updateTitle()
+    self:_setStatus(_("Cannot load a puzzle from the pack.") .. "\n" .. tostring(err))
+    return false
+end
+
+-- A puzzle whose line contains an impossible move: stop it cleanly.
+function PkPuzzleView:_broken(err)
+    logger.warn("Paperknight: broken puzzle", self.puzzle and self.puzzle.id, err)
+    if self.puzzle then self._bad = self._bad or {}; self._bad[self.puzzle.id] = true end
+    self.session = nil
+    self.board.locked = true
+    self.board:updateBoard()
+    self:_setStatus(_("This puzzle contains an invalid move. Tap Next."))
 end
 
 -- Records the attempt once (ADR-0010): when the puzzle ends, or when the user
@@ -207,20 +241,26 @@ function PkPuzzleView:_finishAttempt(reason)
     local touched = s.mistakes > 0 or s.used_help or s.index > 2
     if not s:isOver() and not touched then return end
     self.recorded = true
-    local before, after = self.progress:record{
+    local ok, before, after = pcall(self.progress.record, self.progress, {
         puzzle_id = self.puzzle.id,
         puzzle_rating = self.puzzle.rating,
         success = s:isCleanSolve(),
         solved = s.state == "solved",
         mistakes = s.mistakes,
         used_help = s.used_help,
-    }
+    })
+    if not ok then
+        logger.warn("Paperknight: cannot save the attempt:", before)
+        return nil
+    end
     logger.info("Paperknight: attempt", self.puzzle.id, reason, before, "->", after)
     return before, after
 end
 
 function PkPuzzleView:onUserMove(move)
-    local verdict, reply = self.session:onUserMove(move)
+    if not self.session then return end
+    local ok, verdict, reply = pcall(self.session.onUserMove, self.session, move)
+    if not ok then return self:_broken(verdict) end
     if verdict == "wrong" then
         self.board:updateBoard() -- the move was taken back
         self:_setStatus(_("Not the move. Try again."))
@@ -338,7 +378,8 @@ end
 function PkPuzzleView:onSolution()
     if not self.session or self.session:isOver() then return end
     self:_cancelReply() -- the reply is already in the game; the redraw below shows it
-    local played = self.session:revealSolution()
+    local ok, played = pcall(self.session.revealSolution, self.session)
+    if not ok then return self:_broken(played) end
     self.board:clearSelection()
     self.board:updateBoard()
     local last = played[#played]
@@ -358,7 +399,8 @@ function PkPuzzleView:onRetry()
     self:_cancelReply()
     self:_finishAttempt("retry")
     local recorded = self.recorded
-    self:loadPuzzle(self.puzzle)
+    local ok, err = pcall(self.loadPuzzle, self, self.puzzle)
+    if not ok then return self:_broken(err) end
     self.recorded = recorded
 end
 

@@ -19,19 +19,19 @@
 
 ## Plugin (`plugin/paperknight.koplugin/`)
 
-Forked from Kochess (ADR-0003). Current modules, inherited:
+Forked from Kochess (ADR-0003). Inherited modules (renamed with the `pk` prefix so they cannot clash with Kochess or other chess plugins in `package.loaded`):
 
 | File | Role |
 |---|---|
 | `_meta.lua` | Plugin name/description for KOReader's plugin manager |
 | `main.lua` | Entry point: menu registration, game screen, engine lifecycle |
-| `board.lua` | Board widget: draws squares and pieces, handles taps |
-| `chess.lua` + `chess/` | Rules engine (move generation, FEN, SAN, PGN), from arizati/chess.lua |
-| `uci.lua` | Talks to a UCI engine (Stockfish) through a subprocess |
-| `timer.lua` | Chess clocks |
-| `settingswidget.lua` | Player types, engine strength, time controls |
-| `button.lua`, `buttontable.lua` | Patched copies of KOReader button widgets |
-| `utils.lua` | Helpers |
+| `pkboard.lua` | Board widget: draws squares and pieces, handles taps |
+| `pkchess.lua` + `pkchesslib/` | Rules engine (move generation, FEN, SAN, PGN), from arizati/chess.lua |
+| `pkuci.lua` | Talks to a UCI engine (Stockfish) through a subprocess |
+| `pktimer.lua` | Chess clocks |
+| `pksettingswidget.lua` | Player types, engine strength, time controls |
+| `pkbutton.lua`, `pkbuttontable.lua` | Patched copies of KOReader button widgets |
+| `pkutils.lua` | Helpers |
 
 Paperknight modules (prefixed `pk` to avoid `package.loaded` clashes, ADR-0009):
 

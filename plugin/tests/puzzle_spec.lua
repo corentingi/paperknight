@@ -1,5 +1,5 @@
 -- Puzzle session logic (pkpuzzle.lua) on real Lichess puzzles from the fixture.
-local Chess = require("chess")
+local Chess = require("pkchess")
 local PkPuzzle = require("pkpuzzle")
 
 -- 004JD: white plays Kd2-e3, black mates with Na3-c2 (solver: black)

@@ -1,16 +1,16 @@
--- board.lua
+-- pkboard.lua
 local _ = require("gettext")
 local logger = require("logger")
 local Geom = require("ui/geometry")
 local Blitbuffer = require("ffi/blitbuffer")
-local ButtonTable = require("buttontable")
+local ButtonTable = require("pkbuttontable")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local Font = require("ui/font")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local TextWidget = require("ui/widget/textwidget")
 local VerticalGroup = require("ui/widget/verticalgroup")
-local Chess = require("chess/src/chess")
+local Chess = require("pkchesslib/src/chess")
 local Device = require("device")
 local UIManager = require("ui/uimanager")
 local Screen = Device.screen
@@ -351,7 +351,7 @@ end
 function Board:_paintBadge(bb)
     local r = self:_squareRect(self.badge.square)
     if not r then return end
-    local d = math.floor(self.button_size * 0.42)
+    local d = math.floor(self.button_size * 0.32)
     local bx, by = r.x + r.w - d, r.y
     local good = GOOD_MARKS[self.badge.text]
     local black, white = Board.paintColor(Blitbuffer.COLOR_BLACK), Board.paintColor(Blitbuffer.COLOR_WHITE)
@@ -360,7 +360,7 @@ function Board:_paintBadge(bb)
         bb:paintBorder(bx, by, d, d, math.max(2, math.floor(d / 10)), black, math.floor(d / 2))
     end
     -- font sizes are scaled by screen DPI: convert the wanted pixel height
-    local px = d * 0.55
+    local px = d * 0.62
     local face = Font:getFace("infont", math.max(6, math.floor(px * 1000 / Screen:scaleBySize(1000))))
     local label = TextWidget:new{ text = self.badge.text, face = face, bold = true,
                                   fgcolor = good and white or black }

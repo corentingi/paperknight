@@ -14,8 +14,8 @@ local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 local _ = require("gettext")
 
-local Chess = require("chess")
-local PkButton = require("button") -- accepts absolute icon paths
+local Chess = require("pkchess")
+local PkButton = require("pkbutton") -- accepts absolute icon paths
 local PkIcons = require("pkicons")
 
 local PkPromotion = {}

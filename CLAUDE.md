@@ -10,9 +10,9 @@
 - `make koreader` once if `build/koreader` is missing.
 
 ## Token hygiene
-- Don't read `main.lua`, `board.lua`, `pkstudyview.lua` in full: grep for the
+- Don't read `main.lua`, `pkboard.lua`, `pkstudyview.lua` in full: grep for the
   function, then Read with offset/limit. Never read the upstream engine
-  `chess.lua`; grep its API.
+  `pkchesslib/src/chess.lua`; grep its API.
 - Never cat `build/`, puzzle CSVs, `.sqlite` packs or emulator logs; use
   head/grep/sqlite3 queries.
 - Only look at e2e screenshots when a visual change is being checked.

@@ -1,5 +1,5 @@
 -- Repertoire drill sessions (pkdrill.lua) and card storage (pkprogress.lua).
-local Chess = require("chess")
+local Chess = require("pkchess")
 local PkDrill = require("pkdrill")
 local PkProgress = require("pkprogress")
 local PkRepertoire = require("pkrepertoire")

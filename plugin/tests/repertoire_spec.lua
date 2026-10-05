@@ -1,5 +1,5 @@
 -- Repertoire lines and cards (pkrepertoire.lua, ADR-0012) on the fixture.
-local Chess = require("chess")
+local Chess = require("pkchess")
 local PkRepertoire = require("pkrepertoire")
 local PkStudy = require("pkstudy")
 

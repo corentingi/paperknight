@@ -1,6 +1,6 @@
 -- Study PGN parsing (pkpgn.lua) and tree cursor (pkstudy.lua) on a fixture
 -- mimicking Lichess study exports (plugin/tests/fixtures/study.pgn).
-local Chess = require("chess")
+local Chess = require("pkchess")
 local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
 

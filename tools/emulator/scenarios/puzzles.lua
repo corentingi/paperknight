@@ -150,5 +150,42 @@ return function(h)
     h.wait(1)
     h.check(view.puzzle and view.puzzle.id ~= last_id, "a new puzzle is loaded")
     h.shot("puzzle-next")
+
+    -- 6. Bad pack data never crashes: an unplayable puzzle is skipped, a
+    -- line with an impossible move stops cleanly, a failing save is logged.
+    local good = view.pack:get("004JD")
+    local function copy(t, extra)
+        local c = {}
+        for k, v in pairs(t) do c[k] = v end
+        for k, v in pairs(extra) do c[k] = v end
+        return c
+    end
+    local bad_fen = copy(good, { id = "BADFEN", fen = "not a fen" })
+    local pickNear, picks = view.pack.pickNear, 0
+    view.pack.pickNear = function(pack, rating, opts)
+        picks = picks + 1
+        if picks == 1 then return bad_fen end
+        return pickNear(pack, rating, opts)
+    end
+    h.check(view:nextPuzzle(), "a good puzzle loaded after the bad one")
+    h.check(view.puzzle.id ~= "BADFEN" and view._bad.BADFEN, "bad puzzle skipped and remembered")
+    view.pack.pickNear = function() error("database is locked") end
+    h.check(not view:nextPuzzle(), "a database error is reported")
+    h.check(status():find("Cannot load a puzzle", 1, true), "status: " .. status())
+    view.pack.pickNear = pickNear
+
+    -- 0042j: setup d6e5, solver d2d8, then an impossible reply
+    local line = view.pack:get("0042j")
+    local solve = "d2d8"
+    view:loadPuzzle(copy(line, { id = "BADLINE", moves = "d6e5 d2d8 a1a1 d1d8" }))
+    h.wait(0.5)
+    local record = view.progress.record
+    view.progress.record = function() error("disk full") end
+    tapSquare(solve:sub(1, 2)); tapSquare(solve:sub(3, 4))
+    h.wait(0.5)
+    h.check(view.session == nil and view.board.locked, "broken line stopped")
+    h.check(status():find("invalid move", 1, true), "status: " .. status())
+    view.progress.record = record
+    h.check(view:nextPuzzle() and view.session, "Next works after a broken puzzle")
     view:onClose()
 end

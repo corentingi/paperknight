@@ -30,11 +30,11 @@ local VerticalSpan = require("ui/widget/verticalspan")
 local MovableContainer = require("ui/widget/container/movablecontainer")
 
 -- Chess Logic Modules
-local Chess = require("chess")
-local ChessBoard = require("board")
-local Timer = require("timer")
-local Uci = require("uci")
-local SettingsWidget = require("settingswidget")
+local Chess = require("pkchess")
+local ChessBoard = require("pkboard")
+local Timer = require("pktimer")
+local Uci = require("pkuci")
+local SettingsWidget = require("pksettingswidget")
 local PkPromotion = require("pkpromotion")
 
 -- Utilities
@@ -860,10 +860,11 @@ end
 function Paperknight:updatePlayerDisplay()
     dbg("Updating player type display", "UI")
     local function labelFor(color)
-        return self.game.is_human(color) and _("Human")
-            or ((self.engine.state.id_name or _("Engine"))
-                .. (self.engine.state.options["UCI_Elo"] and (" (" ..  self.engine.state.options["UCI_Elo"].value .. ")")
-                    or ""))
+        if self.game.is_human(color) then return _("Human") end
+        -- the engine may have failed to start: no state
+        local state = self.engine and self.engine.state or {}
+        local elo = state.options and state.options["UCI_Elo"]
+        return (state.id_name or _("Engine")) .. (elo and elo.value and (" (" .. elo.value .. ")") or "")
     end
     local player_indicator = getPlayerIndicator(self.running, self.game.turn())
     self.status_bar:setSubTitle(labelFor(Chess.WHITE) .. player_indicator .. labelFor(Chess.BLACK))

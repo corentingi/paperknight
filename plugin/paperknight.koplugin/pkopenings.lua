@@ -12,7 +12,7 @@ local util = require("util")
 local _ = require("gettext")
 local T = require("ffi/util").template
 
-local Chess = require("chess")
+local Chess = require("pkchess")
 local PkDrill = require("pkdrill")
 local PkDrillView = require("pkdrillview")
 local PkProgress = require("pkprogress")
@@ -108,9 +108,16 @@ end
 
 local SUMMARY_VERSION = "pksum 1." .. PkRepertoire.VERSION .. "." .. PkSan.VERSION
 
-local function writeSummary(file, stamp, summary)
-    local out = { SUMMARY_VERSION .. " " .. file .. "|" .. stamp, tostring(#summary.order), summary.name or "" }
-    for _, key in ipairs(summary.order) do out[#out + 1] = key .. "\t" .. summary.cards[key].uci end
+-- `summary` nil: the file cannot be drilled, `err` says why (cached too, so
+-- the list does not parse it again every session).
+local function writeSummary(file, stamp, summary, err)
+    local out = { SUMMARY_VERSION .. " " .. file .. "|" .. stamp }
+    if summary then
+        out[2], out[3] = tostring(#summary.order), summary.name or ""
+        for _, key in ipairs(summary.order) do out[#out + 1] = key .. "\t" .. summary.cards[key].uci end
+    else
+        out[2], out[3] = "error", (tostring(err):gsub("\n", " "))
+    end
     out[#out + 1] = ""
     local ok, err = PkResCache.write(cachePath(file, ".sum"), table.concat(out, "\n"))
     if not ok then logger.warn("Paperknight: cannot write the repertoire cache:", err) end
@@ -122,6 +129,7 @@ local function readSummary(file, stamp)
     local lines = {}
     for line in text:gmatch("([^\n]*)\n") do lines[#lines + 1] = line end
     if lines[1] ~= SUMMARY_VERSION .. " " .. file .. "|" .. stamp then return nil end
+    if lines[2] == "error" and #lines == 3 then return nil, lines[3] end
     if tonumber(lines[2]) ~= #lines - 3 then return nil end -- truncated
     local summary = { name = lines[3], order = {}, cards = {} }
     for k = 4, #lines do
@@ -137,9 +145,9 @@ end
 local function knownSummary(path, file, stamp)
     local hit = summaries[path]
     if hit and hit.stamp == stamp then return hit end
-    local ok, summary = pcall(readSummary, file, stamp)
-    if ok and summary then
-        summaries[path] = { stamp = stamp, summary = summary }
+    local ok, summary, err = pcall(readSummary, file, stamp)
+    if ok and (summary or err) then
+        summaries[path] = { stamp = stamp, summary = summary, err = err }
         return summaries[path]
     end
     return nil
@@ -166,8 +174,11 @@ function PkOpenings.load(path, progress, summary_only)
         for key, c in pairs(rep.cards) do cards[key] = { uci = c.uci } end
         summary = { name = rep.name, order = rep.order, cards = cards }
         full = { path = path, stamp = stamp, rep = rep }
-        local hit = summaries[path]
-        if not (hit and hit.stamp == stamp and hit.summary) then writeSummary(file, stamp, summary) end
+    end
+    local hit = summaries[path]
+    -- write unless the disk already says the same (same stamp, same outcome)
+    if not (hit and hit.stamp == stamp and (hit.summary ~= nil) == (summary ~= nil) and (hit.summary or hit.err)) then
+        writeSummary(file, stamp, summary, err)
     end
     summaries[path] = { stamp = stamp, summary = summary, err = err }
     if summary_only then return summary, err end
@@ -339,10 +350,20 @@ local function listItems(dir)
     return items
 end
 
+-- The folder's state: file names and stamps (a change rebuilds the list).
+local function folderKey(dir)
+    local parts = {}
+    for _i, file in ipairs(PkStudies.listFiles(dir)) do
+        parts[#parts + 1] = file .. "|" .. fileStamp(dir .. "/" .. file)
+    end
+    return table.concat(parts, "\n")
+end
+
 --- Rebuilds the open list (counts change after a session).
 function PkOpenings.refreshList()
     local menu = PkOpenings.list
     if not menu then return end
+    menu._pk_key = folderKey(menu._pk_dir)
     local first = ((menu.page or 1) - 1) * (menu.perpage or 1) + 1
     menu:switchItemTable(nil, listItems(menu._pk_dir), first)
 end
@@ -365,6 +386,19 @@ function PkOpenings.show(dir)
         height = Screen:getHeight(),
     }
     menu._pk_dir = dir
+    menu._pk_key = folderKey(dir)
+    -- follows the folder: a repaint (e.g. back from a drill, or after
+    -- copying a file) rebuilds the list if a file was added, removed or changed
+    local paintTo = menu.paintTo
+    menu.paintTo = function(m, bb, x, y)
+        paintTo(m, bb, x, y)
+        if folderKey(dir) ~= m._pk_key then
+            m._pk_key = folderKey(dir)
+            UIManager:nextTick(function() -- not while painting
+                if PkOpenings.list == m then PkOpenings.refreshList() end
+            end)
+        end
+    end
     -- no close_callback (Menu calls it after every pick): the list stays
     -- open under a drill, and forgets itself when closed
     local onCloseWidget = menu.onCloseWidget

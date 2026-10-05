@@ -30,7 +30,7 @@ Stockfish, PGN load/save) that grows into a training tool:
 ```sh
 make help          # list targets
 make test          # unit tests (plugin + pipeline)
-make packs         # download Lichess puzzles (~300 MB, once) and build build/packs/puzzles.sqlite
+make packs         # download Lichess puzzles (~300 MB, once; an interrupted download resumes) and build build/packs/puzzles.sqlite
 make study ID=<lichess study id or URL>   # download a study into build/studies/
 make check         # unit tests + headless end-to-end scenarios (screenshots in build/e2e/)
 make emulator      # run the plugin in a desktop KOReader window (see docs/development.md)

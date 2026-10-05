@@ -1,6 +1,6 @@
 -- Resolved-moves cache (pkrescache.lua): a repertoire built from a cached
 -- study equals one built cold, and stale or damaged caches are refused.
-local Chess = require("chess")
+local Chess = require("pkchess")
 local PkRepertoire = require("pkrepertoire")
 local PkResCache = require("pkrescache")
 local PkStudy = require("pkstudy")

@@ -1,5 +1,5 @@
 local Blitbuffer = require("ffi/blitbuffer")
-local Button = require("button")
+local Button = require("pkbutton")
 local Device = require("device")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local LineWidget = require("ui/widget/linewidget")
@@ -51,7 +51,7 @@ function ButtonTable:init()
                 lang = btn_entry.lang,
                 icon = btn_entry.icon,
                 alpha = btn_entry.alpha,
-                day_colors = btn_entry.day_colors, -- Paperknight: see button.lua
+                day_colors = btn_entry.day_colors, -- Paperknight: see pkbutton.lua
                 icon_width = btn_entry.icon_width,
                 icon_height = btn_entry.icon_height,
                 align = btn_entry.align,

@@ -1,11 +1,11 @@
 -- Piece icon paths, resolved inside the plugin folder.
 -- KOReader only scans the user icons directory if it exists at startup, so we
 -- reference our SVGs by absolute path instead of copying them there.
-local Chess = require("chess/src/chess")
+local Chess = require("pkchesslib/src/chess")
 
 -- On devices KOReader loads plugins from the relative path "plugins/", so the
 -- source path is relative: anchor it to the working directory, because
--- button.lua only treats absolute paths as files.
+-- pkbutton.lua only treats absolute paths as files.
 local function pluginDir()
     local source = debug.getinfo(1, "S").source:gsub("^@", "")
     local dir = source:match("(.*)/pkicons%.lua$") or "."

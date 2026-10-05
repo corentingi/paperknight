@@ -1,5 +1,5 @@
 -- Interactive lessons (pklesson.lua) on the fixture study.
-local Chess = require("chess")
+local Chess = require("pkchess")
 local PkLesson = require("pklesson")
 local PkStudy = require("pkstudy")
 

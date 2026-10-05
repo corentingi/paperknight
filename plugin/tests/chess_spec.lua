@@ -1,5 +1,5 @@
 -- Rules engine (vendored arizati/chess.lua) through the plugin's Chess wrapper.
-local Chess = require("chess")
+local Chess = require("pkchess")
 
 return {
     { "perft(3) from the start position is 8902", function(t)

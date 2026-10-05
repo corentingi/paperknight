@@ -1,6 +1,6 @@
 -- Fast SAN resolver (pksan.lua, ADR-0013), checked against chess.lua (the
 -- engine used for play) and python-chess (fixture FENs).
-local Chess = require("chess")
+local Chess = require("pkchess")
 local PkPgn = require("pkpgn")
 local PkSan = require("pksan")
 

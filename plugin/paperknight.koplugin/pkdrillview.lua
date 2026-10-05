@@ -19,7 +19,7 @@ local util = require("util")
 local _ = require("gettext")
 local T = require("ffi/util").template
 
-local ChessBoard = require("board")
+local ChessBoard = require("pkboard")
 local PkLinks = require("pklinks")
 local PkPromotion = require("pkpromotion")
 local PkPgn = require("pkpgn")
