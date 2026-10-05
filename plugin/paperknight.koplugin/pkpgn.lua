@@ -101,8 +101,13 @@ end
 
 --- Extracts [%csl ...] / [%cal ...] shapes and drops other [%...] commands
 -- (anno, clk, eval, emt, ...). Returns cleaned text (or nil) and shapes.
-function PkPgn.cleanComment(raw, shapes)
+--- `wrapped`: the movetext was wrapped by a tool (PkPgn.isWrapped): single
+-- newlines are then joined (except before list items); otherwise they are the
+-- author's line breaks (Lichess does not wrap) and are kept.
+function PkPgn.cleanComment(raw, shapes, wrapped)
     shapes = shapes or { circles = {}, arrows = {} }
+    raw = raw:gsub("[ \t]+", " "):gsub(" *\n *", "\n")
+    if wrapped then raw = PkPgn.joinWrappedLines(raw) end
     local text = raw:gsub("%[%%(%w+)%s*([^%]]*)%]", function(cmd, args)
         if cmd == "csl" then
             for brush, sq in args:gmatch("([GRYBgryb])([a-h][1-8])") do
@@ -117,11 +122,64 @@ function PkPgn.cleanComment(raw, shapes)
     end)
     -- tidy whitespace but keep paragraph breaks
     text = text:gsub("[ \t]+", " "):gsub(" *\n *", "\n"):gsub("\n\n\n+", "\n\n")
-    -- single newlines come from line wrapping (80-column PGN): join them
-    text = text:gsub("([^\n])\n([^\n])", "%1 %2")
     text = text:gsub("^%s+", ""):gsub("%s+$", "")
     if text == "" then text = nil end
     return text, shapes
+end
+
+-- PGN tools (ChessBase, pgn-extract, python-chess…) wrap movetext at 80
+-- columns, so a comment's single newlines are not the author's; Lichess
+-- writes each line in full (often hundreds of characters) and keeps the
+-- author's line breaks. Decided per chapter from the movetext lines.
+local WRAP_WIDTH = 80
+
+local function ulen(s)
+    local _, n = s:gsub("[^\128-\191]", "")
+    return n
+end
+
+--- True if `movetext` looks wrapped by a tool: several lines, none longer
+-- than 80 characters, and most of them filled close to that width (a tool
+-- breaks a line only when the next word would not fit; a short Lichess
+-- chapter has short lines).
+function PkPgn.isWrapped(movetext)
+    local lens = {}
+    for line in (movetext .. "\n"):gmatch("([^\n]*)\n") do
+        line = line:gsub("\r$", "")
+        if line ~= "" then
+            local n = ulen(line)
+            if n > WRAP_WIDTH then return false end
+            lens[#lens + 1] = n
+        end
+    end
+    if #lens < 3 then return false end -- e.g. one line + the result
+    local full = 0
+    for i = 1, #lens - 1 do -- the last line of a text is naturally short
+        if lens[i] >= WRAP_WIDTH - 20 then full = full + 1 end
+    end
+    return full >= 0.75 * (#lens - 1)
+end
+
+local function startsItem(line)
+    return line:match("^[-*•–] ") or line:match("^%d+[.)] ")
+end
+
+--- Joins the single newlines of a wrapped comment (paragraphs and list
+-- items keep their breaks).
+function PkPgn.joinWrappedLines(text)
+    local out = {}
+    local prev
+    for line in (text .. "\n"):gmatch("([^\n]*)\n") do
+        if prev == nil then
+            out[#out + 1] = line
+        elseif line == "" or prev == "" or startsItem(line) then
+            out[#out + 1] = "\n" .. line
+        else
+            out[#out + 1] = " " .. line
+        end
+        prev = line
+    end
+    return table.concat(out)
 end
 
 ----------------------------------------------------------------------------
@@ -137,6 +195,31 @@ PkPgn.NAG_SYMBOLS = {
     [40] = "(attack)", [41] = "(attack)", [132] = "(counterplay)", [133] = "(counterplay)",
     [138] = "(time trouble)", [139] = "(time trouble)", [140] = "(with the idea)", [146] = "(novelty)",
 }
+
+-- Position assessments in words, for the text panel (NAG_SYMBOLS keeps the
+-- compact form for move lists).
+PkPgn.POSITION_WORDS = {
+    [7] = "Only move", [10] = "Equal position", [13] = "Unclear position",
+    [14] = "White is slightly better", [15] = "Black is slightly better",
+    [16] = "White is better", [17] = "Black is better",
+    [18] = "White is winning", [19] = "Black is winning",
+    [22] = "Zugzwang (White)", [23] = "Zugzwang (Black)",
+    [32] = "White has a development advantage", [33] = "Black has a development advantage",
+    [36] = "White has the initiative", [37] = "Black has the initiative",
+    [40] = "White has the attack", [41] = "Black has the attack",
+    [132] = "White has counterplay", [133] = "Black has counterplay",
+    [138] = "White is in time trouble", [139] = "Black is in time trouble",
+    [140] = "With the idea", [146] = "Novelty",
+}
+
+--- Position glyphs of a node in words ("White is better"), or nil.
+function PkPgn.positionWords(glyphs)
+    local words = {}
+    for _, nag in ipairs(glyphs or {}) do
+        if nag > 6 and PkPgn.POSITION_WORDS[nag] then words[#words + 1] = PkPgn.POSITION_WORDS[nag] end
+    end
+    return #words > 0 and table.concat(words, ". ") or nil
+end
 
 local INLINE_TO_NAG = { ["!"] = 1, ["?"] = 2, ["!!"] = 3, ["??"] = 4, ["!?"] = 5, ["?!"] = 6 }
 
@@ -155,9 +238,9 @@ local function newNode(parent, san)
     return { san = san, glyphs = {}, children = {}, parent = parent }
 end
 
-local function addComment(node, raw)
+local function addComment(node, raw, wrapped)
     node.shapes = node.shapes or { circles = {}, arrows = {} }
-    local text = PkPgn.cleanComment(raw, node.shapes)
+    local text = PkPgn.cleanComment(raw, node.shapes, wrapped)
     if text then
         node.comment = node.comment and (node.comment .. "\n" .. text) or text
     end
@@ -167,6 +250,7 @@ end
 -- parentheses are tolerated (a ')' without '(' is ignored, open variations
 -- are closed at the end).
 function PkPgn.parseMovetext(text)
+    local wrapped = PkPgn.isWrapped(text)
     local root = newNode(nil, nil)
     -- `last`: node of the last move in the current line (root at start).
     -- `stack`: saved `last` of the enclosing lines when entering a variation.
@@ -183,22 +267,22 @@ function PkPgn.parseMovetext(text)
             local close = text:find("}", pos + 1, true) or (len + 1)
             local raw = text:sub(pos + 1, close - 1)
             if at_line_start and #stack == 0 then
-                addComment(root, raw) -- chapter introduction
+                addComment(root, raw, wrapped) -- chapter introduction
             elseif at_line_start then
                 pending_comment = (pending_comment and pending_comment .. "\n" or "") .. raw
             else
-                addComment(last, raw)
+                addComment(last, raw, wrapped)
             end
             pos = close + 1
         elseif ch == ";" then
             local eol = text:find("\n", pos + 1, true) or (len + 1)
             local raw = text:sub(pos + 1, eol - 1)
             if at_line_start and #stack == 0 then
-                addComment(root, raw)
+                addComment(root, raw, wrapped)
             elseif at_line_start then
                 pending_comment = (pending_comment and pending_comment .. "\n" or "") .. raw
             else
-                addComment(last, raw)
+                addComment(last, raw, wrapped)
             end
             pos = eol + 1
         elseif ch == "(" then
@@ -247,7 +331,7 @@ function PkPgn.parseMovetext(text)
                     if INLINE_TO_NAG[suffix] then node.glyphs[1] = INLINE_TO_NAG[suffix] end
                     table.insert(last.children, node)
                     if pending_comment then
-                        addComment(node, pending_comment)
+                        addComment(node, pending_comment, wrapped)
                         pending_comment = nil
                     end
                     at_line_start = false

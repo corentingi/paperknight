@@ -29,7 +29,9 @@ local PkDone = require("pkdone")
 local PkLesson = require("pklesson")
 local PkProgress = require("pkprogress")
 local PkPromotion = require("pkpromotion")
+local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
+local PkText = require("pktext")
 
 local REPLY_DELAY = 0.8 -- seconds before the opponent's reply in a lesson
 -- E-ink: partial refreshes of the board/panel area, and a full refresh every
@@ -216,6 +218,7 @@ end
 -- schedules the screen refresh (see _redraw).
 function PkStudyView:_setText(text)
     text = util.fixUtf8(text, "?") -- e.g. Latin-1 PGNs from older tools
+    text, self.links = PkText.linkify(text) -- web addresses shown short
     self.panel_text = text
     local old = self.text
     self.text = self:_textWidget(text)
@@ -296,6 +299,7 @@ function PkStudyView:_panelText()
         parts[#parts + 1] = self.chapter.gamebook and _("Interactive lesson") or _("Start of the chapter")
     else
         parts[#parts + 1] = PkStudy.moveLabel(node)
+        parts[#parts + 1] = PkPgn.positionWords(node.glyphs)
     end
     local children = node.children
     if #children == 0 then
@@ -548,7 +552,10 @@ function PkStudyView:_lessonRefresh(prefix)
         self.board.locked = true -- opponent to move
         if self.waiting_next then parts[#parts + 1] = _("Tap Next to continue.") end
     end
-    if node ~= self.cursor.root then parts[#parts + 1] = PkStudy.moveLabel(node) end
+    if node ~= self.cursor.root then
+        parts[#parts + 1] = PkStudy.moveLabel(node)
+        parts[#parts + 1] = PkPgn.positionWords(node.glyphs)
+    end
     if node.comment then parts[#parts + 1] = node.comment end
     self:_setText(table.concat(parts, "\n\n"))
     local playing = lesson.state == "play"

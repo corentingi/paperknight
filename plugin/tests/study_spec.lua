@@ -41,7 +41,7 @@ return {
     end },
     { "movetext: intro comment, anno stripped, shapes extracted", function(t)
         local root = study():tree(1)
-        t.eq(root.comment, "Welcome! This chapter shows the Italian game.", "intro without [%anno], wrapped line joined")
+        t.eq(root.comment, "Welcome! This chapter shows the\nItalian game.", "intro without [%anno]; a hand-written (unwrapped) file keeps its line break")
         t.eq(#root.shapes.circles, 2, "intro circles")
         local e4 = root.children[1]
         t.eq(e4.comment, "Controls the centre.", "[%clk] stripped")
@@ -191,8 +191,8 @@ return {
         t.eq(root.children[1].glyphs[1], 1, "separate ! attached")
     end },
     { "comments: wrapped lines joined, paragraphs kept", function(t)
-        local text = PkPgn.cleanComment("a long\nwrapped comment\n\nNew paragraph")
-        t.eq(text, "a long wrapped comment\n\nNew paragraph", "joined")
+        local text = PkPgn.cleanComment("a long comment wrapped by the tool that wrote this PGN file at\nabout eighty columns\n\nNew paragraph", nil, true)
+        t.eq(text, "a long comment wrapped by the tool that wrote this PGN file at about eighty columns\n\nNew paragraph", "joined")
     end },
     { "cursor: 4-field FEN, jump across branches, foreign node, redo stack", function(t)
         local game = Chess:new()

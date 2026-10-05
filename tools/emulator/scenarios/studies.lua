@@ -78,6 +78,7 @@ return function(h)
 
     tapButton("end")
     h.check(panel():find("^8%.%.%. d5"), "end of main line: " .. panel())
+    h.check(panel():find("has counterplay", 1, true), "position mark in words: " .. panel())
     h.check(#view.board.shapes.arrows == 2 and #view.board.shapes.circles == 1, "final shapes")
     h.shot("study-shapes")
 

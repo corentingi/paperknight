@@ -21,7 +21,9 @@ local T = require("ffi/util").template
 
 local ChessBoard = require("board")
 local PkPromotion = require("pkpromotion")
+local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
+local PkText = require("pktext")
 
 local REPLY_DELAY = 0.8 -- seconds before the opponent's move
 local FULL_REFRESH_EVERY = 10
@@ -120,6 +122,7 @@ end
 -- ScrollTextWidget has no setText: replace the panel widget.
 function PkDrillView:_setText(text)
     text = util.fixUtf8(text, "?")
+    text, self.links = PkText.linkify(text) -- web addresses shown short
     self.panel_text = text
     local old = self.text
     self.text = self:_textWidget(text)
@@ -206,6 +209,7 @@ function PkDrillView:refresh(prefix, full)
     end
     if node and node.parent then
         parts[#parts + 1] = PkStudy.moveLabel(node)
+        parts[#parts + 1] = PkPgn.positionWords(node.glyphs)
         if node.comment then parts[#parts + 1] = node.comment end
     end
     if state == "play" and drill:mode() == "intro" and drill:expected().comment then
