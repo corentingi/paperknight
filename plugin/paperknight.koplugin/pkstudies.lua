@@ -12,6 +12,8 @@ local util = require("util")
 local _ = require("gettext")
 local T = require("ffi/util").template
 
+local PkDone = require("pkdone")
+local PkProgress = require("pkprogress")
 local PkStudy = require("pkstudy")
 local PkStudyView = require("pkstudyview")
 
@@ -109,12 +111,30 @@ function PkStudies.openChapter(study, index)
     return view
 end
 
--- Items of the top-level list: study files + "Open a PGN file…".
+-- Runs fn(progress) with the progress database (nil if it cannot be opened).
+local function withProgress(fn)
+    local ok, progress = pcall(PkProgress.open, DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+    if not ok then
+        logger.warn("Paperknight: cannot open progress database:", progress)
+        progress = nil
+    end
+    local res_ok, res = pcall(fn, progress)
+    if progress then progress:close() end
+    if not res_ok then
+        logger.warn("Paperknight:", res)
+        return nil
+    end
+    return res
+end
+
+-- Items of the top-level list: study files (✓ when done) + "Open a PGN file…".
 local function listItems(dir, files)
     local items = {}
+    local done = withProgress(PkDone.doneSet) or {}
     for _i, file in ipairs(files) do
         items[#items + 1] = {
-            text = util.fixUtf8((file:gsub("%.[Pp][Gg][Nn]$", "")), "?"),
+            text = (done[file] and PkDone.MARK or "") .. util.fixUtf8((file:gsub("%.[Pp][Gg][Nn]$", "")), "?"),
+            _pk_file = file,
             callback = function() PkStudies.openStudy(dir .. "/" .. file) end,
         }
     end
@@ -136,19 +156,40 @@ local function listItems(dir, files)
     return items
 end
 
+--- Toggles the done mark of a study file. Returns the new state, or nil.
+function PkStudies.toggleDone(file)
+    return withProgress(function(progress)
+        if not progress then return nil end
+        local done = not PkDone.isDone(progress, file)
+        PkDone.set(progress, file, done)
+        return done
+    end)
+end
+
 --- Top-level list. `dir` defaults to PkStudies.dir() (tests pass their own).
--- The list follows the folder: each repaint (e.g. back from a study) checks
--- the .pgn files and rebuilds the items if they changed.
+-- The list follows the folder and the done marks: each repaint (e.g. back
+-- from a study) rebuilds the items if the .pgn files or the marks changed.
+-- Long-press on a study toggles its done mark.
 function PkStudies.show(dir)
     dir = dir or PkStudies.dir()
     local files = PkStudies.listFiles(dir)
     local menu = fullscreenMenu(_("Studies"), listItems(dir, files))
-    menu._pk_files = table.concat(files, "\n")
+    menu._pk_files = table.concat(files, "\n") .. "|" .. PkDone.version
+    menu.onMenuHold = function(m, item)
+        if item and item._pk_file and PkStudies.toggleDone(item._pk_file) ~= nil then
+            -- rebuild now (one refresh), on the same page
+            local now = PkStudies.listFiles(dir)
+            m._pk_files = table.concat(now, "\n") .. "|" .. PkDone.version
+            local first = ((m.page or 1) - 1) * (m.perpage or 1) + 1
+            m:switchItemTable(nil, listItems(dir, now), first)
+        end
+        return true
+    end
     local paintTo = menu.paintTo
     menu.paintTo = function(m, bb, x, y)
         paintTo(m, bb, x, y)
         local now = PkStudies.listFiles(dir)
-        local key = table.concat(now, "\n")
+        local key = table.concat(now, "\n") .. "|" .. PkDone.version
         if key ~= m._pk_files then
             m._pk_files = key
             -- not while painting: rebuild on the next tick

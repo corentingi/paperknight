@@ -51,6 +51,9 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
   remembered per study file and chapter (in `progress.sqlite`) and also sets
   the side trained in lessons; a running lesson restarts from the new side.
   After a finished lesson, *Next* opens the next chapter.
+- **Done marks**: long-press a study in the Studies list, or ≡ → *Mark study
+  as done*, to put a ✓ in front of its name (again to remove it). Marks are
+  kept in `progress.sqlite`, by file name.
 - E-ink: steps refresh the board/panel area; a full refresh happens on chapter
   change, on ⏮/⏭, at lesson start, and every 10 steps.
 - Text is shown with invalid UTF-8 replaced (older Latin-1 PGNs); files over

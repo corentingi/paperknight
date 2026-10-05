@@ -11,6 +11,7 @@ local FrameContainer = require("ui/widget/container/framecontainer")
 local Geometry = require("ui/geometry")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local Menu = require("ui/widget/menu")
+local Notification = require("ui/widget/notification")
 local Screen = Device.screen
 local ScrollTextWidget = require("ui/widget/scrolltextwidget")
 local Size = require("ui/size")
@@ -24,6 +25,7 @@ local T = require("ffi/util").template
 
 local Chess = require("chess")
 local ChessBoard = require("board")
+local PkDone = require("pkdone")
 local PkLesson = require("pklesson")
 local PkProgress = require("pkprogress")
 local PkPromotion = require("pkpromotion")
@@ -396,21 +398,33 @@ function PkStudyView:onBoardMove(move)
     end
 end
 
---- Title-bar menu: chapters, flip board.
+--- Title-bar menu: chapters, flip board, done mark.
 function PkStudyView:showMenu()
     local dialog
-    dialog = ButtonDialog:new{
-        buttons = {
-            {{ text = _("Chapters…"), callback = function()
-                UIManager:close(dialog); self.menu_dialog = nil
-                self:showChapterMenu()
-            end }},
-            {{ text = _("Flip board"), callback = function()
-                UIManager:close(dialog); self.menu_dialog = nil
-                self:toggleFlip()
-            end }},
-        },
+    local function close() UIManager:close(dialog); self.menu_dialog = nil end
+    local buttons = {
+        {{ text = _("Chapters…"), callback = function() close(); self:showChapterMenu() end }},
+        {{ text = _("Flip board"), callback = function() close(); self:toggleFlip() end }},
     }
+    local file = PkDone.fileOf(self.study.path)
+    if file and self.progress then
+        local done = PkDone.isDone(self.progress, file)
+        buttons[#buttons + 1] = {{
+            text = done and _("Mark study as not done") or _("Mark study as done ✓"),
+            callback = function()
+                close()
+                local ok, err = pcall(PkDone.set, self.progress, file, not done)
+                if not ok then
+                    logger.warn("Paperknight: cannot save the done mark:", err)
+                    return
+                end
+                UIManager:show(Notification:new{
+                    text = (not done) and _("Study marked as done.") or _("Study marked as not done."),
+                })
+            end,
+        }}
+    end
+    dialog = ButtonDialog:new{ buttons = buttons }
     self.menu_dialog = dialog
     UIManager:show(dialog)
 end
