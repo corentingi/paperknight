@@ -15,6 +15,7 @@ local T = require("ffi/util").template
 local Chess = require("pkchess")
 local PkDrill = require("pkdrill")
 local PkDrillView = require("pkdrillview")
+local PkNav = require("pknav")
 local PkProgress = require("pkprogress")
 local PkRepertoire = require("pkrepertoire")
 local PkResCache = require("pkrescache")
@@ -384,7 +385,11 @@ function PkOpenings.show(dir)
         is_popout = false,
         width = Screen:getWidth(),
         height = Screen:getHeight(),
+        name = "paperknight_openings",
+        title_bar_left_icon = "appbar.menu",
     }
+    menu.onLeftButtonTap = function() PkNav.showQuick("openings") end
+    PkNav.tapTitle(menu, function() return menu.title_bar end, "openings")
     menu._pk_dir = dir
     menu._pk_key = folderKey(dir)
     -- follows the folder: a repaint (e.g. back from a drill, or after

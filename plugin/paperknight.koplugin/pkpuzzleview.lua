@@ -3,6 +3,7 @@
 local Blitbuffer = require("ffi/blitbuffer")
 local Device = require("device")
 local ButtonTable = require("ui/widget/buttontable")
+local ButtonDialog = require("ui/widget/buttondialog")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local Font = require("ui/font")
 local FrameContainer = require("ui/widget/container/framecontainer")
@@ -22,6 +23,7 @@ local Chess = require("pkchess")
 local ChessBoard = require("pkboard")
 local PkPromotion = require("pkpromotion")
 local PkRefresh = require("pkrefresh")
+local PkNav = require("pknav")
 local PkSide = require("pkside")
 local PkPuzzle = require("pkpuzzle")
 local PkPuzzleReview = require("pkpuzzlereview")
@@ -43,6 +45,7 @@ local PkPuzzleView = InputContainer:extend{
 }
 
 function PkPuzzleView:init()
+    PkNav.tapTitle(self, function() return self.title_bar end, "puzzles") -- quick settings
     PkSide.followNight(self, function(v) v.status:setText(PkSide.swap(v.status.text)) end)
     self.dimen = Geometry:new{ x = 0, y = 0, w = Screen:getWidth(), h = Screen:getHeight() }
     if Device:hasKeys() then
@@ -55,7 +58,7 @@ function PkPuzzleView:init()
         subtitle = "",
         with_bottom_line = true,
         left_icon = "appbar.menu",
-        left_icon_tap_callback = function() self:showThemeMenu() end,
+        left_icon_tap_callback = function() self:showMenu() end,
         close_callback = function() self:onClose() end,
     }
     self.theme = self.progress:getSetting("theme") -- nil = all themes
@@ -420,6 +423,19 @@ end
 
 --- Theme picker: "All themes" + the pack's themes with counts (pack format:
 -- `themes` table). The current choice is marked with a check mark.
+--- ☰ menu: the theme, then the quick settings (pknav.lua).
+function PkPuzzleView:showMenu()
+    local dialog
+    local function close() UIManager:close(dialog); self.menu_dialog = nil end
+    local buttons = {
+        {{ text = _("Theme…"), callback = function() close(); self:showThemeMenu() end }},
+    }
+    for _, row in ipairs(PkNav.quickRows(close, "puzzles")) do buttons[#buttons + 1] = row end
+    dialog = ButtonDialog:new{ buttons = buttons }
+    self.menu_dialog = dialog
+    UIManager:show(dialog)
+end
+
 function PkPuzzleView:showThemeMenu()
     local function mark(text, selected) return selected and ("✓ " .. text) or text end
     local items = {{

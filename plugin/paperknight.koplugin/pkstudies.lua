@@ -13,6 +13,7 @@ local _ = require("gettext")
 local T = require("ffi/util").template
 
 local PkDone = require("pkdone")
+local PkNav = require("pknav")
 local PkProgress = require("pkprogress")
 local PkStudy = require("pkstudy")
 local PkStudyView = require("pkstudyview")
@@ -84,7 +85,11 @@ local function fullscreenMenu(title, items)
         is_popout = false,
         width = Screen:getWidth(),
         height = Screen:getHeight(),
+        name = "paperknight_studies",
+        title_bar_left_icon = "appbar.menu",
     }
+    menu.onLeftButtonTap = function() PkNav.showQuick("studies") end
+    PkNav.tapTitle(menu, function() return menu.title_bar end, "studies")
     -- no close_callback: picking an item leaves the list open underneath,
     -- so closing a chapter or study returns to it
     return menu

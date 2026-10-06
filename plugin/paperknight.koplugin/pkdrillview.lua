@@ -25,6 +25,7 @@ local PkPromotion = require("pkpromotion")
 local PkRefresh = require("pkrefresh")
 local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
+local PkNav = require("pknav")
 local PkSide = require("pkside")
 local PkText = require("pktext")
 
@@ -41,6 +42,7 @@ local PkDrillView = InputContainer:extend{
 }
 
 function PkDrillView:init()
+    PkNav.tapTitle(self, function() return self.title_bar end, "openings") -- quick settings
     PkSide.followNight(self, function(v) if v.raw_text then v:_setText(PkSide.swap(v.raw_text)) end end)
     self.dimen = Geometry:new{ x = 0, y = 0, w = Screen:getWidth(), h = Screen:getHeight() }
     if Device:hasKeys() then
@@ -287,6 +289,7 @@ function PkDrillView:showMenu()
            end }},
     }
     buttons[#buttons + 1] = PkLinks.menuRow(self.links, close)
+    for _, row in ipairs(PkNav.quickRows(close, "openings")) do buttons[#buttons + 1] = row end
     dialog = ButtonDialog:new{ buttons = buttons }
     self.menu_dialog = dialog
     UIManager:show(dialog)

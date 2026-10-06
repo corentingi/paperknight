@@ -40,6 +40,7 @@ Paperknight modules (prefixed `pk` to avoid `package.loaded` clashes, ADR-0009):
 | `pkpuzzleview.lua` | Puzzle screen: board, status line, Hint / Solution / Retry / Next |
 | `pkpuzzle.lua` | Puzzle session state machine (pure logic, unit-tested) |
 | `pkpuzzlereview.lua` | Missed-puzzle review ladder (pure logic, ADR-0014) |
+| `pknav.lua` | Home screen, quick settings (frontlight, night mode, modes), switching modes (ADR-0015) |
 | `pkrefresh.lua` | E-ink refresh policy of the board screens ("partial", like page turns) |
 | `pkside.lua` | Side names with a disc marker ("○ White", "● Black"), swapped in night mode |
 | `pkrescache.lua` | On-device cache of resolved repertoire moves (ADR-0013) |

@@ -36,6 +36,7 @@ local Timer = require("pktimer")
 local Uci = require("pkuci")
 local SettingsWidget = require("pksettingswidget")
 local PkPromotion = require("pkpromotion")
+local PkNav = require("pknav")
 local PkSide = require("pkside")
 
 -- Utilities
@@ -138,12 +139,18 @@ function Paperknight:init()
 
     -- Register this instance to the UIManager's main menu
     self.ui.menu:registerToMainMenu(self)
+    PkNav.app = self
+end
+
+--- Whether the engine binary is installed ("Play against the engine").
+function Paperknight:hasEngine()
+    return lfs.attributes(UCI_ENGINE_PATH, "mode") == "file"
 end
 
 --- Paperknight:onPaperknightStart()
 -- Handler for the dispatcher action registered in init (gesture/hotkey launch).
 function Paperknight:onPaperknightStart()
-    self:startGame()
+    PkNav.home()
     return true
 end
 
@@ -155,25 +162,31 @@ function Paperknight:addToMainMenu(menu_items)
     menu_items.paperknight = {
         text = _("Paperknight"),
         sorting_hint = "tools", -- Suggests where it should appear in the menu
+        -- each mode opens above the home screen (closing it goes back there)
         sub_item_table = {
             {
+                text = _("Home"),
+                callback = function() PkNav.home() end,
+                separator = true,
+            },
+            {
                 text = _("Puzzles"),
-                callback = function() self:startPuzzles() end,
+                callback = function() PkNav.open("puzzles") end,
             },
             {
                 text = _("Studies"),
-                callback = function() require("pkstudies").show() end,
+                callback = function() PkNav.open("studies") end,
             },
             {
                 text = _("Openings"),
-                callback = function() require("pkopenings").show() end,
+                callback = function() PkNav.open("openings") end,
             },
             {
                 text = _("Play against the engine"),
                 -- Paperknight: no engine binary ships for the Kindle yet; the
                 -- inherited game screen misbehaves without one
-                enabled_func = function() return lfs.attributes(UCI_ENGINE_PATH, "mode") == "file" end,
-                callback = function() self:startGame() end,
+                enabled_func = function() return self:hasEngine() end,
+                callback = function() PkNav.open("play") end,
             },
         },
     }
@@ -1086,14 +1099,17 @@ function Paperknight:createTitleBar()
         left_icon_tap_callback = function()
             self:resetGame()
         end,
-        close_callback = function()
-            self.timer:stop() -- Stop the timer when closing
-            if self.engine then
-                self.engine:stop()
-            end
-            UIManager:close(self) -- Close the Paperknight UI
-        end,
+        close_callback = function() self:pk_close() end,
     }
+end
+
+--- Closes the game screen (also used by PkNav when switching mode).
+function Paperknight:pk_close()
+    self.timer:stop() -- Stop the timer when closing
+    if self.engine then
+        self.engine:stop()
+    end
+    UIManager:close(self) -- Close the Paperknight UI
 end
 
 --- Paperknight:createStatusBar()

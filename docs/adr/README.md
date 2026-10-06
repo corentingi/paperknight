@@ -22,3 +22,4 @@ Template: [`0000-template.md`](0000-template.md).
 | [0012](0012-openings-trainer.md) | Openings trainer: repertoire PGNs, per-move cards, SM-2 | accepted |
 | [0013](0013-fast-san-resolver.md) | Dedicated SAN resolver for PGN moves; chess.lua for play | accepted |
 | [0014](0014-missed-puzzle-reviews.md) | Missed puzzles come back as reviews on a fixed ladder | accepted |
+| [0015](0015-navigation-and-quick-settings.md) | Home screen and quick settings for navigation and screen settings | accepted |

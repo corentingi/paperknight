@@ -33,6 +33,7 @@ local PkPromotion = require("pkpromotion")
 local PkRefresh = require("pkrefresh")
 local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
+local PkNav = require("pknav")
 local PkSide = require("pkside")
 local PkText = require("pktext")
 
@@ -48,6 +49,7 @@ local PkStudyView = InputContainer:extend{
 }
 
 function PkStudyView:init()
+    PkNav.tapTitle(self, function() return self.title_bar end, "studies") -- quick settings
     PkSide.followNight(self, function(v) if v.raw_text then v:_setText(PkSide.swap(v.raw_text)) end end)
     self.dimen = Geometry:new{ x = 0, y = 0, w = Screen:getWidth(), h = Screen:getHeight() }
     if Device:hasKeys() then
@@ -409,6 +411,7 @@ function PkStudyView:showMenu()
         {{ text = _("Flip board"), callback = function() close(); self:toggleFlip() end }},
     }
     buttons[#buttons + 1] = PkLinks.menuRow(self.links, close)
+    for _, row in ipairs(PkNav.quickRows(close, "studies")) do buttons[#buttons + 1] = row end
     local file = PkDone.fileOf(self.study.path)
     if file and self.progress then
         local ch_done = PkDone.isChapterDone(self.progress, file, self.chapter_index)

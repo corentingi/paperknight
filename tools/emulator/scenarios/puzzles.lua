@@ -124,6 +124,13 @@ return function(h)
 
     -- 4. Theme filter: pick "Mate in 1" in the menu by tapping it.
     h.tapWidget(view.title_bar.left_button)
+    h.wait(0.5)
+    h.check(view.menu_dialog, "title-bar menu opened")
+    for _, row in ipairs(view.menu_dialog.buttontable.buttons_layout) do
+        for _, btn in ipairs(row) do
+            if btn.text == "Theme…" then h.tapWidget(btn) end
+        end
+    end
     h.wait(1)
     h.check(view.theme_menu, "theme menu opened")
     h.shot("puzzle-themes")

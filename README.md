@@ -46,8 +46,12 @@ make emulator      # run the plugin in a desktop KOReader window (see docs/devel
    study PGNs to `/mnt/us/koreader/paperknight/studies/`, and repertoire PGNs
    to `/mnt/us/koreader/paperknight/repertoires/`.
 4. Restart KOReader; **Paperknight** appears in the **Tools** menu, with
-   *Puzzles*, *Studies*, *Openings* and *Play against the engine*. Playing the engine needs a
+   *Home*, *Puzzles*, *Studies*, *Openings* and *Play against the engine*. Playing the engine needs a
    Stockfish binary at `paperknight.koplugin/bin/stockfish` (not shipped yet).
+   The home screen lists the modes and the screen settings; in any screen,
+   ☰ or a tap on the title opens the quick settings (frontlight, night mode,
+   switch mode, home). Tip: assign the *Paperknight* gesture action in
+   KOReader to open the home screen in one tap.
 
 ## License
 
