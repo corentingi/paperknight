@@ -25,6 +25,7 @@ Stockfish, PGN load/save) that grows into a training tool:
 | [`plugin/paperknight.koplugin/`](plugin/) | The KOReader plugin (Lua). This folder is what you copy to the device. |
 | [`pipeline/`](pipeline/) | Python scripts that download public datasets and build compact data packs for the plugin. |
 | [`tools/emulator/`](tools/emulator/) | Runs the desktop KOReader (headless or windowed) to test the plugin without a Kindle. |
+| [`tools/dist/`](tools/dist/) | Builds the device archive and its installer script (`make pka`). |
 | [`docs/`](docs/) | Architecture, data sources, development guide, and [decision records](docs/adr/). |
 
 ## Quick start (development)
