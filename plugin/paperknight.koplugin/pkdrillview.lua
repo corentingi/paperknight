@@ -25,6 +25,7 @@ local PkPromotion = require("pkpromotion")
 local PkRefresh = require("pkrefresh")
 local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
+local PkSide = require("pkside")
 local PkText = require("pktext")
 
 local REPLY_DELAY = 0.8 -- seconds before the opponent's move
@@ -40,6 +41,7 @@ local PkDrillView = InputContainer:extend{
 }
 
 function PkDrillView:init()
+    PkSide.followNight(self, function(v) if v.raw_text then v:_setText(PkSide.swap(v.raw_text)) end end)
     self.dimen = Geometry:new{ x = 0, y = 0, w = Screen:getWidth(), h = Screen:getHeight() }
     if Device:hasKeys() then
         self.key_events = { Close = { { Device.input.group.Back } } }
@@ -122,6 +124,7 @@ end
 
 -- ScrollTextWidget has no setText: replace the panel widget.
 function PkDrillView:_setText(text)
+    self.raw_text = text -- before linkify: rewritten when night mode is toggled
     text = util.fixUtf8(text, "?")
     text, self.links = PkText.linkify(text) -- web addresses shown short
     self.panel_text = text
@@ -140,10 +143,6 @@ end
 function PkDrillView:_redraw(page)
     if page then return PkRefresh.page(self) end
     PkRefresh.step(self, self.board, self.buttons)
-end
-
-local function sideName(color)
-    return color == "w" and _("White") or _("Black")
 end
 
 --- Starts the next line of the session, or shows the summary when done.
@@ -197,7 +196,7 @@ function PkDrillView:refresh(prefix, full)
             -- the move to learn, as an arrow
             board:setShapes({ circles = {}, arrows = { { from = expected.move.from, to = expected.move.to } } })
         else
-            parts[#parts + 1] = T(_("Your move (%1)."), sideName(drill.line.student))
+            parts[#parts + 1] = T(_("Your move (%1)."), PkSide.name(drill.line.student))
         end
     end
     if node and node.parent then

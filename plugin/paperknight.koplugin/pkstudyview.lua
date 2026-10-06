@@ -33,6 +33,7 @@ local PkPromotion = require("pkpromotion")
 local PkRefresh = require("pkrefresh")
 local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
+local PkSide = require("pkside")
 local PkText = require("pktext")
 
 local REPLY_DELAY = 0.8 -- seconds before the opponent's reply in a lesson
@@ -47,6 +48,7 @@ local PkStudyView = InputContainer:extend{
 }
 
 function PkStudyView:init()
+    PkSide.followNight(self, function(v) if v.raw_text then v:_setText(PkSide.swap(v.raw_text)) end end)
     self.dimen = Geometry:new{ x = 0, y = 0, w = Screen:getWidth(), h = Screen:getHeight() }
     if Device:hasKeys() then
         self.key_events = {
@@ -217,6 +219,7 @@ end
 -- ScrollTextWidget has no setText: replace the panel widget. The caller
 -- schedules the screen refresh (see _redraw).
 function PkStudyView:_setText(text)
+    self.raw_text = text -- before linkify: rewritten when night mode is toggled
     text = util.fixUtf8(text, "?") -- e.g. Latin-1 PGNs from older tools
     text, self.links = PkText.linkify(text) -- web addresses shown short
     self.panel_text = text
@@ -498,10 +501,6 @@ end
 -- Lessons (docs/studies.md "Interactive chapters"; logic in pklesson.lua)
 ----------------------------------------------------------------------------
 
-local function sideName(color)
-    return color == "w" and _("White") or _("Black")
-end
-
 --- Starts (or restarts) a lesson on the current chapter. Gamebook chapters
 -- treat variations as known mistakes; ordinary chapters as sidelines.
 function PkStudyView:startLesson()
@@ -583,7 +582,7 @@ function PkStudyView:_lessonRefresh(prefix)
             tostring(lesson.error))
         self.board.locked = true
     elseif lesson.state == "play" then
-        parts[#parts + 1] = T(_("Your move (%1)."), sideName(lesson.student))
+        parts[#parts + 1] = T(_("Your move (%1)."), PkSide.name(lesson.student))
     else
         self.board.locked = true -- opponent to move
         if self.waiting_next then parts[#parts + 1] = _("Tap Next to continue.") end

@@ -36,10 +36,12 @@ local Timer = require("pktimer")
 local Uci = require("pkuci")
 local SettingsWidget = require("pksettingswidget")
 local PkPromotion = require("pkpromotion")
+local PkSide = require("pkside")
 
 -- Utilities
 local Logger = require("logger")
 local _ = require("gettext") -- Localization function
+local T = require("ffi/util").template
 
 local function getPluginPath()
     local source = debug.getinfo(1, "S").source
@@ -329,7 +331,7 @@ end
 --- Paperknight:updatePgnLogInitialText()
 -- Updates the PGN log widget with initial welcome message and engine information.
 function Paperknight:updatePgnLogInitialText()
-    local text = _("Welcome to Paperknight!\nWhite to play.")
+    local text = T(_("Welcome to Paperknight!\n%1 to play."), PkSide.name("w"))
     if self.engine and self.engine.state.uciok then
         text = text .. "\nEngine ready: " .. (self.engine.state.id_name or "")
         if self.engine.state.id_author then
@@ -458,7 +460,7 @@ function Paperknight:buildUILayout()
     if toolbar_width > self.full_width / 3 then toolbar_width = math.floor(self.full_width / 3) end
 
     local pgn_log_width = self.full_width - toolbar_width
-    self.pgn_log = self:createPgnLogWidget(_("Welcome to Paperknight!\nWhite to play."), pgn_log_width, log_h)
+    self.pgn_log = self:createPgnLogWidget(T(_("Welcome to Paperknight!\n%1 to play."), PkSide.name("w")), pgn_log_width, log_h)
 
     -- Wrap PGN log in a centered frame
     local log_frame = FrameContainer:new{
@@ -887,7 +889,7 @@ function Paperknight:resetGame()
     self:updateTimerDisplay()
     self:updatePlayerDisplay()
 
-    self.pgn_log:setText(_("New game.\nWhite to play."))
+    self.pgn_log:setText(T(_("New game.\n%1 to play."), PkSide.name("w")))
     self.board:updateBoard()
     UIManager:setDirty(self, "ui")
 end

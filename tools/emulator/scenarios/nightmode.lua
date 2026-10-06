@@ -62,6 +62,9 @@ return function(h)
         return board.table:getButtonById(board.chessToId(sq)).icon
     end
     h.check(iconOn(white_piece) == PkIcons.pieces.r.w, "day: white rook icon")
+    -- the side-to-move marker: a white disc, stored swapped in night mode
+    local function status() return view.status.text end
+    h.check(status():find("○ White to move", 1, true), "day marker: " .. status())
 
     Screen:toggleNightMode()
     UIManager:setDirty("all", "full")
@@ -73,6 +76,9 @@ return function(h)
         h.check(ring() == 0xCC, ("night shape shown %x"):format(ring()))
         h.check(iconOn(white_piece) == PkIcons.pieces.r.b, "night: black rook icon, shown inverted")
         h.check(pieceMiddle(white_piece) == 0xFF, ("white piece shown white: %x"):format(pieceMiddle(white_piece)))
+        h.check(status():find("● White to move", 1, true), "night marker swapped on toggle: " .. status())
+        view:loadPuzzle(view.pack:get("0042j"))
+        h.check(status():find("● White to move", 1, true), "night marker on a new text: " .. status())
         -- a single-square repaint (Button:refresh paints the frame directly)
         board:markSelected(light_sq); board:unmarkSelected(light_sq)
         h.wait(0.5)
@@ -84,5 +90,6 @@ return function(h)
     h.wait(1)
     h.check(background(light_sq) == 0xFF and background(dark_sq) == 0xBB, "day palette back")
     h.check(iconOn(white_piece) == PkIcons.pieces.r.w, "day piece set back")
+    h.check(status():find("○ White to move", 1, true), "day marker back: " .. status())
     h.log("night mode keeps the board's day colours")
 end

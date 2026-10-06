@@ -22,6 +22,7 @@ local Chess = require("pkchess")
 local ChessBoard = require("pkboard")
 local PkPromotion = require("pkpromotion")
 local PkRefresh = require("pkrefresh")
+local PkSide = require("pkside")
 local PkPuzzle = require("pkpuzzle")
 local PkPuzzleReview = require("pkpuzzlereview")
 local PkSrs = require("pksrs")
@@ -42,6 +43,7 @@ local PkPuzzleView = InputContainer:extend{
 }
 
 function PkPuzzleView:init()
+    PkSide.followNight(self, function(v) v.status:setText(PkSide.swap(v.status.text)) end)
     self.dimen = Geometry:new{ x = 0, y = 0, w = Screen:getWidth(), h = Screen:getHeight() }
     if Device:hasKeys() then
         self.key_events = { Close = { { Device.input.group.Back } } }
@@ -155,12 +157,8 @@ function PkPuzzleView:_setStatus(text)
     PkRefresh.page(self) -- board and status (see pkrefresh.lua: no flicker)
 end
 
-local function sideName(color)
-    return color == Chess.WHITE and _("White") or _("Black")
-end
-
 function PkPuzzleView:_toMoveText()
-    local text = T(_("%1 to move. Find the best move."), sideName(self.session:solverColor()))
+    local text = T(_("%1 to move. Find the best move."), PkSide.name(self.session:solverColor()))
     if self.review then
         text = T(_("Review: you missed this puzzle on %1."), os.date("%d %b %Y", self.review.missed)) .. "\n" .. text
     elseif self.stale then
