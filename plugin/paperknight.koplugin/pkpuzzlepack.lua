@@ -58,7 +58,7 @@ function PkPuzzlePack:get(id)
     return rowToPuzzle(self.get_stmt:reset():bind(id):step())
 end
 
-local BATCH = 25
+local BATCH = 100 -- candidates scanned per direction (enough to find fresh ones in a theme)
 
 -- One random puzzle of rating band `band`: scans up to 2*BATCH candidates from
 -- random key `rnd` (wrapping around), returning the first `accept`ed one.
@@ -82,14 +82,22 @@ function PkPuzzlePack:_pickInBand(band, rnd, accept, theme)
 end
 
 --- Picks a random puzzle near `rating`. Preference order (ADR-0010):
---  1. an accepted puzzle within ±2 bands (home band first, then neighbours),
---  2. any puzzle within ±2 bands (e.g. all recent ones were rejected),
---  3. an accepted puzzle further away, 4. anything.
+--  1. a fresh puzzle within ±2 bands (home band first, then neighbours),
+--  2. a fresh puzzle further away (nearest bands first),
+--  3. a stale one within ±2 bands, 4. a stale one further away.
+-- `accept` is a hard filter, `fresh` a soft one (dropped in steps 3-4, e.g.
+-- once every puzzle of a theme was played recently).
 -- @param opts { random = function() -> [0,1), accept = function(p) -> bool,
+--                fresh = function(p) -> bool,
 --                theme = key or nil (only puzzles carrying this theme) }
+-- @return the puzzle (or nil), and whether it is fresh
 function PkPuzzlePack:pickNear(rating, opts)
     opts = opts or {}
     local random = opts.random or math.random
+    local accept, fresh = opts.accept, opts.fresh
+    local function both(p)
+        return (not accept or accept(p)) and (not fresh or fresh(p))
+    end
     local home = math.floor(rating / 100)
     local near, far = { home }, {}
     for d = 1, 30 do
@@ -97,11 +105,11 @@ function PkPuzzlePack:pickNear(rating, opts)
         list[#list + 1] = home + d
         list[#list + 1] = home - d
     end
-    for _, pass in ipairs({ { near, opts.accept }, { near, nil }, { far, opts.accept }, { far, nil } }) do
+    for _, pass in ipairs({ { near, both, true }, { far, both, true }, { near, accept, false }, { far, accept, false } }) do
         for _, band in ipairs(pass[1]) do
             if band >= 0 then
                 local p = self:_pickInBand(band, math.floor(random() * 0x7FFFFFFF), pass[2], opts.theme)
-                if p then return p end
+                if p then return p, pass[3] or not fresh or fresh(p) end
             end
         end
     end

@@ -239,5 +239,34 @@ return function(h)
     view:nextPuzzle() -- skipped without a move
     h.check(view.puzzle.id ~= "004JD" and not view.review, "an untouched review is not served twice")
     h.check(view.progress:getReview("004JD").due == today, "and stays due")
+
+    -- 8. A theme that runs out never serves the same puzzle twice in a row:
+    -- unplayed ones first, then repeats (announced), alternating.
+    view:setTheme("intermezzo") -- 2 puzzles in the fixture pack
+    h.wait(0.5)
+    local seen, prev = {}, view.puzzle.id
+    seen[prev] = true
+    h.check(not view.stale, "first one unplayed")
+    for _ = 1, 5 do
+        view.progress:record{ puzzle_id = view.puzzle.id, puzzle_rating = view.puzzle.rating, success = true,
+                              solved = true, mistakes = 0, used_help = false, ts = os.time() }
+        h.check(view:nextPuzzle(), "a puzzle is served")
+        h.check(view.puzzle.id ~= prev, "not the same puzzle again: " .. view.puzzle.id)
+        prev = view.puzzle.id
+        seen[prev] = true
+    end
+    h.check(view.stale and status():find("repeating", 1, true), "repeats announced: " .. status())
+    h.shot("puzzle-theme-repeat")
+    local n = 0
+    for _ in pairs(seen) do n = n + 1 end
+    h.check(n == 2, "both puzzles of the theme served")
+    view.progress:removeReview("004JD") -- else it waits as a review
+    view:setTheme("cornerMate") -- a single puzzle: 004JD
+    h.wait(0.5)
+    h.check(view.theme == "cornerMate", "single-puzzle theme chosen")
+    local only = view.puzzle.id
+    h.check(not view:nextPuzzle(), "no other puzzle")
+    h.check(view.puzzle.id == only and status():find("No other puzzle with this theme", 1, true),
+        "the current one stays: " .. status())
     view:onClose()
 end

@@ -84,6 +84,7 @@ function PkPuzzleView:init()
     self.board_size = math.min(self.dimen.w, board_h)
     self:_prepareBoard(false) -- the frame exists even if no puzzle can be picked
     self._skipped = {} -- reviews already shown this session
+    self._served = {}  -- puzzles already shown this session (no repeat until all were)
     local ok, err = pcall(self.progress.seedReviews, self.progress, os.time(), SEED_DAYS)
     if not ok then logger.warn("Paperknight: cannot seed puzzle reviews:", err) end
     self:nextPuzzle()
@@ -162,17 +163,21 @@ function PkPuzzleView:_toMoveText()
     local text = T(_("%1 to move. Find the best move."), sideName(self.session:solverColor()))
     if self.review then
         text = T(_("Review: you missed this puzzle on %1."), os.date("%d %b %Y", self.review.missed)) .. "\n" .. text
+    elseif self.stale then
+        text = (self.theme and _("You played every puzzle of this theme recently: repeating.")
+            or _("You played every puzzle near your rating recently: repeating.")) .. "\n" .. text
     end
     return text
 end
 
 --- Starts `puzzle` (a pack row); `review`: its review card when it is a
--- review of a missed puzzle (ADR-0014).
-function PkPuzzleView:loadPuzzle(puzzle, review)
+-- review of a missed puzzle (ADR-0014); `stale`: played recently (repeat).
+function PkPuzzleView:loadPuzzle(puzzle, review, stale)
     self:_cancelReply()
     self:_finishAttempt("skipped")
     self.puzzle = puzzle
     self.review = review
+    self.stale = stale
     self.session = PkPuzzle.new(puzzle, self.game)
     self.recorded = false
     self:_prepareBoard(puzzle.solver == Chess.BLACK)
@@ -229,30 +234,43 @@ function PkPuzzleView:nextPuzzle()
         self.session, self.puzzle, self.review = nil, nil, nil
     end
     local err
+    local function pick()
+        return self.pack:pickNear(self.progress:rating(), {
+            random = self.random,
+            theme = self.theme,
+            accept = function(p)
+                return not (self.puzzle and p.id == self.puzzle.id)
+                    and not self._served[p.id]
+                    and not self._bad[p.id]
+                    and not self.progress:getReview(p.id) -- comes back as a review
+            end,
+            fresh = function(p) return not self.progress:wasAttemptedSince(p.id, since) end,
+        })
+    end
     for _try = 1, MAX_LOAD_TRIES do
-        local ok, puzzle = pcall(function()
-            return self.pack:pickNear(self.progress:rating(), {
-                random = self.random,
-                theme = self.theme,
-                accept = function(p)
-                    return not (self.puzzle and p.id == self.puzzle.id)
-                        and not self._bad[p.id]
-                        and not self.progress:wasAttemptedSince(p.id, since)
-                        and not self.progress:getReview(p.id) -- comes back as a review
-                end,
-            })
-        end)
+        local ok, puzzle, fresh = pcall(pick)
+        if ok and not puzzle and next(self._served) then
+            -- every puzzle was shown this session: start a new round
+            self._served = {}
+            ok, puzzle, fresh = pcall(pick)
+        end
         if not ok then
             err = puzzle
             break -- the database itself: retrying will not help
         end
         if not puzzle then
             self:_updateTitle()
-            self:_setStatus(self.theme and _("No puzzles with this theme in the pack.")
-                or _("No puzzles found in the pack."))
+            if self.puzzle then
+                self:_setStatus(self.theme and _("No other puzzle with this theme in the pack.")
+                    or _("No other puzzle in the pack."))
+            else
+                self:_setStatus(self.theme and _("No puzzles with this theme in the pack.")
+                    or _("No puzzles found in the pack."))
+            end
             return false
         end
-        local l_ok, l_err = pcall(self.loadPuzzle, self, puzzle)
+        self._served[puzzle.id] = true
+        local l_ok, l_err = pcall(self.loadPuzzle, self, puzzle, nil, not fresh)
         if l_ok then return true end
         err = l_err
         logger.warn("Paperknight: skipping puzzle", puzzle.id, l_err)
@@ -480,7 +498,7 @@ function PkPuzzleView:onRetry()
     self:_cancelReply()
     self:_finishAttempt("retry")
     local recorded = self.recorded
-    local ok, err = pcall(self.loadPuzzle, self, self.puzzle, self.review)
+    local ok, err = pcall(self.loadPuzzle, self, self.puzzle, self.review, self.stale)
     if not ok then return self:_broken(err) end
     self.recorded = recorded
 end

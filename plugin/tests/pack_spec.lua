@@ -37,18 +37,27 @@ return {
         t.eq(pack, nil, "wrong kind"); t.ok(err:find("not a puzzles pack"), err)
         os.remove(progress_path)
     end },
-    { "pickNear prefers the home band and honours accept()", function(t)
+    { "pickNear prefers the home band, fresh puzzles, and honours accept()", function(t)
         local pack = assert(PkPuzzlePack.open(FIXTURE))
         for _, r in ipairs({ 0.0, 0.3, 0.7, 0.999 }) do
-            local p = pack:pickNear(1250, { random = seq(r) })
+            local p, fresh = pack:pickNear(1250, { random = seq(r) })
             t.ok(p and p.rating >= 1200 and p.rating < 1300, "home band, got " .. tostring(p and p.rating))
+            t.eq(fresh, true, "no fresh filter: fresh")
         end
-        local p = pack:pickNear(1250, { random = seq(0.5), accept = function(c) return c.rating >= 1400 end })
-        t.ok(p.rating >= 1400 and p.rating < 1500, "accept moves to a neighbouring band, got " .. p.rating)
-        p = pack:pickNear(1250, { random = seq(0.5), accept = function(c) return c.rating >= 1600 end })
-        t.ok(p.rating >= 1000 and p.rating < 1500, "a near rejected puzzle beats a far accepted one, got " .. p.rating)
-        local any = pack:pickNear(1250, { random = seq(0.5), accept = function() return false end })
-        t.ok(any ~= nil, "falls back to ignoring accept")
+        local p, fresh = pack:pickNear(1250, { random = seq(0.5), fresh = function(c) return c.rating >= 1400 end })
+        t.ok(p.rating >= 1400 and p.rating < 1500, "a fresh neighbouring band first, got " .. p.rating)
+        t.eq(fresh, true, "fresh")
+        p, fresh = pack:pickNear(1250, { random = seq(0.5), fresh = function(c) return c.rating >= 1600 end })
+        t.ok(p.rating >= 1600, "a far fresh puzzle beats a near stale one, got " .. p.rating)
+        t.eq(fresh, true, "fresh")
+        p, fresh = pack:pickNear(1250, { random = seq(0.5), fresh = function() return false end })
+        t.ok(p and p.rating >= 1200 and p.rating < 1300, "all stale: the home band again")
+        t.eq(fresh, false, "reported stale")
+        p = pack:pickNear(1250, { random = seq(0.5), accept = function(c) return c.rating >= 1600 end,
+                                  fresh = function() return false end })
+        t.ok(p.rating >= 1600, "accept is never dropped, got " .. p.rating)
+        t.eq(pack:pickNear(1250, { random = seq(0.5), accept = function() return false end }), nil,
+             "nothing accepted: nil")
         pack:close()
     end },
     { "rating update follows ADR-0010", function(t)

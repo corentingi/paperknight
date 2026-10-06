@@ -37,8 +37,13 @@ a recorded attempt replays without rating impact.
 
 Next puzzle (pack `band` = rating / 100, see pack format): an unseen puzzle
 (not attempted in the last 30 days) within ±2 bands of the user's rating,
-home band first; else a recently seen one within ±2 bands; only then
-further bands.
+home band first; else an unseen one in further bands (nearest first); only
+then a recently seen one, near bands first, and the status line says puzzles
+are being repeated. Whatever the fallback, the next puzzle is never the
+current one, nor one already shown in this session until all the eligible
+ones have been (then a new round starts), nor one waiting as a review
+(ADR-0014). (Amended: unseen far puzzles used to come after recently seen
+near ones, which made a small theme repeat the same puzzle.)
 
 ## Consequences
 - Easy to replace by Glicko later: attempts keep enough data to recompute.
