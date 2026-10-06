@@ -145,6 +145,7 @@ function PkPuzzleView:_prepareBoard(flipped)
         height = self.board_size,
         flipped = flipped,
         show_parent = self, -- the board repaints through this window (selection overlay)
+        square_refresh = "partial", -- a move refreshes its squares only (pkrefresh.lua)
         moveCallback = function(move) self:onUserMove(move) end,
         onPromotionNeeded = function(from, to, color)
             PkPromotion.show(color, function(letter)
@@ -198,9 +199,12 @@ function PkPuzzleView:_updateTitle()
     self.title_bar:setSubTitle(subtitle)
 end
 
+-- The board refreshes the squares it changes; this refreshes the status and
+-- the buttons only, so that a move never refreshes (or flashes) the whole
+-- board. A new puzzle refreshes the page (loadPuzzle).
 function PkPuzzleView:_setStatus(text)
     self.status:setText(text)
-    PkRefresh.page(self) -- board and status (see pkrefresh.lua: no flicker)
+    PkRefresh.step(self, self.status, self.buttons)
 end
 
 function PkPuzzleView:_toMoveText()
@@ -603,8 +607,7 @@ function PkPuzzleView:step(delta)
     self.board:updateBoard()
     self.board:setHighlights(move and { move.from, move.to } or {})
     self:_updateReplayButtons()
-    self.status:setText(self.result_text .. "\n" .. self:_replayText(label))
-    PkRefresh.step(self, self.board, self.buttons)
+    self:_setStatus(self.result_text .. "\n" .. self:_replayText(label))
 end
 
 function PkPuzzleView:onPkSwipe(_, ges)

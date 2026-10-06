@@ -83,9 +83,31 @@ return function(h)
         local file, rank = sq:byte(1) - 96, tonumber(sq:sub(2, 2))
         return view.board.table:getButtonById(view.board.toId(file - 1, rank - 1)).icon
     end
+    -- e-ink: a move and its reply refresh their squares and the status strip,
+    -- never the whole board (nor the screen: KOReader's periodic flash of
+    -- partial refreshes then covers those regions only)
+    local UIManager = require("ui/uimanager")
+    local refreshes, _refresh = {}, UIManager._refresh
+    UIManager._refresh = function(um, mode, region, ...)
+        refreshes[#refreshes + 1] = { mode = mode, region = region }
+        return _refresh(um, mode, region, ...)
+    end
     tapSquare("d2"); tapSquare("d8")
     h.check(status():find("Correct"), "correct: " .. status())
     h.wait(1.5) -- opponent reply delay
+    UIManager._refresh = _refresh
+    local square = view.board.button_size * 2.5 -- a square, or two adjacent ones merged
+    for _, r in ipairs(refreshes) do
+        local g = r.region
+        h.check(g and (g.w <= square or g.h <= square) and g.w * g.h < view.board.dimen.w * view.board.dimen.h / 4,
+            ("small refresh only: %s %s"):format(r.mode, g and (g.x .. "," .. g.y .. " " .. g.w .. "x" .. g.h) or "full screen"))
+    end
+    local square_partials = 0
+    for _, r in ipairs(refreshes) do
+        if r.mode == "partial" and r.region.w <= square then square_partials = square_partials + 1 end
+    end
+    -- grey squares need the grey waveform ("fast" is black and white)
+    h.check(square_partials >= 4, "the squares get partial refreshes: " .. square_partials)
     -- what the board shows, not just the game state (which changes immediately)
     h.check(not view.board.locked, "board unlocked after the reply")
     h.check(iconAt("d8"):find("bQ%.svg$"), "black queen shown on d8: " .. iconAt("d8"))

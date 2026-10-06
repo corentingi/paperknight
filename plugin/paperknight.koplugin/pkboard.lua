@@ -335,6 +335,22 @@ function Board:paintTo(bb, x, y)
     if self.shapes then self:_paintShapes(bb) end
     if self.badge then self:_paintBadge(bb) end
     if self.selected_mark and not self.locked then self:_paintSelection(bb) end
+    if self.square_refresh then self:_cacheRects() end
+end
+
+-- Screen rectangles of the squares, as just painted (see _refreshButton).
+function Board:_cacheRects()
+    self._rects = {}
+    for file = 0, BOARD_SIZE - 1 do
+        for rank = 0, BOARD_SIZE - 1 do
+            local id = Board.toId(file, rank)
+            local button = self.table:getButtonById(id)
+            local d = button and button[1] and button[1].dimen -- the painted frame (as Button:refresh)
+            if d and d.w then
+                self._rects[Board.idToPosition(id)] = Geom:new{ x = d.x, y = d.y, w = d.w, h = d.h }
+            end
+        end
+    end
 end
 
 -- Paperknight: move-mark badge ("!!", "?"…) on a square, like Lichess. Good
@@ -462,7 +478,26 @@ function Board:_applyBackground(square)
     if not id then return end
     local button = self.table:getButtonById(id)
     button.frame.background = self:squareColor(square)
-    button:refresh()
+    self:_refreshButton(button, self:_screenRect(square))
+end
+
+-- Screen rectangle of a square, from the last paint (nil before it).
+-- Button:setIcon rebuilds the frame, which loses its position until the next
+-- paint: hence the cache.
+function Board:_screenRect(square)
+    return self._rects and self._rects[square]
+end
+
+--- Paperknight: e-ink update of one square whose content changed. With
+-- `square_refresh` set (e.g. "partial", see pkrefresh.lua), only that square
+-- is refreshed with that mode, so that a move never refreshes the whole board
+-- (nor flashes it, when KOReader promotes every Nth partial refresh: the
+-- promoted flash covers the region only). Otherwise Button:refresh.
+-- `rect`: the square on screen (nil before the first paint: then the whole
+-- window, which is being shown anyway).
+function Board:_refreshButton(button, rect)
+    if not self.square_refresh then return button:refresh() end
+    UIManager:setDirty(self.show_parent or self, self.square_refresh, rect)
 end
 
 --- Board:handleMoveFlags(move, to)
@@ -574,9 +609,10 @@ function Board:placePiece(square, piece, color, no_refresh)
     local button = self.table:getButtonById(id_result)
     -- Paperknight: skip unchanged squares; each refresh is an e-ink update
     if button.icon == icon then return end
+    local rect = self:_screenRect(square)
     button:setIcon(icon, self.button_size)
     button.frame.background = self:squareColor(square) -- Re-apply background color in case it was changed
-    if not no_refresh then button:refresh() end
+    if not no_refresh then self:_refreshButton(button, rect) end
 end
 
 --- Board:updateSquare(square)
