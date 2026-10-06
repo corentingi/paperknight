@@ -66,6 +66,19 @@ function Harness:helpers(co)
         h.wait(0.5)
     end
 
+    -- Swipe from (x, y); direction "west" (finger moves left), "east", ...
+    function h.swipe(x, y, direction)
+        logger.info("pkharness: swipe", x, y, direction)
+        UIManager:sendEvent(Event:new("Gesture", {
+            ges = "swipe",
+            direction = direction,
+            distance = 200,
+            pos = Geometry:new{ x = x, y = y, w = 0, h = 0 },
+            time = time.now(),
+        }))
+        h.wait(0.5)
+    end
+
     -- Tap the centre of a widget that has been painted at least once.
     function h.tapWidget(widget)
         assert(widget and widget.dimen, "tapWidget: widget has no dimen (not painted yet?)")

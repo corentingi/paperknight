@@ -37,7 +37,7 @@ Paperknight modules (prefixed `pk` to avoid `package.loaded` clashes, ADR-0009):
 
 | File | Role |
 |---|---|
-| `pkpuzzleview.lua` | Puzzle screen: board, status line, Hint / Solution / Retry / Next |
+| `pkpuzzleview.lua` | Puzzle screen: board, status line; Retry / Hint / Solution / Next while solving, Retry / ‹ / › / Next to step through the line once finished (also swipes) |
 | `pkpuzzle.lua` | Puzzle session state machine (pure logic, unit-tested) |
 | `pkpuzzlereview.lua` | Missed-puzzle review ladder (pure logic, ADR-0014) |
 | `pknav.lua` | Home screen, quick settings (frontlight, night mode, modes), switching modes (ADR-0015) |

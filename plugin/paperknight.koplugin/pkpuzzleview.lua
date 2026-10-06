@@ -1,4 +1,7 @@
--- Puzzle screen (ADR-0009): board + status + Hint / Solution / Retry / Next.
+-- Puzzle screen (ADR-0009): board + status + two button bars:
+--  * solving: Retry / Hint / Solution / Next;
+--  * finished (solved, or Solution tapped): Retry / ‹ / › / Next, to step
+--    through the line (also by swiping, or with page-turn keys).
 -- Judging lives in pkpuzzle.lua, storage in pkpuzzlepack.lua / pkprogress.lua.
 local Blitbuffer = require("ffi/blitbuffer")
 local Device = require("device")
@@ -8,6 +11,7 @@ local CenterContainer = require("ui/widget/container/centercontainer")
 local Font = require("ui/font")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geometry = require("ui/geometry")
+local GestureRange = require("ui/gesturerange")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local Screen = require("device").screen
 local Size = require("ui/size")
@@ -49,8 +53,13 @@ function PkPuzzleView:init()
     PkSide.followNight(self, function(v) v.status:setText(PkSide.swap(v.status.text)) end)
     self.dimen = Geometry:new{ x = 0, y = 0, w = Screen:getWidth(), h = Screen:getHeight() }
     if Device:hasKeys() then
-        self.key_events = { Close = { { Device.input.group.Back } } }
+        self.key_events = {
+            Close = { { Device.input.group.Back } },
+            Forward = { { Device.input.group.PgFwd } },
+            Backward = { { Device.input.group.PgBack } },
+        }
     end
+    self.ges_events.PkSwipe = { GestureRange:new{ ges = "swipe", range = function() return self.dimen end } }
     self.game = Chess:new()
     self.title_bar = TitleBar:new{
         fullscreen = true,
@@ -74,18 +83,41 @@ function PkPuzzleView:init()
         height = Screen:scaleBySize(80),
         alignment = "center",
     }
-    self.buttons = ButtonTable:new{
+    self.solve_buttons = ButtonTable:new{
         width = self.dimen.w - 2 * Size.padding.default,
         buttons = {{
+            { id = "retry", text = _("Retry"), callback = function() self:onRetry() end },
             { id = "hint", text = _("Hint"), callback = function() self:onHint() end },
             { id = "solution", text = _("Solution"), callback = function() self:onSolution() end },
-            { id = "retry", text = _("Retry"), callback = function() self:onRetry() end },
             { id = "next", text = _("Next"), callback = function() self:nextPuzzle() end },
         }},
         zero_sep = true,
     }
+    local function replayButtons(icon_size)
+        return ButtonTable:new{
+            width = self.dimen.w - 2 * Size.padding.default,
+            buttons = {{
+                { id = "retry", text = _("Retry"), callback = function() self:onRetry() end },
+                { id = "back", icon = "chevron.left", icon_width = icon_size, icon_height = icon_size,
+                  callback = function() self:step(-1) end },
+                { id = "forward", icon = "chevron.right", icon_width = icon_size, icon_height = icon_size,
+                  callback = function() self:step(1) end },
+                { id = "next", text = _("Next"), callback = function() self:nextPuzzle() end },
+            }},
+            zero_sep = true,
+        }
+    end
+    self.replay_buttons = replayButtons()
+    -- icons are taller than text: shrink them so the board doesn't move
+    local extra = self.replay_buttons:getSize().h - self.solve_buttons:getSize().h
+    if extra > 0 then
+        local size = self.replay_buttons:getButtonById("back").icon_width - extra
+        self.replay_buttons:free()
+        self.replay_buttons = replayButtons(size)
+    end
+    self.buttons = self.solve_buttons
     local board_h = self.dimen.h - self.title_bar:getHeight() - self.status:getSize().h
-        - self.buttons:getSize().h - 4 * Size.padding.default
+        - math.max(self.solve_buttons:getSize().h, self.replay_buttons:getSize().h) - 4 * Size.padding.default
     self.board_size = math.min(self.dimen.w, board_h)
     self:_prepareBoard(false) -- the frame exists even if no puzzle can be picked
     self._skipped = {} -- reviews already shown this session
@@ -138,6 +170,17 @@ function PkPuzzleView:_prepareBoard(flipped)
             self.buttons,
         },
     }
+    self.vgroup = self[1][1]
+end
+
+-- Swaps the button bar (solving <-> replay).
+function PkPuzzleView:_setButtons(tbl)
+    if self.buttons == tbl then return end
+    for i, w in ipairs(self.vgroup) do
+        if w == self.buttons then self.vgroup[i] = tbl end
+    end
+    self.buttons = tbl
+    self.vgroup:resetLayout()
 end
 
 function PkPuzzleView:_updateTitle()
@@ -181,7 +224,9 @@ function PkPuzzleView:loadPuzzle(puzzle, review, stale)
     self.stale = stale
     self.session = PkPuzzle.new(puzzle, self.game)
     self.recorded = false
+    self.replaying = false
     self:_prepareBoard(puzzle.solver == Chess.BLACK)
+    self:_setButtons(self.solve_buttons)
     local setup = self.session:start()
     self.board:updateBoard()
     self.board:setHighlights({ setup.from, setup.to })
@@ -290,6 +335,8 @@ function PkPuzzleView:_broken(err)
     logger.warn("Paperknight: broken puzzle", self.puzzle and self.puzzle.id, err)
     if self.puzzle then self._bad = self._bad or {}; self._bad[self.puzzle.id] = true end
     self.session = nil
+    self.replaying = false
+    self:_setButtons(self.solve_buttons)
     self.board.locked = true
     self.board:updateBoard()
     self:_setStatus(_("This puzzle contains an invalid move. Tap Next."))
@@ -368,14 +415,16 @@ function PkPuzzleView:onUserMove(move)
     if verdict == "solved" then
         self.board.locked = true
         local before, after, note = self:_finishAttempt("solved")
-        local text = (self.session:isCleanSolve() and _("Solved!"))
+        local result = (self.session:isCleanSolve() and _("Solved!"))
             or (self.session.used_help and _("Solved, with help."))
             or _("Solved, after a mistake.")
+        local text = result
         if before then
             text = text .. "\n" .. T(_("Rating %1 → %2"), before, after)
         end
         if note then text = text .. "\n" .. note end
         self:_updateTitle()
+        self:_startReplay(result)
         self:_setStatus(text)
         return
     end
@@ -487,23 +536,85 @@ function PkPuzzleView:onHint()
     self:_setStatus(T(_("Hint: move the piece on %1."), square))
 end
 
+--- Plays the first move not found, then switches to the replay: › shows
+-- the rest of the line, ‹ goes back to the start.
 function PkPuzzleView:onSolution()
     if not self.session or self.session:isOver() then return end
     self:_cancelReply() -- the reply is already in the game; the redraw below shows it
-    local ok, played = pcall(self.session.revealSolution, self.session)
-    if not ok then return self:_broken(played) end
+    local ok, err = pcall(self.session.revealSolution, self.session)
+    if not ok then return self:_broken(err) end
     self.board:clearSelection()
-    self.board:updateBoard()
-    local last = played[#played]
-    if last then self.board:setHighlights({ last.from, last.to }) end
-    self.board.locked = true
     local before, after, note = self:_finishAttempt("solution")
-    local text = _("Solution shown.")
+    if not self:_startReplay(_("Solution shown.")) then return end
+    local s = self.session
+    local r_ok, move, label = pcall(s.replayTo, s, s.pos)
+    if not r_ok then return self:_broken(move) end
+    self.board:updateBoard()
+    self.board:setHighlights({ move.from, move.to })
+    local text = T(_("Solution: %1 (move %2/%3)."), label, s.pos - 1, #s.line - 1)
     if before then text = text .. "\n" .. T(_("Rating %1 → %2"), before, after) end
     if note then text = text .. "\n" .. note end
     self:_updateTitle()
     self:_setStatus(text)
 end
+
+---------------------------------------------------------------------------
+-- Replay of the finished puzzle
+
+-- Switches to the replay bar at the current position; `result`: first line
+-- of the status while stepping. Returns false if the puzzle is broken.
+function PkPuzzleView:_startReplay(result)
+    self.board.locked = true
+    local ok, err = pcall(self.session.startReplay, self.session)
+    if not ok then self:_broken(err); return false end
+    self.replaying = true
+    self.result_text = result
+    self:_setButtons(self.replay_buttons)
+    self:_updateReplayButtons()
+    return true
+end
+
+function PkPuzzleView:_updateReplayButtons()
+    local s = self.session
+    self.replay_buttons:getButtonById("back"):enableDisable(s.pos > 0)
+    self.replay_buttons:getButtonById("forward"):enableDisable(s.pos < #s.line)
+end
+
+-- "Move 2/3: 25. Qd8+" (the setup move is the puzzle position, not counted).
+function PkPuzzleView:_replayText(label)
+    local s = self.session
+    if s.pos == 0 then
+        local opponent = s:solverColor() == Chess.WHITE and Chess.BLACK or Chess.WHITE
+        return T(_("Before the puzzle: %1 to move."), PkSide.name(opponent))
+    elseif s.pos == 1 then
+        return T(_("Puzzle position, after %1."), label)
+    end
+    return T(_("Move %1/%2: %3"), s.pos - 1, #s.line - 1, label)
+end
+
+--- Steps the replay by `delta` moves (‹ ›, swipes, page-turn keys).
+function PkPuzzleView:step(delta)
+    if not self.replaying or not self.session then return end
+    local s = self.session
+    local pos = s.pos + delta
+    if pos < 0 or pos > #s.line then return end
+    local ok, move, label = pcall(s.replayTo, s, pos)
+    if not ok then return self:_broken(move) end
+    self.board:updateBoard()
+    self.board:setHighlights(move and { move.from, move.to } or {})
+    self:_updateReplayButtons()
+    self.status:setText(self.result_text .. "\n" .. self:_replayText(label))
+    PkRefresh.step(self, self.board, self.buttons)
+end
+
+function PkPuzzleView:onPkSwipe(_, ges)
+    if not self.replaying then return false end
+    if ges.direction == "west" then self:step(1) elseif ges.direction == "east" then self:step(-1) else return false end
+    return true
+end
+
+function PkPuzzleView:onForward() self:step(1); return true end
+function PkPuzzleView:onBackward() self:step(-1); return true end
 
 --- Replays the current puzzle from the start. Rating is only affected by the
 -- first attempt, which is recorded before restarting.

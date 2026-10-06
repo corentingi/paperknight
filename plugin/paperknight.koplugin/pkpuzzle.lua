@@ -7,6 +7,7 @@
 --   local setup = s:start()                    -- opponent's first move (applied)
 --   -- after the user's move has been applied to `game`:
 --   local verdict, reply = s:onUserMove(move)  -- "correct"|"solved"|"wrong"
+--   -- once over: s:startReplay(), then s:replayTo(pos) to step through the line
 local PkPuzzle = {}
 PkPuzzle.__index = PkPuzzle
 
@@ -108,17 +109,59 @@ function PkPuzzle:hint()
     return expected:sub(1, 2)
 end
 
---- Plays the rest of the line (solver and opponent moves) and ends the puzzle.
--- @return list of move objects played
+--- Plays the solver's next move of the line (the first one not found) and
+-- ends the puzzle; the rest of the line is left to the replay.
+-- @return list of move objects played (that one move)
 function PkPuzzle:revealSolution()
     local played = {}
     if self.state ~= "playing" then return played end
     self.used_help = true
-    while self.index <= #self.moves do
-        played[#played + 1] = self:_playNext()
-    end
+    played[1] = self:_playNext()
     self.state = "failed"
     return played
+end
+
+---------------------------------------------------------------------------
+-- Replay of a finished puzzle: step through the line, from the position
+-- before the setup move (0) to the end (#self.line).
+
+--- Starts the replay at the current position. The line is the moves on the
+-- board (an alternative mate included), then the rest of the solution when
+-- it was revealed. Returns the position.
+function PkPuzzle:startReplay()
+    assert(self:isOver(), "puzzle is not over")
+    local line = {}
+    for _, m in ipairs(self.game.history({ verbose = true })) do line[#line + 1] = uciOf(m) end
+    self.pos = #line
+    if self.state == "failed" then
+        for i = self.index, #self.moves do line[#line + 1] = self.moves[i] end
+    end
+    self.line = line
+    return self.pos
+end
+
+--- "23. Qxf7+" / "23… Qxf7+": `move` played from position `fen`.
+local function moveLabel(fen, move)
+    local number = fen:match("(%d+)%s*$") or "?"
+    return number .. (move.color == "w" and ". " or "… ") .. move.san
+end
+
+--- Sets the board to replay position `pos` (clamped).
+-- @return the move that led there (nil at 0) and its label ("23. Qxf7+")
+function PkPuzzle:replayTo(pos)
+    pos = math.max(0, math.min(pos, #self.line))
+    assert(self.game.load(self.puzzle.fen), "invalid FEN for puzzle " .. tostring(self.puzzle.id))
+    local move, label
+    for i = 1, pos do
+        local fen = self.game.fen()
+        move = self.game.move(moveFromUci(self.line[i]))
+        if not move then
+            error(("puzzle %s: cannot replay move %d (%s)"):format(tostring(self.puzzle.id), i, self.line[i]))
+        end
+        if i == pos then label = moveLabel(fen, move) end
+    end
+    self.pos = pos
+    return move, label
 end
 
 --- True when the attempt counts as a success for rating purposes (ADR-0010).

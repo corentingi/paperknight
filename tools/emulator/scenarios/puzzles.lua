@@ -1,6 +1,6 @@
 -- Puzzle mode end to end on the fixture pack (make fixture-packs):
 -- wrong move, correct mate, rating update, multi-move line with reply,
--- hint, solution, next puzzle. Squares are tapped like a user would.
+-- hint, solution and its replay (‹ › and swipes), next puzzle. Squares are tapped like a user would.
 return function(h)
     local pk = h.ui.paperknight
     -- A theme saved with an older pack that the current pack lacks must not
@@ -94,16 +94,36 @@ return function(h)
     tapSquare("d1"); tapSquare("d8")
     h.check(view.session:isCleanSolve(), "clean solve")
     h.check(view.progress:rating() > rating_before, "clean solve raises rating")
+    h.check(view.buttons == view.replay_buttons and view.session.pos == 4, "solved: replay bar, at the end")
+    h.check(not view.buttons:getButtonById("forward").enabled, "› disabled at the end")
     h.shot("puzzle-2-solved")
+    tapButton("back")
+    h.check(view.session.pos == 3 and iconAt("d8"):find("bQ%.svg$"), "‹ shows the reply again")
+    h.check(status():find("Solved!", 1, true) and status():find("Move 2/3: 25… Qxd8", 1, true), "replay status: " .. status())
 
     -- 3. Hint and solution on the same puzzle via Retry.
     tapButton("retry")
     h.wait(1)
     tapButton("hint")
     h.check(status():find("d2"), "hint names the square: " .. status())
+    h.check(view.buttons == view.solve_buttons, "retry: solving bar again")
     tapButton("solution")
-    h.check(view.session.state == "failed" and view.game.in_checkmate(), "solution played to mate")
+    h.check(view.session.state == "failed" and not view.game.in_checkmate(), "solution: only the first move")
+    h.check(iconAt("d8"):find("wQ%.svg$"), "the revealed move is drawn: " .. iconAt("d8"))
+    h.check(status():find("Solution: 25. Qxd8+ (move 1/3)", 1, true), "solution status: " .. status())
     h.check(view.progress:attemptCount() == 2, "a retry after a recorded attempt is not recorded again")
+    h.check(view.buttons == view.replay_buttons, "replay bar")
+    h.shot("puzzle-3-solution")
+    tapButton("forward"); tapButton("forward")
+    h.check(view.game.in_checkmate() and status():find("Move 3/3: 26. Rxd8#", 1, true), "› to the mate: " .. status())
+    local mid = view.board.dimen
+    h.swipe(mid.x + math.floor(mid.w / 2), mid.y + math.floor(mid.h / 2), "east") -- back
+    h.check(view.session.pos == 3, "swipe east steps back")
+    for _ = 1, 3 do tapButton("back") end
+    h.check(view.session.pos == 0 and status():find("Before the puzzle", 1, true), "start: " .. status())
+    h.check(view.game.fen() == view.puzzle.fen and not view.buttons:getButtonById("back").enabled, "puzzle FEN, ‹ disabled")
+    h.swipe(mid.x + math.floor(mid.w / 2), mid.y + math.floor(mid.h / 2), "west")
+    h.check(view.session.pos == 1 and status():find("Puzzle position, after 24… dxe5", 1, true), "swipe west: " .. status())
 
     -- 3b. Buttons pressed while the opponent's reply is still pending.
     view.reply_delay = 3
@@ -113,8 +133,8 @@ return function(h)
     tapButton("solution")
     h.wait(3.5) -- past the original reply time
     h.check(view.session.state == "failed" and view.board.locked, "still finished and locked")
-    h.check(status():find("Solution shown"), "status not overwritten by the reply: " .. status())
-    h.check(iconAt("d8"):find("wR%.svg$"), "final position drawn (Rxd8#): " .. iconAt("d8"))
+    h.check(status():find("Solution: 26. Rxd8#", 1, true), "status not overwritten by the reply: " .. status())
+    h.check(iconAt("d8"):find("wR%.svg$"), "revealed move drawn (Rxd8#): " .. iconAt("d8"))
     tapButton("retry"); h.wait(1)
     tapSquare("d2"); tapSquare("d8")
     tapButton("hint") -- shows the pending reply at once, then the hint
