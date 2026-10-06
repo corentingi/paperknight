@@ -65,6 +65,9 @@
   (`plugin/tests/fixtures/`).
 - Record decisions as ADRs in `docs/adr/` (template `0000-template.md`);
   update `docs/` with behaviour changes.
-- Commit/push only when asked.
+- Routine for a change: implement, quick review of the diff (no review
+  subagents), `make check` green, commit, push to `main`, `make pka` and
+  upload `pka.tar.gz` + `pka.sh` (check the served sha256), then report.
+  No `Co-Authored-By` lines.
 - A new e2e check must fail without the fix: revert the fix once and run it
   (mutation check).
