@@ -96,12 +96,37 @@ return function(h)
     h.check(panel():find("has counterplay", 1, true), "position mark in words: " .. panel())
     h.check(#view.board.shapes.arrows == 2 and #view.board.shapes.circles == 1, "final shapes")
     h.shot("study-shapes")
-
-    -- moves played on the board follow the study
     tapButton("start")
     UIManager.setDirty = setDirty
     h.check(#modes >= 6, "refreshes recorded: " .. #modes)
     for _, m in ipairs(modes) do h.check(m == "partial", "browsing refresh: " .. m) end
+    -- greyed when they can't act; at the end of a line › opens the next chapter
+    view:toEnd()
+    h.wait(0.5) -- painted, like a user sees it before tapping
+    local function enabled(id) return view.browse_buttons:getButtonById(id).enabled end
+    h.check(not enabled("end") and enabled("forward") and enabled("back"), "end of line: ›| greyed, › enabled")
+    h.check(panel():find("› Next chapter: Mate in two", 1, true), "next chapter announced: " .. panel())
+    local PkDone = require("pkdone")
+    view.progress:setSetting("chapter_done:study.pgn#1", nil)
+    tapButton("forward")
+    h.check(view.chapter_index == 2, "› at the end of a line: next chapter (" .. view.chapter_index .. ")")
+    h.check(PkDone.isChapterDone(view.progress, "study.pgn", 1), "the chapter left is marked done")
+    view:loadChapter(4) -- a chapter without moves (intro): › is the way on
+    h.wait(0.5)
+    h.check(not (enabled("start") or enabled("back") or enabled("end")) and enabled("forward"), "empty chapter: only › enabled")
+    h.check(panel():find("› Next chapter: Specials", 1, true), "empty chapter: " .. panel())
+    tapButton("forward")
+    h.check(view.chapter_index == 5, "empty chapter: › opens the next one")
+    h.check(not PkDone.isChapterDone(view.progress, "study.pgn", 4), "an intro chapter is not marked")
+    view.progress:setSetting("chapter_done:study.pgn#1", nil)
+    view:toEnd()
+    h.check(not enabled("forward") and not enabled("end"), "end of the last chapter: › ›| greyed")
+    h.check(not panel():find("Next chapter", 1, true), "no next chapter after the last: " .. panel())
+    view:loadChapter(1)
+    h.wait(0.5)
+    h.check(not enabled("start") and not enabled("back") and enabled("forward"), "chapter start: |‹ ‹ greyed")
+
+    -- moves played on the board follow the study
     tapSquare("e2"); tapSquare("e4")
     h.check(panel():find("^1%. e4"), "board move followed the study: " .. panel())
     h.check(#view.board.shapes.arrows == 1, "e4 arrow shown")

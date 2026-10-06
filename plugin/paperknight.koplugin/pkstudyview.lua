@@ -273,9 +273,6 @@ function PkStudyView:loadChapter(index)
         PkRefresh.page(self)
         return
     end
-    for _, id in ipairs({ "start", "back", "forward", "end" }) do
-        self.browse_buttons:getButtonById(id):enableDisable(true)
-    end
     -- nothing to train in a chapter without moves
     self.browse_buttons:getButtonById("train"):enableDisable(#cursor.root.children > 0)
     self.cursor = cursor
@@ -302,7 +299,12 @@ function PkStudyView:_panelText()
     end
     local children = node.children
     if #children == 0 then
-        parts[#parts + 1] = (node == self.cursor.root) and _("(no moves)") or _("— End of line —")
+        local text = (node == self.cursor.root) and _("(no moves)") or _("— End of line —")
+        local next_chapter = self.study.chapters[self.chapter_index + 1]
+        if next_chapter then
+            text = text .. "\n" .. T(_("› Next chapter: %1"), next_chapter.title)
+        end
+        parts[#parts + 1] = text
     elseif #children > 1 then
         local alts = {}
         for i, child in ipairs(children) do
@@ -342,7 +344,7 @@ function PkStudyView:refresh(prefix, full)
         self:_lessonRefresh(prefix)
     else
         self:_setText(prefix and (prefix .. "\n\n" .. self:_panelText()) or self:_panelText())
-        self.browse_buttons:getButtonById("lines"):enableDisable(#node.children > 1)
+        self:_updateBrowseButtons()
     end
     self:_redraw(full)
 end
@@ -358,7 +360,37 @@ end
 
 -- Browse navigation (ignored during a lesson, e.g. from page-turn keys).
 function PkStudyView:_canBrowse() return self.cursor ~= nil and self.lesson == nil end
-function PkStudyView:forward(i) if self:_canBrowse() then self:_show(self.cursor:forward(i)) end end
+--- One move forward; at the end of a line, the next chapter.
+function PkStudyView:forward(i)
+    if not self:_canBrowse() then return end
+    if #self.cursor.node.children == 0 then return self:nextChapter() end
+    self:_show(self.cursor:forward(i))
+end
+
+--- From the end of a line: marks this chapter done (if it has moves and
+-- isn't yet), then opens the next one.
+function PkStudyView:nextChapter()
+    if self.chapter_index >= #self.study.chapters then return end
+    local file = PkDone.fileOf(self.study.path)
+    if file and self.progress and #self.cursor.root.children > 0 then
+        local ok, done = pcall(PkDone.isChapterDone, self.progress, file, self.chapter_index)
+        if ok and not done then self:setChapterDone(true) end
+    end
+    self:loadChapter(self.chapter_index + 1)
+end
+
+-- Greys out what can't act here: |‹ ‹ at the start, ›| at the end of the
+-- line, › at the end of the last chapter, Lines without alternatives.
+function PkStudyView:_updateBrowseButtons()
+    local node = self.cursor.node
+    local at_start, at_end = node == self.cursor.root, #node.children == 0
+    local b = self.browse_buttons
+    b:getButtonById("start"):enableDisable(not at_start)
+    b:getButtonById("back"):enableDisable(not at_start)
+    b:getButtonById("end"):enableDisable(not at_end)
+    b:getButtonById("forward"):enableDisable(not at_end or self.chapter_index < #self.study.chapters)
+    b:getButtonById("lines"):enableDisable(#node.children > 1)
+end
 function PkStudyView:back() if self:_canBrowse() and self.cursor:back() then self:refresh() end end
 function PkStudyView:toStart() if self:_canBrowse() then self.cursor:toStart(); self:refresh(nil, true) end end
 function PkStudyView:toEnd() if self:_canBrowse() then self.cursor:toEnd(); self:refresh(nil, true) end end

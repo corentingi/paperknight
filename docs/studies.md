@@ -59,6 +59,10 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
   line) · ⏭ end of line · *Train*. *Lines* chooses among the alternatives at
   the next move (main move first, then variations). Tapping on the board a
   move that exists as a child follows it; other moves are refused.
+  Buttons that can't act are greyed (⏮ ◀ at the start, ⏭ at the end of the
+  line, *Lines* without alternatives). At the end of a line (or in a chapter
+  without moves), ▶ opens the next chapter, announced in the panel; leaving
+  a chapter with moves this way marks it as done.
 - Title-bar menu (≡): *Chapters…* (chapter list; • marks the chapter shown),
   *Flip board*, *Links…* (when the panel has links), *Mark chapter as done*,
   *Mark study as done*. A flip is
