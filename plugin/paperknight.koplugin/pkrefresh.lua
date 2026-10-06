@@ -6,8 +6,9 @@
 -- rate, "never" included), and downgrades them when "Avoid flashing" is on.
 -- Unchanged pixels are not touched, so a generous region costs nothing,
 -- except that the periodic flash covers the whole region: the puzzle screen
--- (one board update per move) refreshes only the squares that changed
--- (Board.square_refresh) and the status strip.
+-- (one board update per move) refreshes only the rectangle around the
+-- squares that changed, in one refresh (Board.square_refresh), and the
+-- status strip.
 local Geometry = require("ui/geometry")
 local UIManager = require("ui/uimanager")
 

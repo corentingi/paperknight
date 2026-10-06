@@ -96,18 +96,23 @@ return function(h)
     h.check(status():find("Correct"), "correct: " .. status())
     h.wait(1.5) -- opponent reply delay
     UIManager._refresh = _refresh
-    local square = view.board.button_size * 2.5 -- a square, or two adjacent ones merged
+    -- per update (the move, then the reply): one refresh around the changed
+    -- squares, one for the status strip; besides, the tap feedback on squares
+    local b = view.board.dimen
+    local function inBoard(g) return g.x >= b.x and g.y >= b.y and g.x + g.w <= b.x + b.w and g.y + g.h <= b.y + b.h end
+    local board_partials, seen = 0, {} -- KOReader re-enters _refresh when merging: count each region once
     for _, r in ipairs(refreshes) do
         local g = r.region
-        h.check(g and (g.w <= square or g.h <= square) and g.w * g.h < view.board.dimen.w * view.board.dimen.h / 4,
-            ("small refresh only: %s %s"):format(r.mode, g and (g.x .. "," .. g.y .. " " .. g.w .. "x" .. g.h) or "full screen"))
+        h.check(g, "no full-screen refresh (" .. r.mode .. ")")
+        if inBoard(g) then
+            local key = ("%d,%d %dx%d"):format(g.x, g.y, g.w, g.h)
+            if r.mode == "partial" and not seen[key] then board_partials, seen[key] = board_partials + 1, true end
+        else
+            h.check(g.y >= b.y + b.h and g.h < b.h / 2, ("only the status strip besides the board: %s %d,%d %dx%d"):format(r.mode, g.x, g.y, g.w, g.h))
+        end
     end
-    local square_partials = 0
-    for _, r in ipairs(refreshes) do
-        if r.mode == "partial" and r.region.w <= square then square_partials = square_partials + 1 end
-    end
-    -- grey squares need the grey waveform ("fast" is black and white)
-    h.check(square_partials >= 4, "the squares get partial refreshes: " .. square_partials)
+    -- partial: grey squares need the grey waveform ("fast" is black and white)
+    h.check(board_partials == 2, "one board refresh per update: " .. board_partials)
     -- what the board shows, not just the game state (which changes immediately)
     h.check(not view.board.locked, "board unlocked after the reply")
     h.check(iconAt("d8"):find("bQ%.svg$"), "black queen shown on d8: " .. iconAt("d8"))

@@ -495,9 +495,24 @@ end
 -- promoted flash covers the region only). Otherwise Button:refresh.
 -- `rect`: the square on screen (nil before the first paint: then the whole
 -- window, which is being shown anyway).
+-- The squares changed by one update (a move, its highlights) are refreshed
+-- together: one refresh of the rectangle around them, sent after painting.
+-- Separate refreshes run one after the other on the e-ink controller (the
+-- old highlight cleared, then the piece moved); unchanged pixels inside the
+-- rectangle are not touched by a partial refresh.
 function Board:_refreshButton(button, rect)
     if not self.square_refresh then return button:refresh() end
-    UIManager:setDirty(self.show_parent or self, self.square_refresh, rect)
+    if not rect then return UIManager:setDirty(self.show_parent or self, self.square_refresh) end
+    if self._batch then
+        self._batch = self._batch:combine(rect)
+        return
+    end
+    self._batch = rect
+    UIManager:setDirty(self.show_parent or self, function()
+        local region = self._batch
+        self._batch = nil
+        return self.square_refresh, region
+    end)
 end
 
 --- Board:handleMoveFlags(move, to)
