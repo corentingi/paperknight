@@ -36,6 +36,7 @@ make packs         # download Lichess puzzles (~300 MB, once; an interrupted dow
 make study ID=<lichess study id or URL>   # download a study into build/studies/
 make check         # unit tests + headless end-to-end scenarios (screenshots in build/e2e/)
 make emulator      # run the plugin in a desktop KOReader window (see docs/development.md)
+make pka           # device archive + installer in build/dist/ (pka.tar.gz, pka.sh)
 ```
 
 ## Installing on a Kindle
@@ -46,6 +47,12 @@ make emulator      # run the plugin in a desktop KOReader window (see docs/devel
 3. Copy the data packs from `build/packs/` to `/mnt/us/koreader/plugins/paperknight.koplugin/packs/`,
    study PGNs to `/mnt/us/koreader/paperknight/studies/`, and repertoire PGNs
    to `/mnt/us/koreader/paperknight/repertoires/`.
+   Or, with everything staged in `build/dist/all`, `make pka` builds one
+   archive (`build/dist/pka.tar.gz`) and its installer (`build/dist/pka.sh`,
+   see [`tools/dist/pka.sh`](tools/dist/pka.sh)). Once both are on a web
+   server, install or update from kterm with
+   `curl -fkL <server>/pka.sh | sh`: it downloads the archive, removes the
+   files the previous one installed (your own studies are kept) and extracts it.
 4. Restart KOReader; **Paperknight** appears in the **Tools** menu, with
    *Home*, *Puzzles*, *Studies*, *Openings* and *Play against the engine*. Playing the engine needs a
    Stockfish binary at `paperknight.koplugin/bin/stockfish` (not shipped yet).

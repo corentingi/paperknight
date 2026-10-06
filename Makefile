@@ -67,7 +67,10 @@ fixture-packs: venv ## Small deterministic packs for e2e tests (build/packs/fixt
 	$(PIPELINE) puzzles --input pipeline/tests/fixtures/lichess_puzzles_sample.csv \
 		--output $(FIXTURE_PACKS)/puzzles.sqlite --min-popularity -100 --min-plays 0 --max-rating-dev 500
 
-.PHONY: study
+.PHONY: study pka
 study: venv ## Download a Lichess study: make study ID=<id or URL> (private: LICHESS_TOKEN=...)
 	@test -n "$(ID)" || { echo "usage: make study ID=<study id or URL>"; exit 2; }
 	$(PIPELINE) study "$(ID)"
+
+pka: ## Device archive build/dist/pka.tar.gz + installer build/dist/pka.sh (needs staged build/dist/all)
+	tools/dist/build-pka.sh
