@@ -123,14 +123,31 @@ return function(h)
     h.check(view.progress:rating() > rating_before, "clean solve raises rating")
     h.check(view.buttons == view.replay_buttons and view.session.pos == 4, "solved: replay bar, at the end")
     h.check(not view.buttons:getButtonById("forward").enabled, "› disabled at the end")
+    -- solved: a tick badge (black disc) in the corner of the mating piece's square
+    local Screen = require("device").screen
+    local function badgePixel(sq)
+        local r = view.board.table:getButtonById(view.board.chessToId(sq)).dimen
+        local d = math.floor(view.board.button_size * 0.32)
+        return Screen.bb:getPixel(r.x + r.w - math.floor(d / 2), r.y + math.floor(d / 5)):getColor8().a
+    end
+    h.wait(0.5)
+    local badge = view.board.badge
+    h.check(badge and badge.square == "d8" and badge.text == "✓", "tick badge on the solving move")
+    h.check(badgePixel("d8") == 0, ("badge drawn on d8: %x"):format(badgePixel("d8")))
     h.shot("puzzle-2-solved")
     tapButton("back")
     h.check(view.session.pos == 3 and iconAt("d8"):find("bQ%.svg$"), "‹ shows the reply again")
+    h.check(view.board.badge == nil, "no badge before the final position")
+    h.wait(0.5)
+    h.check(badgePixel("d8") ~= 0, ("badge erased: %x"):format(badgePixel("d8")))
     h.check(status():find("Solved!", 1, true) and status():find("Move 2/3: 25… Qxd8", 1, true), "replay status: " .. status())
+    tapButton("forward")
+    h.check(view.board.badge and view.board.badge.square == "d8", "badge back at the final position")
 
     -- 3. Hint and solution on the same puzzle via Retry.
     tapButton("retry")
     h.wait(1)
+    h.check(view.board.badge == nil, "retry removes the badge")
     tapButton("hint")
     h.check(status():find("d2"), "hint names the square: " .. status())
     h.check(view.buttons == view.solve_buttons, "retry: solving bar again")
@@ -143,6 +160,7 @@ return function(h)
     h.shot("puzzle-3-solution")
     tapButton("forward"); tapButton("forward")
     h.check(view.game.in_checkmate() and status():find("Move 3/3: 26. Rxd8#", 1, true), "› to the mate: " .. status())
+    h.check(view.board.badge == nil, "no tick when the solution was shown")
     local mid = view.board.dimen
     h.swipe(mid.x + math.floor(mid.w / 2), mid.y + math.floor(mid.h / 2), "east") -- back
     h.check(view.session.pos == 3, "swipe east steps back")

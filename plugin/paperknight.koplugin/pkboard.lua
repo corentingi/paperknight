@@ -19,26 +19,28 @@ local BOARD_SIZE = 8
 local SELECTED_BORDER = 5
 -- Paperknight: square colours. E-ink shows 16 grey levels (steps of 0x11);
 -- light squares are white and dark squares a light grey so pieces stay crisp.
--- The last-move tint sits two levels from both (a border would be partly
--- painted over by neighbouring squares in the ButtonTable).
+-- The last-move tint is the darkest square, two levels below the dark squares,
+-- so it stands out from both (a border would be partly painted over by
+-- neighbouring squares in the ButtonTable).
 -- Night mode (KOReader inverts the whole screen) gets its own palette: the
--- squares are mid-dark greys, light enough for the black pieces. Values are
+-- squares are mid-dark greys, light enough for the black pieces, one level
+-- apart; the last-move tint is the lightest, two levels above. Values are
 -- what the panel shows: the board is painted with their inverse, and the piece
 -- sets are swapped (an inverted black piece shows as a white one; inverted
 -- white pieces give black ones a light outline that reads on dark squares).
 local PALETTES = {
     day = {
         light = Blitbuffer.COLOR_WHITE,        -- 0xFF
-        dark = Blitbuffer.COLOR_GRAY_B,        -- 0xBB
-        highlight = Blitbuffer.COLOR_GRAY_D,   -- 0xDD
+        dark = Blitbuffer.COLOR_GRAY_D,        -- 0xDD
+        highlight = Blitbuffer.COLOR_GRAY_B,   -- 0xBB
         -- study shapes ([%csl] circles, [%cal] arrows). Brush colours can't be
         -- told apart on e-ink, so all shapes share one style (docs/studies.md).
         shape = Blitbuffer.COLOR_GRAY_4,
     },
     night = {
         light = Blitbuffer.Color8(0x66),
-        dark = Blitbuffer.Color8(0x44),
-        highlight = Blitbuffer.Color8(0x88),
+        dark = Blitbuffer.Color8(0x55),
+        highlight = Blitbuffer.Color8(0x99),
         shape = Blitbuffer.Color8(0xCC),
     },
 }
@@ -355,13 +357,23 @@ end
 
 -- Paperknight: move-mark badge ("!!", "?"…) on a square, like Lichess. Good
 -- marks are a filled black disc with white text, bad ones a white disc with
--- a black ring: told apart without colours on e-ink.
-local GOOD_MARKS = { ["!"] = true, ["!!"] = true, ["!?"] = true }
+-- a black ring: told apart without colours on e-ink. "✓" (puzzle solved) is
+-- drawn as a tick, not as text (fonts may lack the glyph).
+local TICK = "✓"
+local GOOD_MARKS = { ["!"] = true, ["!!"] = true, ["!?"] = true, [TICK] = true }
+Board.TICK = TICK
 
 --- Board:setBadge(square, text): shows `text` in the top-right corner of
 -- `square`; setBadge(nil) removes it. The caller repaints.
+-- With square_refresh, the old and new badge squares are refreshed.
 function Board:setBadge(square, text)
+    local old = self.badge and self.badge.square
     self.badge = (square and text) and { square = square, text = text } or nil
+    if not self.square_refresh then return end
+    for _, sq in pairs({ old = old, new = square }) do
+        local id = Board.chessToId(sq)
+        if id then self:_refreshButton(self.table:getButtonById(id), self:_screenRect(sq)) end
+    end
 end
 
 function Board:_paintBadge(bb)
@@ -374,6 +386,12 @@ function Board:_paintBadge(bb)
     bb:paintRoundedRect(bx, by, d, d, good and black or white, math.floor(d / 2))
     if not good then
         bb:paintBorder(bx, by, d, d, math.max(2, math.floor(d / 10)), black, math.floor(d / 2))
+    end
+    if self.badge.text == TICK then
+        local t = math.max(2, math.floor(d * 0.13))
+        self:_paintSegment(bb, bx + d * 0.27, by + d * 0.52, bx + d * 0.43, by + d * 0.68, t, white)
+        self:_paintSegment(bb, bx + d * 0.43, by + d * 0.68, bx + d * 0.73, by + d * 0.34, t, white)
+        return
     end
     -- font sizes are scaled by screen DPI: convert the wanted pixel height
     local px = d * 0.62
@@ -418,18 +436,27 @@ function Board:_paintArrow(bb, x1, y1, x2, y2, thick)
     if len < 1 then return end
     local ux, uy = dx / len, dy / len
     local head = math.min(len * 0.45, self.button_size * 0.45)
-    local half = math.floor(thick / 2)
-    -- shaft: overlapping squares every half thickness (cheap on slow CPUs)
-    local step = math.max(1, math.floor(half / 2))
-    for i = 0, math.floor(len - head), step do
-        bb:paintRect(math.floor(x1 + ux * i) - half, math.floor(y1 + uy * i) - half, thick, thick, self._shape_color)
-    end
+    self:_paintSegment(bb, x1, y1, x1 + ux * (len - head), y1 + uy * (len - head), thick, self._shape_color)
     -- head: filled triangle, one horizontal span per scanline
     local px, py = -uy, ux
     local base_half = thick * 1.6
     local bx, by = x2 - ux * head, y2 - uy * head
     self:_fillTriangle(bb, x2, y2, bx + px * base_half, by + py * base_half,
         bx - px * base_half, by - py * base_half)
+end
+
+-- Thick line: overlapping squares every half thickness (cheap on slow CPUs).
+function Board:_paintSegment(bb, x1, y1, x2, y2, thick, color)
+    local dx, dy = x2 - x1, y2 - y1
+    local len = math.sqrt(dx * dx + dy * dy)
+    local ux, uy = 0, 0
+    if len > 0 then ux, uy = dx / len, dy / len end
+    local half = math.floor(thick / 2)
+    local step = math.max(1, math.floor(half / 2))
+    for i = 0, math.floor(len), step do
+        bb:paintRect(math.floor(x1 + ux * i) - half, math.floor(y1 + uy * i) - half, thick, thick, color)
+    end
+    bb:paintRect(math.floor(x2) - half, math.floor(y2) - half, thick, thick, color)
 end
 
 function Board:_fillTriangle(bb, ax, ay, bx, by, cx, cy)

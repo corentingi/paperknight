@@ -311,7 +311,7 @@ return function(h)
     tapSq("b3"); h.wait(0.5)
     h.check(sview.board.selected == "b3", "tapping another own piece selects it: " .. tostring(sview.board.selected))
     local b2 = rectOf("b2")
-    h.check(shown(b2.x + 3, b2.y + math.floor(b2.h / 2)) == 0xBB, "no border left on b2: "
+    h.check(shown(b2.x + 3, b2.y + math.floor(b2.h / 2)) == 0xDD, "no border left on b2: "
         .. string.format("%x", shown(b2.x + 3, b2.y + math.floor(b2.h / 2))))
     h.check(shown(a2.x + 1, a2.y + math.floor(a2.h / 2)) ~= 0x00, "a2 frame removed")
     tapSq("b3"); h.wait(0.3)

@@ -234,6 +234,7 @@ function PkPuzzleView:loadPuzzle(puzzle, review, stale)
     local setup = self.session:start()
     self.board:updateBoard()
     self.board:setHighlights({ setup.from, setup.to })
+    self.board:setBadge(nil)
     self.board.locked = false
     self:_updateTitle()
     self:_setStatus(self:_toMoveText())
@@ -341,6 +342,7 @@ function PkPuzzleView:_broken(err)
     self.session = nil
     self.replaying = false
     self:_setButtons(self.solve_buttons)
+    self.board:setBadge(nil)
     self.board.locked = true
     self.board:updateBoard()
     self:_setStatus(_("This puzzle contains an invalid move. Tap Next."))
@@ -429,6 +431,7 @@ function PkPuzzleView:onUserMove(move)
         if note then text = text .. "\n" .. note end
         self:_updateTitle()
         self:_startReplay(result)
+        self:_updateBadge(move)
         self:_setStatus(text)
         return
     end
@@ -596,6 +599,14 @@ function PkPuzzleView:_replayText(label)
     return T(_("Move %1/%2: %3"), s.pos - 1, #s.line - 1, label)
 end
 
+-- Solved puzzle at its final position: a tick badge on the last moved piece
+-- (`move`, the move shown); removed anywhere else.
+function PkPuzzleView:_updateBadge(move)
+    local s = self.session
+    local done = move and s.state == "solved" and s.pos == #s.line
+    self.board:setBadge(done and move.to or nil, ChessBoard.TICK)
+end
+
 --- Steps the replay by `delta` moves (‹ ›, swipes, page-turn keys).
 function PkPuzzleView:step(delta)
     if not self.replaying or not self.session then return end
@@ -606,6 +617,7 @@ function PkPuzzleView:step(delta)
     if not ok then return self:_broken(move) end
     self.board:updateBoard()
     self.board:setHighlights(move and { move.from, move.to } or {})
+    self:_updateBadge(move)
     self:_updateReplayButtons()
     self:_setStatus(self.result_text .. "\n" .. self:_replayText(label))
 end
