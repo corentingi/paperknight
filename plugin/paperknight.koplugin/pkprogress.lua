@@ -111,6 +111,25 @@ function PkProgress:attemptCount()
     return tonumber(self.conn:rowexec("SELECT count(*) FROM attempts"))
 end
 
+--- Every recorded attempt, oldest first: { {puzzle_id, clean, puzzle_rating} }
+-- (clean: solved without a mistake or help, as counted by the rating).
+function PkProgress:attempts()
+    local out = {}
+    local stmt = self.conn:prepare("SELECT puzzle_id, solved, mistakes, used_help, puzzle_rating"
+        .. " FROM attempts ORDER BY ts")
+    local row = stmt:step()
+    while row do
+        out[#out + 1] = {
+            puzzle_id = row[1],
+            clean = tonumber(row[2]) == 1 and tonumber(row[3]) == 0 and tonumber(row[4]) == 0,
+            puzzle_rating = tonumber(row[5]),
+        }
+        row = stmt:step()
+    end
+    stmt:close()
+    return out
+end
+
 function PkProgress:wasAttemptedSince(puzzle_id, since_ts)
     local row = self.recent_stmt:reset():bind(puzzle_id, since_ts):step()
     self.recent_stmt:reset() -- don't keep a read transaction open between calls

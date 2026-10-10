@@ -16,6 +16,7 @@ local InputContainer = require("ui/widget/container/inputcontainer")
 local Screen = require("device").screen
 local Size = require("ui/size")
 local TextBoxWidget = require("ui/widget/textboxwidget")
+local TextWidget = require("ui/widget/textwidget")
 local TitleBar = require("ui/widget/titlebar")
 local UIManager = require("ui/uimanager")
 local VerticalGroup = require("ui/widget/verticalgroup")
@@ -33,6 +34,7 @@ local PkPuzzle = require("pkpuzzle")
 local PkPuzzleReview = require("pkpuzzlereview")
 local PkSrs = require("pksrs")
 local PkThemes = require("pkthemes")
+local PkPuzzleStats = require("pkpuzzlestats")
 local Menu = require("ui/widget/menu")
 
 local REPLY_DELAY = 0.6 -- seconds before the opponent replies, so the user sees their move first
@@ -80,7 +82,7 @@ function PkPuzzleView:init()
         text = "",
         face = Font:getFace("cfont", 20),
         width = self.dimen.w - 2 * Size.padding.large,
-        height = Screen:scaleBySize(80),
+        height = Screen:scaleBySize(105), -- 4 lines: result, themes, rating, review note
         alignment = "center",
     }
     self.solve_buttons = ButtonTable:new{
@@ -424,6 +426,7 @@ function PkPuzzleView:onUserMove(move)
         local result = (self.session:isCleanSolve() and _("Solved!"))
             or (self.session.used_help and _("Solved, with help."))
             or _("Solved, after a mistake.")
+        result = self:_withThemes(result)
         local text = result
         if before then
             text = text .. "\n" .. T(_("Rating %1 → %2"), before, after)
@@ -484,7 +487,10 @@ function PkPuzzleView:showMenu()
     local dialog
     local function close() UIManager:close(dialog); self.menu_dialog = nil end
     local buttons = {
-        {{ text = _("Theme…"), callback = function() close(); self:showThemeMenu() end }},
+        {
+            { text = _("Theme…"), callback = function() close(); self:showThemeMenu() end },
+            { text = _("Stats…"), callback = function() close(); self:showStats() end },
+        },
     }
     for _, row in ipairs(PkNav.quickRows(close, "puzzles")) do buttons[#buttons + 1] = row end
     dialog = ButtonDialog:new{ buttons = buttons }
@@ -521,6 +527,58 @@ function PkPuzzleView:showThemeMenu()
     UIManager:show(self.theme_menu)
 end
 
+--- Stats page: clean solves / attempts and performance per theme, weakest
+-- first (pkpuzzlestats.lua). Tapping a theme trains it.
+function PkPuzzleView:showStats()
+    local cache = {}
+    local function themesOf(id)
+        if cache[id] == nil then
+            local p = self.pack:get(id)
+            cache[id] = p and p.themes or false
+        end
+        return cache[id] or nil
+    end
+    local ok, stats = pcall(function() return PkPuzzleStats.compute(self.progress:attempts(), themesOf) end)
+    if not ok then
+        logger.warn("Paperknight: cannot compute the stats:", stats)
+        stats = { total = { n = 0 }, themes = {} }
+    end
+    local function figures(g)
+        local text = T("%1/%2", g.clean, g.n)
+        return g.perf and (text .. " · " .. g.perf) or text
+    end
+    local items = {}
+    local function pick(theme)
+        return function()
+            self.stats_menu.close_callback()
+            self:setTheme(theme)
+        end
+    end
+    if stats.total.n == 0 then
+        items[1] = { text = _("No puzzles played yet.") }
+    else
+        items[1] = { text = _("All themes"), mandatory = figures(stats.total), callback = pick(nil) }
+        for _, g in ipairs(stats.themes) do
+            items[#items + 1] = { text = PkThemes.label(g.theme), mandatory = figures(g), callback = pick(g.theme) }
+        end
+    end
+    self.stats_menu = Menu:new{
+        title = _("Puzzle stats"),
+        subtitle = T(_("Your rating %1 · clean solves/attempts · performance"), self.progress:rating()),
+        item_table = items,
+        covers_fullscreen = true,
+        is_borderless = true,
+        is_popout = false,
+        width = Screen:getWidth(),
+        height = Screen:getHeight(),
+    }
+    self.stats_menu.close_callback = function()
+        UIManager:close(self.stats_menu)
+        self.stats_menu = nil
+    end
+    UIManager:show(self.stats_menu)
+end
+
 function PkPuzzleView:setTheme(theme)
     if theme == self.theme then return end -- don't abandon the current puzzle
     local previous = self.theme
@@ -552,17 +610,35 @@ function PkPuzzleView:onSolution()
     if not ok then return self:_broken(err) end
     self.board:clearSelection()
     local before, after, note = self:_finishAttempt("solution")
-    if not self:_startReplay(_("Solution shown.")) then return end
+    if not self:_startReplay(self:_withThemes(_("Solution shown."))) then return end
     local s = self.session
     local r_ok, move, label = pcall(s.replayTo, s, s.pos)
     if not r_ok then return self:_broken(move) end
     self.board:updateBoard()
     self.board:setHighlights({ move.from, move.to })
-    local text = T(_("Solution: %1 (move %2/%3)."), label, s.pos - 1, #s.line - 1)
+    local text = self:_withThemes(T(_("Solution: %1 (move %2/%3)."), label, s.pos - 1, #s.line - 1))
     if before then text = text .. "\n" .. T(_("Rating %1 → %2"), before, after) end
     if note then text = text .. "\n" .. note end
     self:_updateTitle()
     self:_setStatus(text)
+end
+
+-- A finished puzzle's themes, on the line after `text`, when playing all
+-- themes (a chosen theme is in the subtitle already).
+function PkPuzzleView:_withThemes(text)
+    if self.theme or not self.puzzle then return text end
+    local labels = PkThemes.shown(self.puzzle.themes)
+    -- one line, so that the lines below stay in the status box: drop the last
+    -- themes until it fits
+    local line
+    for n = #labels, 1, -1 do
+        line = T(_("Themes: %1"), table.concat(labels, ", ", 1, n) .. (n < #labels and ", …" or ""))
+        local w = TextWidget:new{ text = line, face = self.status.face }
+        local fits = w:getSize().w <= self.status.width
+        w:free()
+        if fits then break end
+    end
+    return line and (text .. "\n" .. line) or text
 end
 
 ---------------------------------------------------------------------------

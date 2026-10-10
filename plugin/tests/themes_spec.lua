@@ -17,4 +17,14 @@ return {
         for i, th in ipairs(out) do keys[i] = th.theme end
         t.eq(table.concat(keys, " "), "mateIn1 fork bishopEndgame zugzwang", "order")
     end },
+    { "shown: skill themes of a puzzle, in menu order", function(t)
+        local labels = PkThemes.shown("backRankMate mate mateIn2 middlegame short")
+        t.eq(table.concat(labels, ", "), "Mate in 2, Back rank mate, Middlegame", "length, mate dropped")
+        t.eq(#PkThemes.shown("crushing master long"), 0, "nothing worth showing")
+        t.eq(#PkThemes.shown(nil), 0, "no tags")
+    end },
+    { "isSkill: evaluation and source tags are not skills", function(t)
+        t.ok(PkThemes.isSkill("fork") and PkThemes.isSkill("long") and PkThemes.isSkill("mate"), "skills")
+        t.ok(not PkThemes.isSkill("crushing") and not PkThemes.isSkill("superGM"), "not skills")
+    end },
 }

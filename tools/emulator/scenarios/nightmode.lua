@@ -53,7 +53,7 @@ return function(h)
     -- a white piece's middle pixel: white whatever the mode
     local function pieceMiddle(sq)
         local r = rect(sq)
-        return shown(r.x + math.floor(r.w / 2), r.y + math.floor(r.h * 0.8))
+        return shown(r.x + math.floor(r.w / 2), r.y + math.floor(r.h * 0.5)) -- the body, between its lines
     end
     local white_piece = board.game.get("d1") and "d1" -- rook in 0042j
     h.check(white_piece and board.game.get("d1").color == "w", "white piece on d1")

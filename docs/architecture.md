@@ -37,7 +37,8 @@ Paperknight modules (prefixed `pk` to avoid `package.loaded` clashes, ADR-0009):
 
 | File | Role |
 |---|---|
-| `pkpuzzleview.lua` | Puzzle screen: board, status line; Retry / Hint / Solution / Next while solving, Retry / ‹ / › / Next to step through the line once finished (also swipes) |
+| `pkpuzzleview.lua` | Puzzle screen: board, status line; Retry / Hint / Solution / Next while solving, Retry / ‹ / › / Next to step through the line once finished (also swipes); the puzzle's themes once finished (all themes mode); ☰ Theme… and Stats… pages |
+| `pkpuzzlestats.lua` | Per-theme stats from the attempts: clean solves / attempts and a performance rating (average puzzle rating ± 400 by score, from 5 attempts), weakest first |
 | `pkpuzzle.lua` | Puzzle session state machine (pure logic, unit-tested) |
 | `pkpuzzlereview.lua` | Missed-puzzle review ladder (pure logic, ADR-0014) |
 | `pknav.lua` | Home screen, quick settings (frontlight, night mode, modes), switching modes (ADR-0015) |
@@ -48,7 +49,7 @@ Paperknight modules (prefixed `pk` to avoid `package.loaded` clashes, ADR-0009):
 | `pkprogress.lua` | `progress.sqlite`: rating + attempts (ADR-0010), puzzle reviews (ADR-0014), repertoire cards, settings |
 | `pkpromotion.lua` | Promotion piece chooser shared by both screens |
 | `pkicons.lua` | Absolute paths of the piece icons inside the plugin folder |
-| `pkthemes.lua` | Puzzle theme labels and menu order |
+| `pkthemes.lua` | Puzzle theme labels and menu order; which tags are skills (stats) and worth showing after a puzzle |
 | `pkpgn.lua` | PGN reader: chapter index + movetext tree (ADR-0011) |
 | `pkstudy.lua` | Study chapters and a lazy-resolving tree cursor |
 | `pklesson.lua` | Interactive lesson rules (Lichess gamebook) on a cursor |

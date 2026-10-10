@@ -131,6 +131,20 @@ return function(h)
         return Screen.bb:getPixel(r.x + r.w - math.floor(d / 2), r.y + math.floor(d / 5)):getColor8().a
     end
     h.wait(0.5)
+    -- all themes: the puzzle's themes once it is over (length and "mate" left out)
+    h.check(status():find("Themes: Mate in 2, Back rank mate, Middlegame", 1, true), "themes shown: " .. status())
+    h.check(not status():find("Short", 1, true), "length tag left out: " .. status())
+    do -- a long theme list is cut to one line, so the lines below stay visible
+        local real = view.puzzle
+        view.puzzle = { themes = "discoveredAttack capturingDefender kingsideAttack deflection interference xRayAttack" }
+        local text = view:_withThemes("Solved!")
+        view.puzzle = real
+        local line = text:match("\n(.*)")
+        local w = require("ui/widget/textwidget"):new{ text = line, face = view.status.face }
+        h.check(not line:find("\n") and line:find("…", 1, true) and w:getSize().w <= view.status.width,
+            "themes cut to one line: " .. line)
+        w:free()
+    end
     local badge = view.board.badge
     h.check(badge and badge.square == "d8" and badge.text == "✓", "tick badge on the solving move")
     h.check(badgePixel("d8") == 0, ("badge drawn on d8: %x"):format(badgePixel("d8")))
@@ -141,6 +155,7 @@ return function(h)
     h.wait(0.5)
     h.check(badgePixel("d8") ~= 0, ("badge erased: %x"):format(badgePixel("d8")))
     h.check(status():find("Solved!", 1, true) and status():find("Move 2/3: 25… Qxd8", 1, true), "replay status: " .. status())
+    h.check(status():find("Themes: Mate in 2", 1, true), "themes kept while stepping: " .. status())
     tapButton("forward")
     h.check(view.board.badge and view.board.badge.square == "d8", "badge back at the final position")
 
@@ -340,5 +355,32 @@ return function(h)
     h.check(not view:nextPuzzle(), "no other puzzle")
     h.check(view.puzzle.id == only and status():find("No other puzzle with this theme", 1, true),
         "the current one stays: " .. status())
+
+    -- 9. Stats page: per theme, from the attempts; a tap trains that theme.
+    tapSquare("a3"); tapSquare("c2") -- solved with a theme chosen: no themes line
+    h.check(view.session.state == "solved" and not status():find("Themes:", 1, true), "no themes line: " .. status())
+    view:showStats()
+    h.wait(0.5)
+    local menu = view.stats_menu
+    h.check(menu, "stats page open")
+    local items = menu.item_table
+    local attempts = view.progress:attempts()
+    local clean = 0
+    for _, a in ipairs(attempts) do if a.clean then clean = clean + 1 end end
+    h.check(items[1].text == "All themes" and items[1].mandatory:find(("^%d/%d"):format(clean, #attempts)),
+        "total line: " .. items[1].text .. " " .. tostring(items[1].mandatory))
+    local by_label = {}
+    for i = 2, #items do by_label[items[i].text] = items[i] end
+    h.check(by_label["Intermezzo"] and by_label["Intermezzo"].mandatory:find(" · %d+$"), "a theme with a performance: "
+        .. tostring(by_label["Intermezzo"] and by_label["Intermezzo"].mandatory))
+    h.check(by_label["Back rank mate"], "a theme played once is listed")
+    h.check(not by_label["Crushing"] and not by_label["Advantage"], "evaluation tags left out")
+    h.shot("puzzle-stats")
+    local row
+    for _, w in ipairs(menu.item_group) do if w.text == "Intermezzo" then row = w end end
+    h.check(row, "Intermezzo row on the first page")
+    h.tapWidget(row)
+    h.wait(0.5)
+    h.check(view.stats_menu == nil and view.theme == "intermezzo", "tapping a theme trains it: " .. tostring(view.theme))
     view:onClose()
 end

@@ -31,6 +31,33 @@ function PkThemes.label(key)
     return (words:gsub("^%l", string.upper))
 end
 
+-- Tags that say nothing about the skill trained: evaluation of the final
+-- position and the source of the game. Left out of the stats.
+local NOT_SKILL = {
+    advantage = true, crushing = true, equality = true,
+    master = true, masterVsMaster = true, superGM = true,
+}
+-- Also left out of a solved puzzle's theme line: the length (seen while
+-- solving) and the generic "mate" (mateInN says more).
+local NOT_SHOWN = { short = true, long = true, veryLong = true, oneMove = true, mate = true }
+
+--- True if theme `key` measures a skill (kept in the stats).
+function PkThemes.isSkill(key)
+    return not NOT_SKILL[key]
+end
+
+--- Labels of a puzzle's themes worth showing once it is over (`tags`: the
+-- pack's space-separated keys), in menu order.
+function PkThemes.shown(tags)
+    local list = {}
+    for key in (tags or ""):gmatch("%S+") do
+        if not NOT_SKILL[key] and not NOT_SHOWN[key] then list[#list + 1] = { theme = key } end
+    end
+    local labels = {}
+    for i, t in ipairs(PkThemes.sorted(list)) do labels[i] = PkThemes.label(t.theme) end
+    return labels
+end
+
 --- Orders `themes` ({ {theme=, count=}, ... }) for a menu: featured first.
 function PkThemes.sorted(themes)
     local rank = {}
