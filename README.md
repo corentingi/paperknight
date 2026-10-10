@@ -10,8 +10,8 @@ Stockfish, PGN load/save) that grows into a training tool:
   missed puzzles come back as spaced reviews (next day, then 3, 7, 21 days).
   *Solution* shows the first move you missed; then step through the whole line with ‹ › (or swipes).
   A solved puzzle gets a ✓ badge on the last piece moved; the last move is the darkest square.
-  Once a puzzle is over, its themes are shown; *Stats…* (☰) lists your results per theme, weakest
-  first, and a tap on a theme trains it.
+  Once a puzzle is over, its themes are shown; *Stats…* (☰) charts your results per theme (clean
+  solves vs misses), weakest first, and a tap on a theme trains it.
 - **Studies** — Lichess studies (or any PGN): chapters, variations, comments,
   arrows, and interactive lessons. See [`docs/studies.md`](docs/studies.md).
 - **Openings** — drill your own repertoire (a PGN / Lichess study) with spaced

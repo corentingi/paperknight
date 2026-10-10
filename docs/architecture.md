@@ -39,6 +39,7 @@ Paperknight modules (prefixed `pk` to avoid `package.loaded` clashes, ADR-0009):
 |---|---|
 | `pkpuzzleview.lua` | Puzzle screen: board, status line; Retry / Hint / Solution / Next while solving, Retry / ‹ / › / Next to step through the line once finished (also swipes); the puzzle's themes once finished (all themes mode); ☰ Theme… and Stats… pages |
 | `pkpuzzlestats.lua` | Per-theme stats from the attempts: clean solves / attempts and a performance rating (average puzzle rating ± 400 by score, from 5 attempts), weakest first |
+| `pkstatsview.lua` | Puzzle stats screen: a row per theme with a bar (clean solves black, missed grey) and the figures; pages; a tap trains the theme |
 | `pkpuzzle.lua` | Puzzle session state machine (pure logic, unit-tested) |
 | `pkpuzzlereview.lua` | Missed-puzzle review ladder (pure logic, ADR-0014) |
 | `pknav.lua` | Home screen, quick settings (frontlight, night mode, modes), switching modes (ADR-0015) |

@@ -361,26 +361,51 @@ return function(h)
     h.check(view.session.state == "solved" and not status():find("Themes:", 1, true), "no themes line: " .. status())
     view:showStats()
     h.wait(0.5)
-    local menu = view.stats_menu
-    h.check(menu, "stats page open")
-    local items = menu.item_table
+    local sv = view.stats_view
+    h.check(sv, "stats page open")
     local attempts = view.progress:attempts()
     local clean = 0
     for _, a in ipairs(attempts) do if a.clean then clean = clean + 1 end end
-    h.check(items[1].text == "All themes" and items[1].mandatory:find(("^%d/%d"):format(clean, #attempts)),
-        "total line: " .. items[1].text .. " " .. tostring(items[1].mandatory))
+    local total = sv.entries[1]
+    h.check(total.label == "All themes" and total.clean == clean and total.n == #attempts,
+        ("total row: %s %d/%d"):format(total.label, total.clean, total.n))
+    h.check(clean < #attempts, "the fixture history has misses")
     local by_label = {}
-    for i = 2, #items do by_label[items[i].text] = items[i] end
-    h.check(by_label["Intermezzo"] and by_label["Intermezzo"].mandatory:find(" · %d+$"), "a theme with a performance: "
-        .. tostring(by_label["Intermezzo"] and by_label["Intermezzo"].mandatory))
+    for _, e in ipairs(sv.entries) do by_label[e.label] = e end
+    h.check(by_label["Intermezzo"] and by_label["Intermezzo"].perf, "a theme with a performance")
     h.check(by_label["Back rank mate"], "a theme played once is listed")
     h.check(not by_label["Crushing"] and not by_label["Advantage"], "evaluation tags left out")
+    -- the total row's bar: black (clean) from the left, grey (missed) at the right
+    local function barOf(row)
+        local function find(w)
+            if type(w) ~= "table" then return nil end
+            if w.clean and w.n and w.paintTo and w.width then return w end
+            for _, c in ipairs(w) do local b = find(c); if b then return b end end
+        end
+        return find(row)
+    end
+    local bar = barOf(sv.rows[1])
+    local Screen = require("device").screen
+    local function px(x, y) return Screen.bb:getPixel(x, y):getColor8().a end
+    local d = bar.dimen
+    local mid_y = d.y + math.floor(d.h / 2)
+    h.check(d and px(d.x + 4, mid_y) == 0x00, ("clean part black: %x"):format(px(d.x + 4, mid_y)))
+    h.check(px(d.x + d.w - 4, mid_y) == 0xBB, ("missed part grey: %x"):format(px(d.x + d.w - 4, mid_y)))
+    local cut = d.x + math.floor(d.w * clean / #attempts)
+    h.check(px(cut - 3, mid_y) == 0x00 and px(cut + 3, mid_y) == 0xBB, "split at the clean share")
     h.shot("puzzle-stats")
+    if sv.pages > 1 then
+        h.tapWidget(sv.footer:getButtonById("next"))
+        h.check(sv.page == 2 and sv.rows[1].entry == sv.entries[sv.per_page + 1], "next page")
+        h.swipe(sv.dimen.w / 2, sv.dimen.h / 2, "east")
+        h.check(sv.page == 1, "swipe back to the first page")
+        h.wait(0.5)
+    end
     local row
-    for _, w in ipairs(menu.item_group) do if w.text == "Intermezzo" then row = w end end
+    for _, r in ipairs(sv.rows) do if r.entry.label == "Intermezzo" then row = r end end
     h.check(row, "Intermezzo row on the first page")
     h.tapWidget(row)
     h.wait(0.5)
-    h.check(view.stats_menu == nil and view.theme == "intermezzo", "tapping a theme trains it: " .. tostring(view.theme))
+    h.check(view.stats_view == nil and view.theme == "intermezzo", "tapping a theme trains it: " .. tostring(view.theme))
     view:onClose()
 end

@@ -35,6 +35,7 @@ local PkPuzzleReview = require("pkpuzzlereview")
 local PkSrs = require("pksrs")
 local PkThemes = require("pkthemes")
 local PkPuzzleStats = require("pkpuzzlestats")
+local PkStatsView = require("pkstatsview")
 local Menu = require("ui/widget/menu")
 
 local REPLY_DELAY = 0.6 -- seconds before the opponent replies, so the user sees their move first
@@ -527,8 +528,8 @@ function PkPuzzleView:showThemeMenu()
     UIManager:show(self.theme_menu)
 end
 
---- Stats page: clean solves / attempts and performance per theme, weakest
--- first (pkpuzzlestats.lua). Tapping a theme trains it.
+--- Stats page (pkstatsview.lua): per theme, clean solves vs missed attempts
+-- and the performance, weakest first. Tapping a theme trains it.
 function PkPuzzleView:showStats()
     local cache = {}
     local function themesOf(id)
@@ -543,40 +544,13 @@ function PkPuzzleView:showStats()
         logger.warn("Paperknight: cannot compute the stats:", stats)
         stats = { total = { n = 0 }, themes = {} }
     end
-    local function figures(g)
-        local text = T("%1/%2", g.clean, g.n)
-        return g.perf and (text .. " · " .. g.perf) or text
-    end
-    local items = {}
-    local function pick(theme)
-        return function()
-            self.stats_menu.close_callback()
-            self:setTheme(theme)
-        end
-    end
-    if stats.total.n == 0 then
-        items[1] = { text = _("No puzzles played yet.") }
-    else
-        items[1] = { text = _("All themes"), mandatory = figures(stats.total), callback = pick(nil) }
-        for _, g in ipairs(stats.themes) do
-            items[#items + 1] = { text = PkThemes.label(g.theme), mandatory = figures(g), callback = pick(g.theme) }
-        end
-    end
-    self.stats_menu = Menu:new{
-        title = _("Puzzle stats"),
-        subtitle = T(_("Your rating %1 · clean solves/attempts · performance"), self.progress:rating()),
-        item_table = items,
-        covers_fullscreen = true,
-        is_borderless = true,
-        is_popout = false,
-        width = Screen:getWidth(),
-        height = Screen:getHeight(),
+    self.stats_view = PkStatsView:new{
+        stats = stats,
+        rating = self.progress:rating(),
+        on_pick = function(theme) self:setTheme(theme) end,
     }
-    self.stats_menu.close_callback = function()
-        UIManager:close(self.stats_menu)
-        self.stats_menu = nil
-    end
-    UIManager:show(self.stats_menu)
+    self.stats_view.onCloseWidget = function() self.stats_view = nil end
+    UIManager:show(self.stats_view)
 end
 
 function PkPuzzleView:setTheme(theme)
