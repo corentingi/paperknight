@@ -52,6 +52,7 @@ function ButtonTable:init()
                 icon = btn_entry.icon,
                 alpha = btn_entry.alpha,
                 day_colors = btn_entry.day_colors, -- Paperknight: see pkbutton.lua
+                no_feedback = btn_entry.no_feedback, -- Paperknight: see pkbutton.lua
                 icon_width = btn_entry.icon_width,
                 icon_height = btn_entry.icon_height,
                 align = btn_entry.align,

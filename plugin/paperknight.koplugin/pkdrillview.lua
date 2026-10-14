@@ -79,6 +79,7 @@ function PkDrillView:_build(flipped)
         if self.board then self.board:free() end
         self.board = ChessBoard:new{
             game = self.game,
+            square_refresh = PkRefresh.STEP, -- squares and selection: never a flash (pkrefresh.lua)
             width = self.board_size,
             height = self.board_size,
             flipped = flipped,
@@ -176,7 +177,7 @@ function PkDrillView:refresh(prefix, full)
     board:setShapes(nil)
     board:setBadge(node and node.move and node.move.to, PkStudy.moveMark(node))
     local counts = drill:counts()
-    self.title_bar:setSubTitle(T(_("Due: %1 · New today: %2"), counts.due, counts.new_today))
+    PkRefresh.setSubTitle(self, T(_("Due: %1 · New today: %2"), counts.due, counts.new_today))
 
     local parts = {}
     if prefix then parts[#parts + 1] = prefix end

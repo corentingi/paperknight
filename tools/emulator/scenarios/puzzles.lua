@@ -83,36 +83,29 @@ return function(h)
         local file, rank = sq:byte(1) - 96, tonumber(sq:sub(2, 2))
         return view.board.table:getButtonById(view.board.toId(file - 1, rank - 1)).icon
     end
-    -- e-ink: a move and its reply refresh their squares and the status strip,
-    -- never the whole board (nor the screen: KOReader's periodic flash of
-    -- partial refreshes then covers those regions only)
+    -- e-ink (docs/eink-refresh.md): what reaches the screen for a move and
+    -- its reply. Each update is one "[partial]" refresh (the REAGL waveform
+    -- of page turns, not counted towards KOReader's periodic flash) around
+    -- the changed squares and the status line; no tap highlight ("fast"), no
+    -- "ui" (GC16_FAST flickers), no flash, never the whole screen.
     local UIManager = require("ui/uimanager")
-    local refreshes, _refresh = {}, UIManager._refresh
-    UIManager._refresh = function(um, mode, region, ...)
-        refreshes[#refreshes + 1] = { mode = mode, region = region }
-        return _refresh(um, mode, region, ...)
-    end
-    tapSquare("d2"); tapSquare("d8")
+    local count_before = UIManager.refresh_count
+    local stop = h.recordRefreshes()
+    tapSquare("d2")
+    local selected = stop()
+    h.check(#selected == 1 and selected[1].mode == "[partial]" and selected[1].w < view.board.dimen.w / 4,
+        "selecting: one small [partial] refresh, got " .. #selected .. " " .. tostring(selected[1] and selected[1].mode))
+    stop = h.recordRefreshes()
+    tapSquare("d8")
     h.check(status():find("Correct"), "correct: " .. status())
     h.wait(1.5) -- opponent reply delay
-    UIManager._refresh = _refresh
-    -- per update (the move, then the reply): one refresh around the changed
-    -- squares, one for the status strip; besides, the tap feedback on squares
-    local b = view.board.dimen
-    local function inBoard(g) return g.x >= b.x and g.y >= b.y and g.x + g.w <= b.x + b.w and g.y + g.h <= b.y + b.h end
-    local board_partials, seen = 0, {} -- KOReader re-enters _refresh when merging: count each region once
-    for _, r in ipairs(refreshes) do
-        local g = r.region
-        h.check(g, "no full-screen refresh (" .. r.mode .. ")")
-        if inBoard(g) then
-            local key = ("%d,%d %dx%d"):format(g.x, g.y, g.w, g.h)
-            if r.mode == "partial" and not seen[key] then board_partials, seen[key] = board_partials + 1, true end
-        else
-            h.check(g.y >= b.y + b.h and g.h < b.h / 2, ("only the status strip besides the board: %s %d,%d %dx%d"):format(r.mode, g.x, g.y, g.w, g.h))
-        end
+    local updates = stop()
+    for _, r in ipairs(updates) do
+        h.check(r.mode == "[partial]", ("only [partial] refreshes: %s %d,%d %dx%d"):format(r.mode, r.x, r.y, r.w, r.h))
+        h.check(r.h < view.dimen.h, "never the whole screen")
     end
-    -- partial: grey squares need the grey waveform ("fast" is black and white)
-    h.check(board_partials == 2, "one board refresh per update: " .. board_partials)
+    h.check(#updates == 2, "one refresh per update (move, reply): " .. #updates)
+    h.check(UIManager.refresh_count == count_before, "not counted towards the periodic flash")
     -- what the board shows, not just the game state (which changes immediately)
     h.check(not view.board.locked, "board unlocked after the reply")
     h.check(iconAt("d8"):find("bQ%.svg$"), "black queen shown on d8: " .. iconAt("d8"))

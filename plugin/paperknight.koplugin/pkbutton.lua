@@ -13,7 +13,10 @@ local _ = require("gettext")
 local Screen = require("device").screen
 
 -- Paperknight: subclass instead of patching KOReader's global Button:init
-local Button = require("ui/widget/button"):extend{}
+local KOButton = require("ui/widget/button")
+local Button = KOButton:extend{
+    no_feedback = false, -- true: a tap runs the callback without the highlight
+}
 
 function Button:init()
     if self.menu_style then
@@ -215,6 +218,29 @@ function Button:init()
             },
         }
     }
+end
+
+-- `no_feedback` buttons (board squares) skip KOReader's tap feedback: an
+-- inverted highlight refreshed in black and white ("fast", DU), then the
+-- unhighlight, both flashing on e-ink, plus a forced repaint and a pause
+-- before the callback. The board shows its own selection.
+function Button:onTapSelectButton()
+    if self.no_feedback and self.callback and (self.enabled or self.allow_tap_when_disabled) then
+        self.callback()
+        return true
+    end
+    return KOButton.onTapSelectButton(self)
+end
+
+--- Drops the tap highlight of buttons `ids` of `button_table` (KOReader's
+-- ButtonTable has no such option): for buttons pressed in a row (‹ ›), whose
+-- effect on the board is the feedback.
+function Button.noFeedback(button_table, ids)
+    for _, id in ipairs(ids) do
+        local button = button_table:getButtonById(id)
+        button.no_feedback = true
+        button.onTapSelectButton = Button.onTapSelectButton
+    end
 end
 
 return Button

@@ -184,6 +184,7 @@ function Board:createSquareButton(file, rank)
         padding = 0,
         padding_h = 0,
         allow_hold_when_disabled = true,
+        no_feedback = true, -- the selection border is the feedback (pkbutton.lua)
         callback = function() self:handleClick(file, rank) end,
         hold_callback = self.holdCallback,
     }
@@ -542,6 +543,16 @@ function Board:_refreshButton(button, rect)
     end)
 end
 
+--- Adds `rect` (another part of the screen changed by the same update, e.g.
+-- the status line) to the pending square refresh. Returns false when none is
+-- pending: the caller refreshes it. On REAGL Kindles each refresh waits for
+-- the previous one to complete: one refresh per update is faster.
+function Board:joinRefresh(rect)
+    if not (self._batch and rect) then return false end
+    self._batch = self._batch:combine(rect)
+    return true
+end
+
 --- Board:handleMoveFlags(move, to)
 -- Handles visual updates for special move types (en passant, castling).
 -- @param move Table, the move object.
@@ -611,12 +622,13 @@ end
 -- limited to the square).
 function Board:_repaintSquare(square)
     local rect = square and self:_squareRect(square)
+    -- square_refresh when set (pkrefresh.lua); else "ui", not "fast": the fast
+    -- (DU) waveform is black and white only and would degrade the grey squares
+    local mode = self.square_refresh or "ui"
     if rect and rect.w then
-        -- "ui", not "fast": the fast (DU) waveform is black and white only
-        -- and would degrade the grey squares
-        UIManager:setDirty(self.show_parent or self, "ui", rect)
+        UIManager:setDirty(self.show_parent or self, mode, rect)
     else
-        UIManager:setDirty(self.show_parent or self, "ui", self.dimen)
+        UIManager:setDirty(self.show_parent or self, mode, self.dimen)
     end
 end
 

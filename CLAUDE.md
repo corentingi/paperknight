@@ -44,16 +44,21 @@
 - In a ButtonTable, icon buttons are taller than text ones: size the icons
   to the text row, or the board moves when the bar is swapped.
 
-## E-ink refreshes (pkrefresh.lua)
-- Overlapping refreshes merge and the stronger mode wins (`partial` > `ui` >
-  `fast`). KOReader promotes every Nth `partial` (user's full refresh rate)
-  to a flash over its region, `full` screen when it has no region: keep
-  board-screen refreshes regional and small. `fast` is black and white
-  (degrades grey squares); `ui` flickers changed pixels.
-- Separate refreshes run in sequence on the Kindle: batch one update into one
-  region (Board.square_refresh collects the changed squares).
-- Measure, don't guess: hook `UIManager._refresh` in an e2e scenario and log
-  mode + region. Merges re-enter `_refresh`, so dedupe regions when counting.
+## E-ink refreshes (pkrefresh.lua, docs/eink-refresh.md)
+- PW2 is a REAGL Kindle: `partial`/`[partial]` = REAGL (no flash), `ui` =
+  GC16_FAST (flickers changed pixels), `fast` = DU (black and white, crushes
+  greys). Night: partial becomes GL16_INV.
+- Steps (move, selection, status, replay/study step) use `PkRefresh.STEP`
+  (`[partial]`): not counted by KOReader, never promoted to a flash. Pages
+  (new puzzle/chapter/line) use a counted whole-screen `partial`
+  (`PkRefresh.page`): the user's full refresh rate flashes there.
+- No KOReader tap highlight where the board is the feedback: squares
+  (`no_feedback`) and arrows (`PkButton.noFeedback`). Subtitles via
+  `PkRefresh.setSubTitle` (TitleBar's own refresh is `ui`).
+- Each REAGL refresh waits for the previous one: one refresh per update
+  (`Board.square_refresh` + `Board:joinRefresh`).
+- Measure, don't guess: `h.recordRefreshes()` in an e2e scenario gives the
+  refreshes sent to the screen (after merges and promotions).
 
 ## Chess test data
 - Validate every FEN/PGN written into a test or fixture with python-chess

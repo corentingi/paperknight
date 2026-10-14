@@ -43,7 +43,7 @@ Paperknight modules (prefixed `pk` to avoid `package.loaded` clashes, ADR-0009):
 | `pkpuzzle.lua` | Puzzle session state machine (pure logic, unit-tested) |
 | `pkpuzzlereview.lua` | Missed-puzzle review ladder (pure logic, ADR-0014) |
 | `pknav.lua` | Home screen, quick settings (frontlight, night mode, modes), switching modes (ADR-0015) |
-| `pkrefresh.lua` | E-ink refresh policy of the board screens ("partial", like page turns; puzzles refresh only the changed squares and the status strip) |
+| `pkrefresh.lua` | E-ink refresh policy of the board screens: steps are "[partial]" (never promoted to a flash), pages a counted "partial"; see [eink-refresh.md](eink-refresh.md) |
 | `pkside.lua` | Side names with a disc marker ("○ White", "● Black"), swapped in night mode |
 | `pkrescache.lua` | On-device cache of resolved repertoire moves (ADR-0013) |
 | `pkpuzzlepack.lua` | Read-only access to `puzzles.sqlite` (indexed random picks) |

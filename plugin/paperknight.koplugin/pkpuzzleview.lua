@@ -27,6 +27,7 @@ local T = require("ffi/util").template
 local Chess = require("pkchess")
 local ChessBoard = require("pkboard")
 local PkPromotion = require("pkpromotion")
+local PkButton = require("pkbutton")
 local PkRefresh = require("pkrefresh")
 local PkNav = require("pknav")
 local PkSide = require("pkside")
@@ -118,6 +119,9 @@ function PkPuzzleView:init()
         self.replay_buttons:free()
         self.replay_buttons = replayButtons(size)
     end
+    -- ‹ ›: no tap highlight, which flashes on every step; the board changing
+    -- is the feedback
+    PkButton.noFeedback(self.replay_buttons, { "back", "forward" })
     self.buttons = self.solve_buttons
     local board_h = self.dimen.h - self.title_bar:getHeight() - self.status:getSize().h
         - math.max(self.solve_buttons:getSize().h, self.replay_buttons:getSize().h) - 4 * Size.padding.default
@@ -148,7 +152,7 @@ function PkPuzzleView:_prepareBoard(flipped)
         height = self.board_size,
         flipped = flipped,
         show_parent = self, -- the board repaints through this window (selection overlay)
-        square_refresh = "partial", -- a move refreshes its squares only (pkrefresh.lua)
+        square_refresh = PkRefresh.STEP, -- a move refreshes its squares only (pkrefresh.lua)
         moveCallback = function(move) self:onUserMove(move) end,
         onPromotionNeeded = function(from, to, color)
             PkPromotion.show(color, function(letter)
@@ -199,7 +203,7 @@ function PkPuzzleView:_updateTitle()
     if self.theme then -- last: a long theme name may be cut off
         subtitle = subtitle .. " · " .. PkThemes.label(self.theme)
     end
-    self.title_bar:setSubTitle(subtitle)
+    PkRefresh.setSubTitle(self, subtitle, function(rect) self:_refreshPart(rect) end)
 end
 
 -- The board refreshes the squares it changes; this refreshes the status and
@@ -207,7 +211,13 @@ end
 -- board. A new puzzle refreshes the page (loadPuzzle).
 function PkPuzzleView:_setStatus(text)
     self.status:setText(text)
-    PkRefresh.step(self, self.status, self.buttons)
+    self:_refreshPart(PkRefresh.region(self, self.status, self.buttons))
+end
+
+-- Refreshes `rect` (nil: the whole view) as a step, in the board's refresh
+-- when the board changed too (one refresh per update, Board:joinRefresh).
+function PkPuzzleView:_refreshPart(rect)
+    if not self.board:joinRefresh(rect) then UIManager:setDirty(self, PkRefresh.STEP, rect) end
 end
 
 function PkPuzzleView:_toMoveText()

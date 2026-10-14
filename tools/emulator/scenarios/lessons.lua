@@ -36,7 +36,13 @@ return function(h)
 
     tapSquare("a2"); tapSquare("a3")
     h.check(panel():find("Not the move"), "unknown move: " .. panel())
+    -- e-ink: a lesson move on the board sends only "[partial]" refreshes
+    -- (no tap highlight, no "ui" selection refresh; docs/eink-refresh.md)
+    local stop = h.recordRefreshes()
     tapSquare("f4"); tapSquare("e5")
+    for _, r in ipairs(stop()) do
+        h.check(r.mode == "[partial]", ("lesson move refresh: %s %d,%d %dx%d"):format(r.mode, r.x, r.y, r.w, r.h))
+    end
     h.check(panel():find("That's a mistake") and panel():find("misses the mate"), "known mistake explained: " .. panel())
     h.check(view.game.get("f4").type == "p", "mistake not kept on the board")
 

@@ -52,8 +52,9 @@ return function(h)
     h.check(view.board.shapes and #view.board.shapes.circles == 2, "intro circles set")
     h.shot("study-intro")
 
-    -- e-ink: browsing (steps and jumps) only asks for "partial" refreshes
-    -- of the view (no flicker; KOReader's full refresh rate applies)
+    -- e-ink: browsing only asks for "[partial]" (steps, never promoted to a
+    -- flash) or "partial" (new line or chapter: KOReader's full refresh rate
+    -- applies) refreshes of the view (pkrefresh.lua)
     local modes = {}
     local setDirty = UIManager.setDirty
     UIManager.setDirty = function(um, widget, mode, ...)
@@ -61,7 +62,13 @@ return function(h)
         return setDirty(um, widget, mode, ...)
     end
 
+    -- what reaches the screen: one [partial] refresh per step (no tap
+    -- highlight on the arrows, no "ui" refresh of the unchanged title bar)
+    local stop = h.recordRefreshes()
     for _ = 1, 4 do tapButton("forward") end
+    local sent = stop()
+    for _, r in ipairs(sent) do h.check(r.mode == "[partial]", ("step refresh: %s %d,%d %dx%d"):format(r.mode, r.x, r.y, r.w, r.h)) end
+    h.check(#sent == 4, "one refresh per step: " .. #sent)
     h.check(panel():find("^2%.%.%. Nc6"), "after 4 forwards: " .. panel())
     h.check(panel():find("3. Bc4!? (main)", 1, true) and panel():find("3. Bb5", 1, true), "alternatives listed: " .. panel())
     h.check(view.buttons:getButtonById("lines").enabled, "Lines enabled at a branch")
@@ -99,7 +106,12 @@ return function(h)
     tapButton("start")
     UIManager.setDirty = setDirty
     h.check(#modes >= 6, "refreshes recorded: " .. #modes)
-    for _, m in ipairs(modes) do h.check(m == "partial", "browsing refresh: " .. m) end
+    local steps = 0
+    for _, m in ipairs(modes) do
+        h.check(m == "[partial]" or m == "partial", "browsing refresh: " .. m)
+        if m == "[partial]" then steps = steps + 1 end
+    end
+    h.check(steps >= 4, "steps are [partial]: " .. steps)
     -- greyed when they can't act; at the end of a line › opens the next chapter
     view:toEnd()
     h.wait(0.5) -- painted, like a user sees it before tapping

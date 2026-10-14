@@ -79,6 +79,32 @@ function Harness:helpers(co)
         h.wait(0.5)
     end
 
+    -- Records the refreshes sent to the screen (after KOReader's merges and
+    -- its periodic promotion to a flash) until the returned function is
+    -- called; it returns { {mode=, x=, y=, w=, h=}, ... }. The mode -> Screen
+    -- method table is a local of uimanager.lua: its entries are wrapped.
+    function h.recordRefreshes()
+        local methods
+        for i = 1, 100 do
+            local name, val = debug.getupvalue(UIManager._repaint, i)
+            if not name then break end
+            if name == "refresh_methods" then methods = val end
+        end
+        assert(methods, "recordRefreshes: refresh_methods not found in UIManager._repaint")
+        local log, saved = {}, {}
+        for mode, fn in pairs(methods) do
+            saved[mode] = fn
+            methods[mode] = function(screen, x, y, w, hh, d)
+                log[#log + 1] = { mode = mode, x = x, y = y, w = w, h = hh }
+                return fn(screen, x, y, w, hh, d)
+            end
+        end
+        return function()
+            for mode, fn in pairs(saved) do methods[mode] = fn end
+            return log
+        end
+    end
+
     -- Tap the centre of a widget that has been painted at least once.
     function h.tapWidget(widget)
         assert(widget and widget.dimen, "tapWidget: widget has no dimen (not painted yet?)")

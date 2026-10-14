@@ -30,6 +30,7 @@ local PkLesson = require("pklesson")
 local PkLinks = require("pklinks")
 local PkProgress = require("pkprogress")
 local PkPromotion = require("pkpromotion")
+local PkButton = require("pkbutton")
 local PkRefresh = require("pkrefresh")
 local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
@@ -82,6 +83,9 @@ function PkStudyView:init()
         }},
         zero_sep = true,
     }
+    -- arrows: no tap highlight, which flashes on every step; the board
+    -- changing is the feedback
+    PkButton.noFeedback(self.browse_buttons, { "start", "back", "forward", "end" })
     self.lesson_buttons = ButtonTable:new{
         width = self.dimen.w - 2 * Size.padding.default,
         buttons = {{
@@ -162,6 +166,7 @@ function PkStudyView:_build()
         if self.board then self.board:free() end
         self.board = ChessBoard:new{
             game = self.game,
+            square_refresh = PkRefresh.STEP, -- squares and selection: never a flash (pkrefresh.lua)
             width = self.board_size,
             height = self.board_size,
             flipped = orientation_black,
@@ -339,7 +344,7 @@ function PkStudyView:refresh(prefix, full)
     self.board:setShapes(not hide_shapes and node.shapes or nil)
     self.board:setBadge(node.move and node.move.to, PkStudy.moveMark(node))
     self.board.locked = false
-    self.title_bar:setSubTitle(T(_("%1 · Chapter %2/%3"), self.study.name, self.chapter_index, #self.study.chapters))
+    PkRefresh.setSubTitle(self, T(_("%1 · Chapter %2/%3"), self.study.name, self.chapter_index, #self.study.chapters))
     if self.lesson then
         self:_lessonRefresh(prefix)
     else
