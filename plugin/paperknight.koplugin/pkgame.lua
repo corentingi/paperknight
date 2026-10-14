@@ -171,21 +171,6 @@ function PkGame:initializeEngine()
         Logger.info("PkGame: UCI engine signaled uciok (engine ready)")
         dbg("UCI: uciok received (engine is ready)", "ENGINE")
 
-        -- Disable NNUE to avoid requiring an external .nnue network file on Kobo.
-        local has_nnue_opt = self.engine.state.options
-            and (self.engine.state.options["Use NNUE"] ~= nil)
-        if has_nnue_opt then
-            Logger.info("PkGame: Disabling NNUE (advertised option, setoption Use NNUE = false)")
-        else
-            Logger.info("PkGame: Disabling NNUE (blind setoption, option not advertised)")
-        end
-
-        if self.engine.setOption then
-            self.engine:setOption("Use NNUE", "false")
-        else
-            self.engine.send("setoption name Use NNUE value false")
-        end
-
         self:updatePgnLogInitialText() -- Update PGN log with engine name/author
     end)
 

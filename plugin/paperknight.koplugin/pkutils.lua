@@ -32,18 +32,6 @@ pcall(ffi.cdef, "int kill(int, int);") -- may already be declared (ffi/posix_h)
 
 local Utils = {}
 
-function Utils.pollingLoop(timeout, action, condition, delayed)
-    local loop
-    loop = function()
-        if condition and condition() then
-            UIManager:scheduleIn(timeout, loop)
-        end
-        action()
-    end
-
-    UIManager:scheduleIn(delayed and timeout or 0, loop)
-end
-
 --- Closes a child process's file descriptors and reaps it: it is given about
 -- a second to exit on its own (e.g. after "quit"), then SIGTERM, then SIGKILL.
 -- Never blocks the UI: the checks are scheduled.
@@ -124,7 +112,8 @@ function Utils.execInSubProcess(cmd, args, with_pipes, double_fork)
 end
 
 --- Returns a function that reads what is available on `fd` without blocking
--- and calls `action(line)` for each complete line. A line split across reads
+-- (returning the number of bytes read, 0 if none) and calls `action(line)`
+-- for each complete line. A line split across reads
 -- is kept until its end arrives. `on_eof()`: called once when the other side
 -- closed the pipe (the process exited).
 function Utils.reader(fd, action, dbg, on_eof)
@@ -136,13 +125,13 @@ function Utils.reader(fd, action, dbg, on_eof)
         end
     end
     local _reader = function()
-        if ended then return end
+        if ended then return 0 end
         local pollfds = ffi.new("struct pollfd[1]")
         pollfds[0].fd = fd
         pollfds[0].events = POLLIN
         local ret = C.poll(pollfds, 1, 0) -- 0 ms timeout for non-blocking
         if ret <= 0 or pollfds[0].revents == 0 then
-            return -- No data available
+            return 0 -- No data available
         end
         local buf = ffi.new("char[?]", BUF_SZ)
         local n = C.read(fd, buf, BUF_SZ - 1)
@@ -151,9 +140,9 @@ function Utils.reader(fd, action, dbg, on_eof)
             if #pending > 0 then log(pending); if action then action(pending) end end
             pending = ""
             if on_eof then on_eof() end
-            return
+            return 0
         end
-        if n < 0 then return end
+        if n < 0 then return 0 end
         pending = pending .. ffi.string(buf, n)
         local last = 1
         for line, next_pos in pending:gmatch("([^\n]*)\n()") do
@@ -162,6 +151,7 @@ function Utils.reader(fd, action, dbg, on_eof)
             last = next_pos
         end
         pending = pending:sub(last)
+        return n
     end
     return _reader
 end

@@ -16,6 +16,10 @@ Stockfish, PGN load/save) that grows into a training tool:
   arrows, and interactive lessons. See [`docs/studies.md`](docs/studies.md).
 - **Openings** — drill your own repertoire (a PGN / Lichess study) with spaced
   repetition. See [`docs/openings.md`](docs/openings.md).
+- **Analysis board** — move freely for both sides, step through the line, set a
+  position from FEN; with Stockfish installed, its evaluation and best line.
+  Also opens the current puzzle or study position (☰ → *Analyse position*).
+- **Play** — against Stockfish, or two players on one board without it.
 - **Master games** — curated notable games, replayed in "guess the move" mode.
 
 > Status: early development — puzzles, studies and the openings trainer work
@@ -58,8 +62,10 @@ make pka           # device archive + installer in build/dist/ (pka.tar.gz, pka.
    `curl -fkL <server>/pka.sh | sh`: it downloads the archive, removes the
    files the previous one installed (your own studies are kept) and extracts it.
 4. Restart KOReader; **Paperknight** appears in the **Tools** menu, with
-   *Home*, *Puzzles*, *Studies*, *Openings* and *Play against the engine*. Playing the engine needs a
-   Stockfish binary at `paperknight.koplugin/bin/stockfish` (not shipped yet).
+   *Home*, *Puzzles*, *Studies*, *Openings*, *Analysis board* and *Play*. For Stockfish
+   (play against it, evaluation on the analysis board), run
+   `curl -fkL <server>/stockfish.sh | sh` on the Kindle
+   (see [`docs/stockfish.md`](docs/stockfish.md)).
    The home screen lists the modes and the screen settings; in any screen,
    ☰ or a tap on the title opens the quick settings (frontlight, night mode,
    switch mode, home). Tip: assign the *Paperknight* gesture action in

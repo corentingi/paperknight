@@ -70,10 +70,11 @@ function PkNav.modes()
         { id = "puzzles", text = _("Puzzles"), start = function() return PkNav.app:startPuzzles() end },
         { id = "studies", text = _("Studies"), start = function() return require("pkstudies").show() end },
         { id = "openings", text = _("Openings"), start = function() return require("pkopenings").show() end },
+        { id = "analysis", text = _("Analysis board"), start = function() return PkNav.app:startAnalysis() end },
+        -- against Stockfish when installed, else two players on one board
+        { id = "play", text = hasEngine() and _("Play") or _("Play (two players)"),
+          start = function() return PkNav.app:startGame() end },
     }
-    if hasEngine() then
-        modes[#modes + 1] = { id = "play", text = _("Play"), start = function() return PkNav.app:startGame() end }
-    end
     return modes
 end
 

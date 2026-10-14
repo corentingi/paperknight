@@ -450,7 +450,14 @@ function PkStudyView:showMenu()
     local function close() UIManager:close(dialog); self.menu_dialog = nil end
     local buttons = {
         {{ text = _("Chapters…"), callback = function() close(); self:showChapterMenu() end }},
-        {{ text = _("Flip board"), callback = function() close(); self:toggleFlip() end }},
+        {
+            { text = _("Flip board"), callback = function() close(); self:toggleFlip() end },
+            -- the position shown, on the analysis board (closing it comes back here)
+            { text = _("Analyse position"), callback = function()
+                close()
+                require("pkanalysis").show{ fen = self.game.fen(), flipped = self.board and self.board.flipped }
+            end },
+        },
     }
     buttons[#buttons + 1] = PkLinks.menuRow(self.links, close)
     for _, row in ipairs(PkNav.quickRows(close, "studies")) do buttons[#buttons + 1] = row end

@@ -522,6 +522,13 @@ function PkPuzzleView:showMenu()
             { text = _("Theme…"), callback = function() close(); self:showThemeMenu() end },
             { text = _("Stats…"), callback = function() close(); self:showStats() end },
         },
+        {
+            -- the position shown, on the analysis board (closing it comes back here)
+            { text = _("Analyse position"), callback = function()
+                close()
+                require("pkanalysis").show{ fen = self.game.fen(), flipped = self.board and self.board.flipped }
+            end },
+        },
     }
     for _, row in ipairs(PkNav.quickRows(close, "puzzles")) do buttons[#buttons + 1] = row end
     dialog = ButtonDialog:new{ buttons = buttons }

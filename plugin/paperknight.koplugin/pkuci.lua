@@ -1,5 +1,10 @@
 local Logger = require("logger")
+local UIManager = require("ui/uimanager")
 local Utils = require("pkutils")
+
+-- One polling task per engine, from its first command to stop(): it drains
+-- everything the engine wrote, every POLL seconds.
+local POLL = 0.2
 
 local M = {}
 
@@ -134,7 +139,7 @@ function UCIEngine.spawn(cmd, args)
                               end)
   -- the polling loops may run once more after stop(): never read a closed
   -- descriptor (its number can be reused by another file)
-  self._reader = function() if not self.stopped then read() end end
+  self._reader = function() if not self.stopped then return read() end return 0 end
   local write = Utils.writer(self.fd_write, true, "Paperknight DBG UCI")
   self.send = function(cmd) if not self.stopped then write(cmd) end end
   return self
@@ -166,15 +171,19 @@ function UCIEngine:uci()
   self.state._engine = self
 
   self.send("uci")
+  self:_startPolling()
+end
 
-  Utils.pollingLoop(1,
-                    self._reader,
-                    function()
-                        self.state.to_uciok = self.state.to_uciok - 1
-                        return not self.state.uciok and 0 < self.state.to_uciok
-                    end
-  )
-
+function UCIEngine:_startPolling()
+  if self._poll or self.stopped then return end
+  self._poll = function()
+    if self.stopped then return end
+    for _ = 1, 64 do -- all that is available, in 4 KB reads
+      if self._reader() <= 0 then break end
+    end
+    if not self.stopped then UIManager:scheduleIn(POLL, self._poll) end
+  end
+  UIManager:scheduleIn(0, self._poll)
 end
 
 function UCIEngine:isready()
@@ -232,20 +241,18 @@ function UCIEngine:go(opts)
   end
   self.state.bestmove = nil
   self.send(cmd)
-
-  Utils.pollingLoop(1,
-                    self._reader,
-                    function() return not self.state.bestmove and 0 < self.state.to_uciok end)
+  self:_startPolling()
 end
 
 --- Stops the engine for good: ends the polling loops, asks it to quit (even
 -- mid-search or before "uciok"), closes the pipes and reaps the process.
 function UCIEngine:stop()
     if self.stopped then return end
-    self.state.to_uciok = -1 -- ends the polling loops
+    self.state.to_uciok = -1
     pcall(self.send, "stop")
     pcall(self.send, "quit")
     self.stopped = true
+    if self._poll then UIManager:unschedule(self._poll) end
     Utils.closeProcess(self.pid, { self.fd_read, self.fd_write })
 end
 

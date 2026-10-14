@@ -76,10 +76,14 @@ function Paperknight:addToMainMenu(menu_items)
                 callback = function() PkNav.open("openings") end,
             },
             {
-                text = _("Play against the engine"),
-                -- Paperknight: no engine binary ships for the Kindle yet; the
-                -- inherited game screen misbehaves without one
-                enabled_func = function() return self:hasEngine() end,
+                text = _("Analysis board"),
+                callback = function() PkNav.open("analysis") end,
+            },
+            {
+                -- against Stockfish when installed (bin/stockfish), else two players
+                text_func = function()
+                    return self:hasEngine() and _("Play against the engine") or _("Play (two players)")
+                end,
                 callback = function() PkNav.open("play") end,
             },
         },
@@ -130,6 +134,11 @@ end
 --- Paperknight:startGame()
 -- Entry point for starting a new chess game.
 -- Initializes all game components (logic, engine, board) and builds the UI.
+--- Opens the analysis board (pkanalysis.lua); `opts`: { fen = ... }.
+function Paperknight:startAnalysis(opts)
+    return require("pkanalysis").show(opts)
+end
+
 function Paperknight:startGame()
     Logger.info("Paperknight: new game")
     self.game_view = PkGame:new{}

@@ -25,6 +25,7 @@ Forked from Kochess (ADR-0003). Inherited modules (renamed with the `pk` prefix 
 |---|---|
 | `_meta.lua` | Plugin name/description for KOReader's plugin manager |
 | `main.lua` | Entry point (the plugin): menu registration, dispatcher action, starting each mode |
+| `pkanalysis.lua` | Analysis board: free moves for both sides, line stepping, FEN, flip; Stockfish evaluation and best line (one search at a time, stopped on close) |
 | `pkgame.lua` | Game screen against the engine (inherited from Kochess), its own widget `paperknight_game`; stops the clock and the engine process on close |
 | `pkboard.lua` | Board widget: draws squares and pieces, handles taps |
 | `pkchess.lua` + `pkchesslib/` | Rules engine (move generation, FEN, SAN, PGN), from arizati/chess.lua |
