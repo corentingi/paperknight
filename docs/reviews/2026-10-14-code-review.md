@@ -193,3 +193,19 @@ another top-level folder.
   transaction; download resume and retry tested against a local server.
 - **Night mode toggle and frontlight** reuse KOReader's own listeners and
   widgets; `pktimer` never piles up tasks.
+
+## Follow-up (2026-10-14)
+
+Fixed, each with a test that fails without the fix:
+
+- **Bugs**: 1–23 except 20 (long-form piece moves) and part of 21–22
+  (an illegal engine move still stalls the game; Play settings are not
+  saved). The game screen is now `pkgame.lua`.
+- **Performance**: P1–P8, P11, P12, P13 (no keyboard, dialog-only
+  refreshes; still no cancel, a piece must be chosen), P14 (rectangles
+  updated in place, badge label cached; `setIcon` still rebuilds the
+  button), P15, P16, P18, and the whitespace part of P10.
+
+Not done yet: P9 (lazy node tables), the rest of P10 (`parseFen`,
+`checkMark`), P17 (engine polling), bug 20, and sections 3–5 (tooling,
+quality, docs), which were not part of this pass.

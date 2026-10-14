@@ -121,6 +121,11 @@ function Board:init()
     }
 
     self:applySquareColors()
+    for rank = 0, BOARD_SIZE - 1 do
+        for file = 0, BOARD_SIZE - 1 do
+            self:_showIcon(self.table:getButtonById(Board.toId(file, rank)))
+        end
+    end
     local framed = FrameContainer:new{
         bordersize = Screen:scaleBySize(BOARD_BORDER_SIZE),
         color = BOARD_BORDER_COLOR,
@@ -188,6 +193,12 @@ function Board:createSquareButton(file, rank)
         callback = function() self:handleClick(file, rank) end,
         hold_callback = self.holdCallback,
     }
+end
+
+-- An empty square's icon is a transparent SVG: hidden, it is not
+-- alpha-blended on every paint (about half the board).
+function Board:_showIcon(button)
+    if button.label_widget then button.label_widget.hide = (button.icon == icons.empty) end
 end
 
 function Board:applySquareColors()
@@ -367,15 +378,29 @@ function Board:paintTo(bb, x, y)
 end
 
 -- Screen rectangles of the squares, as just painted (see _refreshButton).
+-- Square names by id, computed once (the cache runs on every paint).
+local SQUARE_NAMES = {}
+
 function Board:_cacheRects()
-    self._rects = {}
+    self._rects = self._rects or {}
+    local rects = self._rects
     for file = 0, BOARD_SIZE - 1 do
         for rank = 0, BOARD_SIZE - 1 do
             local id = Board.toId(file, rank)
+            local name = SQUARE_NAMES[id]
+            if not name then
+                name = Board.idToPosition(id)
+                SQUARE_NAMES[id] = name
+            end
             local button = self.table:getButtonById(id)
             local d = button and button[1] and button[1].dimen -- the painted frame (as Button:refresh)
             if d and d.w then
-                self._rects[Board.idToPosition(id)] = Geom:new{ x = d.x, y = d.y, w = d.w, h = d.h }
+                local r = rects[name]
+                if r then -- updated in place: no new objects per paint
+                    r.x, r.y, r.w, r.h = d.x, d.y, d.w, d.h
+                else
+                    rects[name] = Geom:new{ x = d.x, y = d.y, w = d.w, h = d.h }
+                end
             end
         end
     end
@@ -417,13 +442,19 @@ function Board:_paintBadge(bb)
         return
     end
     -- font sizes are scaled by screen DPI: convert the wanted pixel height
-    local px = d * 0.62
-    local face = Font:getFace("infont", math.max(6, math.floor(px * 1000 / Screen:scaleBySize(1000))))
-    local label = TextWidget:new{ text = self.badge.text, face = face, bold = true,
-                                  fgcolor = good and white or black }
+    -- the label is shaped once per badge (not on every board paint)
+    local key = self.badge.text .. "|" .. d .. "|" .. tostring(Screen.night_mode)
+    if self._badge_key ~= key then
+        if self._badge_label then self._badge_label:free() end
+        local px = d * 0.62
+        local face = Font:getFace("infont", math.max(6, math.floor(px * 1000 / Screen:scaleBySize(1000))))
+        self._badge_label = TextWidget:new{ text = self.badge.text, face = face, bold = true,
+                                            fgcolor = good and white or black }
+        self._badge_key = key
+    end
+    local label = self._badge_label
     local size = label:getSize()
     label:paintTo(bb, bx + math.floor((d - size.w) / 2), by + math.floor((d - size.h) / 2))
-    label:free()
 end
 
 function Board:_squareRect(square)
@@ -557,7 +588,7 @@ function Board:_refreshButton(button, rect)
         self._batch = self._batch:combine(rect)
         return
     end
-    self._batch = rect
+    self._batch = rect:copy() -- the cached rect is updated in place at each paint
     UIManager:setDirty(self.show_parent or self, function()
         local region = self._batch
         self._batch = nil
@@ -627,9 +658,12 @@ end
 -- drawn by paintTo, so the whole window is painted, but the e-ink refresh is
 -- limited to the square).
 function Board:_repaintSquare(square)
+    -- square_refresh boards: in the update's single refresh (switching the
+    -- selection to another piece is one refresh, not two in a row)
+    if self.square_refresh and square then return self:_refreshSquare(square) end
     local rect = square and self:_squareRect(square)
-    -- square_refresh when set (pkrefresh.lua); else "ui", not "fast": the fast
-    -- (DU) waveform is black and white only and would degrade the grey squares
+    -- else "ui", not "fast": the fast (DU) waveform is black and white only
+    -- and would degrade the grey squares
     local mode = self.square_refresh or "ui"
     if rect and rect.w then
         UIManager:setDirty(self.show_parent or self, mode, rect)
@@ -671,6 +705,7 @@ function Board:placePiece(square, piece, color, no_refresh)
     if button.icon == icon then return end
     local rect = self:_screenRect(square)
     button:setIcon(icon, self.button_size)
+    self:_showIcon(button)
     button.frame.background = self:squareColor(square) -- Re-apply background color in case it was changed
     if not no_refresh then self:_refreshButton(button, rect) end
 end

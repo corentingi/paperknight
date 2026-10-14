@@ -55,8 +55,13 @@ function PkNav.closeScreens(with_home)
     end
 end
 
+-- The engine binary is looked for once per session (a file stat).
+local engine_present
 local function hasEngine()
-    return PkNav.app and PkNav.app.hasEngine and PkNav.app:hasEngine()
+    if engine_present == nil then
+        engine_present = PkNav.app ~= nil and PkNav.app:hasEngine() or false
+    end
+    return engine_present
 end
 
 --- The modes: { id, text, start }.
@@ -168,19 +173,38 @@ end
 -- Home screen
 
 -- "Rating 1480 · 3 reviews due" (nil if the progress database can't be read).
-local function puzzlesStatus()
+-- Cached: the home screen paints often, and the status needs the progress
+-- database. PkNav.statusChanged() (the puzzle screen closing) recomputes it.
+local status_cache = { version = -1 }
+PkNav.status_version = 0
+
+--- The puzzle progress changed: the home screen's status is recomputed.
+function PkNav.statusChanged()
+    PkNav.status_version = PkNav.status_version + 1
+end
+
+local function computePuzzlesStatus()
+    local progress
     local ok, text = pcall(function()
         local PkProgress = require("pkprogress")
         local PkSrs = require("pksrs")
-        local progress = PkProgress.open(DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+        progress = PkProgress.open(DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
         local rating, due = progress:rating(), progress:reviewDueCount(PkSrs.today())
-        progress:close()
         local s = T(_("Rating %1"), math.floor(rating + 0.5))
         if due > 0 then s = s .. " · " .. T(_("%1 to review"), due) end
         return s
     end)
+    if progress then pcall(progress.close, progress) end -- also after an error
     if not ok then logger.warn("Paperknight: home status:", text) end
     return ok and text or nil
+end
+
+local function puzzlesStatus()
+    if status_cache.version ~= PkNav.status_version then
+        status_cache.text = computePuzzlesStatus()
+        status_cache.version = PkNav.status_version
+    end
+    return status_cache.text
 end
 
 function PkNav.homeItems()

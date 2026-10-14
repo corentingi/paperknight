@@ -18,6 +18,9 @@ local function rowToPuzzle(row)
 end
 
 --- Opens a pack. Returns the pack, or nil and an error message.
+local BATCH = 100 -- candidates read per query (paged: the whole band can be scanned)
+local KEY_END = 0x80000000 -- keys (rnd) are 31-bit
+
 function PkPuzzlePack.open(path)
     local f = io.open(path, "rb")
     if not f then return nil, "pack not found: " .. path end
@@ -36,17 +39,19 @@ function PkPuzzlePack.open(path)
         conn:close()
         return nil, ("unsupported puzzles pack format %s (expected %d)"):format(tostring(version), SUPPORTED_FORMAT)
     end
-    local self = setmetatable({ conn = conn, path = path }, PkPuzzlePack)
-    -- Candidates in random-key order from a random start, then wrapping around.
-    local base = "SELECT " .. COLUMNS .. " FROM puzzles WHERE band = ? AND "
-    self.after_stmt = conn:prepare(base .. "rnd >= ? ORDER BY rnd LIMIT ?")
-    self.before_stmt = conn:prepare(base .. "rnd < ? ORDER BY rnd LIMIT ?")
+    local self = setmetatable({ conn = conn, path = path, batch = BATCH }, PkPuzzlePack)
+    -- Candidates of a band in random-key order, between two keys (paged).
+    self.range_stmt = conn:prepare("SELECT " .. COLUMNS .. ", rnd FROM puzzles"
+        .. " WHERE band = ? AND rnd >= ? AND rnd < ? ORDER BY rnd LIMIT ?")
     -- Same, restricted to a theme through the puzzle_themes index.
-    local tbase = "SELECT " .. COLUMNS:gsub("([%w_]+)", "p.%1") .. " FROM puzzle_themes t"
-        .. " JOIN puzzles p ON p.id = t.puzzle_id WHERE t.theme = ? AND t.band = ? AND "
-    self.theme_after_stmt = conn:prepare(tbase .. "t.rnd >= ? ORDER BY t.rnd LIMIT ?")
-    self.theme_before_stmt = conn:prepare(tbase .. "t.rnd < ? ORDER BY t.rnd LIMIT ?")
+    self.theme_range_stmt = conn:prepare("SELECT " .. COLUMNS:gsub("([%w_]+)", "p.%1") .. ", t.rnd"
+        .. " FROM puzzle_themes t JOIN puzzles p ON p.id = t.puzzle_id"
+        .. " WHERE t.theme = ? AND t.band = ? AND t.rnd >= ? AND t.rnd < ? ORDER BY t.rnd LIMIT ?")
     self.get_stmt = conn:prepare("SELECT " .. COLUMNS .. " FROM puzzles WHERE id = ?")
+    self.themes_stmt = conn:prepare("SELECT themes FROM puzzles WHERE id = ?")
+    -- the bands the pack has: the pick never queries the others
+    local lo, hi = conn:rowexec("SELECT min(band), max(band) FROM puzzles")
+    self.min_band, self.max_band = tonumber(lo) or 0, tonumber(hi) or -1
     return self
 end
 
@@ -54,30 +59,54 @@ function PkPuzzlePack:count()
     return tonumber(self.conn:rowexec("SELECT count(*) FROM puzzles"))
 end
 
-function PkPuzzlePack:get(id)
-    return rowToPuzzle(self.get_stmt:reset():bind(id):step())
+--- True if the pack has no puzzle (without counting them all).
+function PkPuzzlePack:isEmpty()
+    return tonumber(self.conn:rowexec("SELECT EXISTS (SELECT 1 FROM puzzles)")) == 0
 end
 
-local BATCH = 100 -- candidates scanned per direction (enough to find fresh ones in a theme)
+function PkPuzzlePack:get(id)
+    local p = rowToPuzzle(self.get_stmt:reset():bind(id):step())
+    self.get_stmt:reset() -- don't keep a read transaction open between calls
+    return p
+end
 
--- One random puzzle of rating band `band`: scans up to 2*BATCH candidates from
--- random key `rnd` (wrapping around), returning the first `accept`ed one.
+--- The theme tags of puzzle `id` ("fork pin ..."), nil if not in the pack.
+function PkPuzzlePack:themesOf(id)
+    local row = self.themes_stmt:reset():bind(id):step()
+    local themes = row and row[1] or nil
+    self.themes_stmt:reset()
+    return themes
+end
+
+
+-- One random puzzle of rating band `band`: candidates in key order from the
+-- random key `rnd` to the end, then from the start up to `rnd` (wrapping
+-- around), returning the first `accept`ed one. Paged by BATCH, so that a
+-- band's fresh puzzles are found wherever their keys are.
 function PkPuzzlePack:_pickInBand(band, rnd, accept, theme)
-    local stmts = theme and { self.theme_after_stmt, self.theme_before_stmt }
-        or { self.after_stmt, self.before_stmt }
-    for _, stmt in ipairs(stmts) do
-        if theme then
-            stmt:reset():bind(theme, band, rnd, BATCH)
-        else
-            stmt:reset():bind(band, rnd, BATCH)
-        end
-        local row = stmt:step()
-        while row do
-            local p = rowToPuzzle(row)
-            if not accept or accept(p) then return p end
-            row = stmt:step()
+    local stmt = theme and self.theme_range_stmt or self.range_stmt
+    for _, window in ipairs({ { rnd, KEY_END }, { 0, rnd } }) do
+        local lo, hi = window[1], window[2]
+        while lo < hi do
+            local batch = self.batch
+            if theme then stmt:reset():bind(theme, band, lo, hi, batch) else stmt:reset():bind(band, lo, hi, batch) end
+            local n, last = 0, nil
+            local row = stmt:step()
+            while row do
+                n = n + 1
+                last = tonumber(row[9])
+                local p = rowToPuzzle(row)
+                if not accept or accept(p) then
+                    stmt:reset()
+                    return p
+                end
+                row = stmt:step()
+            end
+            if n < batch then break end
+            lo = last + 1
         end
     end
+    stmt:reset()
     return nil
 end
 
@@ -107,7 +136,7 @@ function PkPuzzlePack:pickNear(rating, opts)
     end
     for _, pass in ipairs({ { near, both, true }, { far, both, true }, { near, accept, false }, { far, accept, false } }) do
         for _, band in ipairs(pass[1]) do
-            if band >= 0 then
+            if band >= self.min_band and band <= self.max_band then
                 local p = self:_pickInBand(band, math.floor(random() * 0x7FFFFFFF), pass[2], opts.theme)
                 if p then return p, pass[3] or not fresh or fresh(p) end
             end
@@ -131,11 +160,10 @@ end
 
 function PkPuzzlePack:close()
     if self.conn then
-        self.after_stmt:close()
-        self.before_stmt:close()
-        self.theme_after_stmt:close()
-        self.theme_before_stmt:close()
+        self.range_stmt:close()
+        self.theme_range_stmt:close()
         self.get_stmt:close()
+        self.themes_stmt:close()
         self.conn:close()
         self.conn = nil
     end

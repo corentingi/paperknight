@@ -80,6 +80,33 @@ function PkStudy.open(path)
     return study
 end
 
+--- True if chapter `i` has moves (intros don't), without parsing its tree.
+function PkStudy:hasMoves(i)
+    local ch = self.chapters[i]
+    if ch.root then return #ch.root.children > 0 end
+    if ch.has_moves == nil then ch.has_moves = PkPgn.hasMoves(ch.movetext) end
+    return ch.has_moves
+end
+
+--- Indexes of the chapters with moves (those that count for "study done").
+function PkStudy:countedChapters()
+    if not self._counted then
+        self._counted = {}
+        for i in ipairs(self.chapters) do
+            if self:hasMoves(i) then self._counted[#self._counted + 1] = i end
+        end
+    end
+    return self._counted
+end
+
+--- Drops the parsed trees of the chapters other than `keep` (parsed again
+-- when needed): a study's trees can take tens of MB.
+function PkStudy:releaseTrees(keep)
+    for i, ch in ipairs(self.chapters) do
+        if i ~= keep then ch.root = nil end
+    end
+end
+
 --- Move tree of chapter `i` (parsed on first use).
 function PkStudy:tree(i)
     local ch = self.chapters[i]

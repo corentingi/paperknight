@@ -42,6 +42,21 @@ return function(h)
         "puzzle status: " .. tostring(home.item_table[1].mandatory))
     h.check(menuItem(home, "Night mode: off"), "night mode item")
     h.shot("nav-home")
+    -- repaints don't reopen the progress database (the status is cached
+    -- until the puzzle screen closes)
+    local PkProgress = require("pkprogress")
+    local open, opens = PkProgress.open, 0
+    PkProgress.open = function(...) opens = opens + 1; return open(...) end
+    for _ = 1, 3 do
+        require("ui/uimanager"):setDirty(home, "ui")
+        h.wait(0.3)
+    end
+    h.check(opens == 0, "home repaints: no database open (" .. opens .. ")")
+    PkNav.statusChanged()
+    require("ui/uimanager"):setDirty(home, "ui")
+    h.wait(0.3)
+    PkProgress.open = open
+    h.check(opens == 1, "status recomputed once after a change (" .. opens .. ")")
 
     -- 2. A mode opens above the home screen.
     h.tapWidget(puzzles)

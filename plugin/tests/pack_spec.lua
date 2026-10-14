@@ -84,6 +84,25 @@ return {
         reopened:close()
         os.remove(path)
     end },
+    { "pickNear pages through a band: fresh puzzles are found wherever their key is", function(t)
+        local pack = assert(PkPuzzlePack.open(FIXTURE))
+        pack.batch = 1 -- every query returns one row: the scan must page on
+        -- the fullest band, from a key before all of its puzzles: only the last
+        -- one in key order is acceptable
+        local band, n = pack.conn:rowexec("SELECT band, count(*) FROM puzzles GROUP BY band ORDER BY 2 DESC LIMIT 1")
+        band, n = tonumber(band), tonumber(n)
+        t.ok(n >= 3, "a band with several puzzles: " .. n)
+        local last_id = pack.conn:rowexec("SELECT id FROM puzzles WHERE band = " .. band .. " ORDER BY rnd DESC LIMIT 1")
+        local found = pack:_pickInBand(band, 0, function(p) return p.id == last_id end)
+        t.eq(found and found.id, last_id, "found after paging")
+        local wrapped = pack:_pickInBand(band, 0x7FFFFFFF, function(p) return p.id == last_id end)
+        t.eq(wrapped and wrapped.id, last_id, "found after wrapping around")
+        t.eq(pack:_pickInBand(band, 0, function() return false end), nil, "none acceptable: nil")
+        t.ok(not pack:isEmpty(), "isEmpty")
+        t.ok(pack:themesOf("004JD"):find("mateIn1"), "themesOf")
+        t.eq(pack:themesOf("nope"), nil, "themesOf an unknown id")
+        pack:close()
+    end },
     { "progress: reviews are not rated, but mark the puzzle as seen for good", function(t)
         local path = tmpdb()
         local prog = PkProgress.open(path)

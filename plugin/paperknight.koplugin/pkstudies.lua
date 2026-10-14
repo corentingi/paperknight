@@ -138,12 +138,13 @@ function PkStudies.openStudy(path)
     local menu = fullscreenMenu(util.fixUtf8(study.name, "?"), PkStudies.chapterItems(study))
     -- the marks and "Continue" change while a chapter is open: rebuild the
     -- list when coming back to it
-    menu._pk_version = PkDone.version
+    local function version() return PkDone.version .. "/" .. PkDone.chapter_version end
+    menu._pk_version = version()
     local paintTo = menu.paintTo
     menu.paintTo = function(m, bb, x, y)
         paintTo(m, bb, x, y)
-        if m._pk_version ~= PkDone.version then
-            m._pk_version = PkDone.version
+        if m._pk_version ~= version() then
+            m._pk_version = version()
             UIManager:nextTick(function()
                 local first = ((m.page or 1) - 1) * (m.perpage or 1) + 1
                 m:switchItemTable(nil, PkStudies.chapterItems(study), first)
@@ -286,9 +287,22 @@ function PkStudies.show(dir, title)
         end
         return true
     end
+    -- what changes the list: the folder (its modification time, cheap to
+    -- read) and the done marks; the folder is listed again only then
+    -- (nil when the folder changed within the last second: the time has a
+    -- one-second resolution, so it is not trusted then)
+    local function stamp()
+        local mtime = lfs.attributes(dir, "modification")
+        if not mtime or mtime >= os.time() - 1 then return nil end
+        return mtime .. "|" .. PkDone.version
+    end
+    menu._pk_stamp = stamp()
     local paintTo = menu.paintTo
     menu.paintTo = function(m, bb, x, y)
         paintTo(m, bb, x, y)
+        local now_stamp = stamp()
+        if now_stamp and now_stamp == m._pk_stamp then return end
+        m._pk_stamp = now_stamp
         local now_files, now_folders = PkStudies.listEntries(dir)
         local key = entriesKey(now_files, now_folders)
         if key ~= m._pk_files then

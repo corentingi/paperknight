@@ -29,6 +29,10 @@ return function(h)
     local hist = view.game.history()
     h.check(#hist == 1 and hist[1] == "e4", "expected history {e4}, got " .. table.concat(hist, " "))
     h.check(iconFile(4, 3):sub(-6) == "wP.svg", "e4 shows a white pawn")
+    -- empty squares don't paint their transparent icon (pkboard _showIcon)
+    local function hidden(file, rank) return board.table:getButtonById(board.toId(file, rank)).label_widget.hide end
+    h.check(hidden(4, 1) and hidden(4, 4) and not hidden(4, 3) and not hidden(4, 0),
+        "empty squares hidden (e2, e5), pieces shown (e4, e1)")
     h.shot("smoke-e4")
     -- the settings open without an engine (none installed here): clocks only
     h.check(view.engine == nil, "no engine binary: none spawned")
@@ -64,4 +68,27 @@ return function(h)
     h.wait(1.5)
     h.check(ffi.C.kill(engine.pid, 0) ~= 0, "engine process gone and reaped (no zombie)")
     engine:stop() -- twice is harmless
+
+    -- promotion chooser: no virtual keyboard behind it; a tap picks the piece;
+    -- closing refreshes the dialog, not the whole screen
+    local PkPromotion = require("pkpromotion")
+    local chosen
+    local dialog = PkPromotion.show("w", function(letter) chosen = letter end)
+    h.wait(0.5)
+    h.check(dialog._input_widget.keyboard == nil, "no keyboard built for the promotion chooser")
+    local function find(w, id)
+        if type(w) ~= "table" then return nil end
+        if w.id == id then return w end
+        for _, c in ipairs(w) do local r = find(c, id); if r then return r end end
+    end
+    local queen = find(dialog, "promote_q")
+    h.check(queen and queen.dimen, "queen button shown")
+    local stop = h.recordRefreshes()
+    h.tapWidget(queen)
+    local sent = stop()
+    h.check(chosen == "q", "queen chosen: " .. tostring(chosen))
+    local S = require("device").screen
+    for _, r in ipairs(sent) do
+        h.check(r.w * r.h < S:getWidth() * S:getHeight(), ("closing: not a whole-screen refresh (%s %dx%d)"):format(r.mode, r.w, r.h))
+    end
 end

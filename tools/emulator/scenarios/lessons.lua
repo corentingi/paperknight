@@ -76,8 +76,13 @@ return function(h)
     tapButton("train"); h.wait(1)
     h.check(view.lesson and panel():find("Welcome!") and panel():find("^Your move %(○ White%)"), "training, status first: " .. panel())
     h.check(view.board.shapes == nil, "annotator shapes hidden while the student is to move")
-    tapSquare("e2"); tapSquare("e4")
+    tapSquare("e2")
+    local setText, builds = view._setText, 0
+    view._setText = function(...) builds = builds + 1; return setText(...) end
+    tapSquare("e4")
+    view._setText = nil -- back to the class method
     h.check(view.waiting_next, "e4 has a comment: wait for Next")
+    h.check(builds == 1, "the panel is built once for the move: " .. builds)
     tapButton("next")
     h.check(view.cursor.node.san == "e5", "reply e5")
     view.reply_delay = 3 -- generous margin: the tap itself waits 0.5 s

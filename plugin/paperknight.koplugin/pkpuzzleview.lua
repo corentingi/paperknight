@@ -410,6 +410,7 @@ function PkPuzzleView:_finishAttempt(reason)
     end
     logger.info("Paperknight: attempt", self.puzzle.id, reason, before, "->", after)
     self:_markSeen(self.puzzle.id, missed)
+    self._stats = nil -- recomputed when the stats page opens
     local note
     if missed then note = T(_("It will come back in %1 days for a review."), PkPuzzleReview.AFTER_MISS) end
     return before, after, note
@@ -559,23 +560,33 @@ end
 
 --- Stats page (pkstatsview.lua): per theme, clean solves vs missed attempts
 -- and the performance, weakest first. Tapping a theme trains it.
+-- The user's rating, or `default` if the progress file cannot be read.
+local function ratingOr(progress, default)
+    local ok, rating = pcall(progress.rating, progress)
+    return ok and rating or default
+end
+
+-- The stats are computed once, then kept until the next recorded attempt
+-- (_finishAttempt); puzzle themes are looked up once per session.
 function PkPuzzleView:showStats()
-    local cache = {}
-    local function themesOf(id)
-        if cache[id] == nil then
-            local p = self.pack:get(id)
-            cache[id] = p and p.themes or false
+    if not self._stats then
+        self._themes_cache = self._themes_cache or {}
+        local cache = self._themes_cache
+        local function themesOf(id)
+            if cache[id] == nil then cache[id] = self.pack:themesOf(id) or false end
+            return cache[id] or nil
         end
-        return cache[id] or nil
+        local ok, stats = pcall(function() return PkPuzzleStats.compute(self.progress:attempts(), themesOf) end)
+        if ok then
+            self._stats = stats
+        else
+            logger.warn("Paperknight: cannot compute the stats:", stats)
+        end
     end
-    local ok, stats = pcall(function() return PkPuzzleStats.compute(self.progress:attempts(), themesOf) end)
-    if not ok then
-        logger.warn("Paperknight: cannot compute the stats:", stats)
-        stats = { total = { n = 0 }, themes = {} }
-    end
+    local stats = self._stats or { total = { n = 0 }, themes = {} }
     self.stats_view = PkStatsView:new{
         stats = stats,
-        rating = self.progress:rating(),
+        rating = ratingOr(self.progress, "?"),
         on_pick = function(theme) self:setTheme(theme) end,
     }
     self.stats_view.onCloseWidget = function() self.stats_view = nil end
@@ -633,6 +644,14 @@ end
 -- themes (a chosen theme is in the subtitle already).
 function PkPuzzleView:_withThemes(text)
     if self.theme or not self.puzzle then return text end
+    -- measured once per puzzle (font shaping; Solution needs it twice)
+    if self._themes_for ~= self.puzzle.id then
+        self._themes_for, self._themes_line = self.puzzle.id, self:_themesLine()
+    end
+    return self._themes_line and (text .. "\n" .. self._themes_line) or text
+end
+
+function PkPuzzleView:_themesLine()
     local labels = PkThemes.shown(self.puzzle.themes)
     -- one line, so that the lines below stay in the status box: drop the last
     -- themes until it fits
@@ -644,7 +663,7 @@ function PkPuzzleView:_withThemes(text)
         w:free()
         if fits then break end
     end
-    return line and (text .. "\n" .. line) or text
+    return line
 end
 
 ---------------------------------------------------------------------------
@@ -736,6 +755,7 @@ function PkPuzzleView:onCloseWidget()
     self:_finishAttempt("closed")
     if self.pack then self.pack:close() end
     if self.progress then self.progress:close() end
+    PkNav.statusChanged() -- the home screen shows the new rating and reviews
 end
 
 return PkPuzzleView

@@ -175,8 +175,12 @@ end
 
 -- (Re)builds the screen for the current page.
 function PkStatsView:_build()
-    local footer_h = self:_footer():getSize().h
-    local list_h = self.dimen.h - self.title_bar:getHeight() - footer_h
+    if not self.footer_h then -- measured once (the same height on every page)
+        local probe = self:_footer()
+        self.footer_h = probe:getSize().h
+        probe:free()
+    end
+    local list_h = self.dimen.h - self.title_bar:getHeight() - self.footer_h
     self.per_page = math.max(1, math.floor(list_h / self.row_h))
     self.pages = math.max(1, math.ceil(#self.entries / self.per_page))
     self.page = math.max(1, math.min(self.page, self.pages))

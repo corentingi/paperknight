@@ -88,6 +88,24 @@ return {
         t.eq(table.concat(sans, " "), "e5 c5 e6", "nested at a line start: alternatives to 1... c5")
         t.eq(e4.children[1].children[1].san, "Nf3", "main line resumes")
     end },
+    { "hasMoves / countedChapters without parsing trees; releaseTrees", function(t)
+        t.ok(PkPgn.hasMoves("1. e4 e5"), "moves")
+        t.ok(not PkPgn.hasMoves("{ Welcome! 1. e4 is a move in a comment } *"), "comment only")
+        t.ok(not PkPgn.hasMoves("; 1. e4 in a line comment\n*"), "line comment only")
+        t.ok(PkPgn.hasMoves("{ intro } 12.Nf3!? *"), "glued number and glyph")
+        local s = study()
+        local counted = s:countedChapters()
+        for i, ch in ipairs(s.chapters) do
+            local expected = #s:tree(i).children > 0
+            local listed = false
+            for _, c in ipairs(counted) do if c == i then listed = true end end
+            t.eq(listed, expected, "chapter " .. i .. " counted like its tree")
+            ch.root = nil
+        end
+        s:tree(1); s:tree(2)
+        s:releaseTrees(2)
+        t.ok(s.chapters[1].root == nil and s.chapters[2].root ~= nil, "only the kept tree stays")
+    end },
     { "index: a tag value ending in an escaped backslash", function(t)
         local games = PkPgn.index('[Event "x"]\n[Annotator "C:\\\\"]\n[Site "\\"q\\" \\\\"]\n\n1. e4 *\n')
         t.eq(#games, 1, "one game")

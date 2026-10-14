@@ -29,6 +29,7 @@ function PkPromotion.show(pawn_color, on_chosen)
     local dialog = InputDialog:new{
         title = _("Choose Promotion Piece"),
         buttons = {},
+        readonly = true, -- no virtual keyboard built (the input is never shown)
     }
     local icon_size = math.floor(math.min(Screen:getWidth(), Screen:getHeight()) / 10)
     icon_size = math.max(60, math.min(96, icon_size))
@@ -68,6 +69,9 @@ function PkPromotion.show(pawn_color, on_chosen)
             buttons_group,
         },
     }
+    -- InputDialog refreshes its dialog_frame on show and close: the shown
+    -- frame, not the unused original (no position: a whole-screen refresh)
+    dialog.dialog_frame = content
     dialog.movable = MovableContainer:new{ content }
     dialog[1] = CenterContainer:new{ dimen = Screen:getSize(), dialog.movable }
     UIManager:show(dialog)

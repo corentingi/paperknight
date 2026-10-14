@@ -65,6 +65,17 @@ return {
         t.eq(d:nextLine(), nil, "nothing due, cap reached"); t.eq(d.state, "done", "session done")
         t.eq(d.reviewed, 3, "three reviews"); t.eq(d.failed, 1, "one failure")
     end },
+    { "counts are reused until a card changes", function(t)
+        local d = setup()
+        local first = d:counts()
+        t.ok(d:counts() == first, "same result without a change (not recounted)")
+        d:nextLine()
+        local m = d:expected().move
+        d:onUserMove(m.from, m.to, m.promotion)
+        local after = d:counts()
+        t.ok(after ~= first, "recounted after a recorded move")
+        t.eq(after.new_today, first.new_today - 1, "one new card introduced")
+    end },
     { "next day: stored cards are due, counts", function(t)
         local today = PkSrs.today(NOON)
         local d, _, rep = setup{ new_per_day = 2 }

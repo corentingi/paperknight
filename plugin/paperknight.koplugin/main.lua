@@ -108,7 +108,7 @@ function Paperknight:startPuzzles()
         })
         return nil
     end
-    if pack:count() == 0 then
+    if pack:isEmpty() then
         pack:close()
         UIManager:show(infoMessage:new{ text = _("The puzzle pack is empty.") })
         return nil

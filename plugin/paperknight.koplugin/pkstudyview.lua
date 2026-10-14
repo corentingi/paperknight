@@ -265,6 +265,7 @@ function PkStudyView:loadChapter(index)
     local file = PkDone.fileOf(self.study.path)
     if file and self.progress then pcall(PkDone.setLastChapter, self.progress, file, index) end
     self.chapter = self.study.chapters[index]
+    self.study:releaseTrees(index) -- only the open chapter's tree stays in memory
     local cursor, err = self.study:cursor(index, self.game)
     if not cursor then
         logger.warn("Paperknight: cannot open chapter", index, err)
@@ -490,11 +491,8 @@ function PkStudyView:setChapterDone(done)
     local file = PkDone.fileOf(self.study.path)
     if not (file and self.progress) then return end
     -- chapters without moves (intros) can't be finished: they don't count
-    local counted = {}
-    for i in ipairs(self.study.chapters) do
-        local ok_tree, root = pcall(self.study.tree, self.study, i)
-        if ok_tree and #root.children > 0 then counted[#counted + 1] = i end
-    end
+    -- (found without parsing every chapter, PkStudy:countedChapters)
+    local counted = self.study:countedChapters()
     local ok, study_done = pcall(PkDone.setChapterDone, self.progress, file, self.chapter_index, done, counted)
     if not ok then
         logger.warn("Paperknight: cannot save the chapter mark:", study_done)
@@ -652,8 +650,12 @@ end
 
 function PkStudyView:_afterLessonVerdict(verdict, node)
     if verdict == "good" then
+        -- a commented position waits for Next: decided first, so that the
+        -- panel is built and refreshed once
+        local wait = self.lesson.state == "reply" and self.cursor.node.comment ~= nil
+        if wait then self.waiting_next = true end
         self:refresh(_("Correct!"))
-        self:_paceOpponent(_("Correct!"))
+        if not wait then self:_paceOpponent(_("Correct!")) end
     elseif verdict == "end" then
         self:refresh(_("Correct!"))
     elseif verdict == "bad" then

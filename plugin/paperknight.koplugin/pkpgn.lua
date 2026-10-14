@@ -242,6 +242,19 @@ end
 -- Movetext
 ----------------------------------------------------------------------------
 
+--- True if the movetext has at least one move, without building the tree
+-- (comments ignored): to tell chapters with moves from intros cheaply.
+function PkPgn.hasMoves(text)
+    local stripped = (text or ""):gsub("%b{}", " ")
+    stripped = stripped:gsub(";[^\n]*", " ")
+    for token in stripped:gmatch("[^%s()$]+") do
+        local san = token:gsub("^%d+%.+", ""):gsub("[!?]+$", "")
+        san = san:gsub("^0%-0%-0", "O-O-O"):gsub("^0%-0", "O-O")
+        if looksLikeSan(san) then return true end
+    end
+    return false
+end
+
 local function newNode(parent, san)
     return { san = san, glyphs = {}, children = {}, parent = parent }
 end
@@ -271,10 +284,11 @@ function PkPgn.parseMovetext(text)
     local pos, len = 1, #text
 
     while pos <= len do
+        -- whitespace skipped in one search, not one character per turn
+        pos = text:find("%S", pos)
+        if not pos then break end
         local ch = text:sub(pos, pos)
-        if ch:match("%s") then
-            pos = pos + 1
-        elseif ch == "{" then
+        if ch == "{" then
             local close = text:find("}", pos + 1, true) or (len + 1)
             local raw = text:sub(pos + 1, close - 1)
             if at_line_start and #stack == 0 then

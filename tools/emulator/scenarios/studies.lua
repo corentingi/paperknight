@@ -36,11 +36,17 @@ return function(h)
     local chapters = top()
     h.check(chapters.title == "Paperknight test study", "chapter list title: " .. tostring(chapters.title))
     h.shot("study-chapters")
+    local PkDone = require("pkdone")
+    local marks_version, chapter_version = PkDone.version, PkDone.chapter_version
     h.tapWidget(menuItem(chapters, "1. Italian ideas"))
     h.wait(1)
 
     local view = top()
     h.check(view.name == "paperknight_study", "study view opened")
+    -- opening a chapter changes the chapter state only: the studies lists
+    -- (which rescan folders) are not rebuilt when coming back
+    h.check(PkDone.version == marks_version and PkDone.chapter_version > chapter_version,
+        "chapter opened: chapter state changed, study marks untouched")
     local function panel() return view.panel_text end
     local function tapButton(id) h.tapWidget(view.buttons:getButtonById(id)) end
     local function tapSquare(sq)

@@ -62,7 +62,17 @@ end
 
 --- Counts for display: cards due today, new cards still allowed today,
 -- new cards left in the repertoire.
+-- Recounted only when a card, the day or the day's introductions changed
+-- (it walks every card; the drill view shows it after every move).
 function PkDrill:counts()
+    local key = (self._store_version or 0) .. "|" .. self.today .. "|" .. self.introduced_today
+    if self._counts_key == key then return self._counts end
+    self._counts = self:_count()
+    self._counts_key = key
+    return self._counts
+end
+
+function PkDrill:_count()
     local due, new = 0, 0
     for _, key in ipairs(self.rep.order) do
         local c = self:card(key)
@@ -175,6 +185,7 @@ function PkDrill:_advance()
 end
 
 function PkDrill:_store(key, card)
+    self._store_version = (self._store_version or 0) + 1
     self.stored[key] = card
     card.move = self.rep.cards[key].uci
     self.save(key, card.move, card)

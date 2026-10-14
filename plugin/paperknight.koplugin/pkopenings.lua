@@ -58,6 +58,9 @@ end
 local summaries = {} -- path -> { stamp, summary, err }
 local full = nil     -- { path, stamp, rep }
 
+--- True while a full repertoire is kept in memory (tests).
+function PkOpenings.holdsRepertoire() return full ~= nil end
+
 local function fileStamp(path)
     local attr = lfs.attributes(path) or {}
     return tostring(attr.modification) .. ":" .. tostring(attr.size), attr.size
@@ -409,6 +412,7 @@ function PkOpenings.show(dir)
     local onCloseWidget = menu.onCloseWidget
     menu.onCloseWidget = function(m, ...)
         if PkOpenings.list == m then PkOpenings.list = nil end
+        full = nil -- leaving the Openings: the repertoire's trees are released
         if onCloseWidget then return onCloseWidget(m, ...) end
     end
     PkOpenings.list = menu

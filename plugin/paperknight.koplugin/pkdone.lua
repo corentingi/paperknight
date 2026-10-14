@@ -1,7 +1,9 @@
 -- "Done" marks on studies (a ✓ in the Studies list), stored as settings in
 -- progress.sqlite: key "study_done:<file name>". `version` changes on every
--- toggle so open lists know to redraw.
-local PkDone = { version = 0, MARK = "✓" }
+-- study mark change (the studies lists redraw), `chapter_version` on every
+-- chapter state change (done marks, last chapter: the chapter list redraws),
+-- so that opening a chapter does not rebuild the studies lists.
+local PkDone = { version = 0, chapter_version = 0, MARK = "✓" }
 
 local function key(file) return "study_done:" .. file end
 
@@ -58,7 +60,7 @@ end
 -- true then.
 function PkDone.setChapterDone(progress, file, i, done, counted)
     progress:setSetting(chapterKey(file, i), done and "1" or nil)
-    PkDone.version = PkDone.version + 1
+    PkDone.chapter_version = PkDone.chapter_version + 1
     if done and counted then
         if type(counted) == "number" then
             local list = {}
@@ -84,7 +86,7 @@ end
 function PkDone.setLastChapter(progress, file, i)
     if progress:getSetting("study_last:" .. file) ~= tostring(i) then
         progress:setSetting("study_last:" .. file, i)
-        PkDone.version = PkDone.version + 1
+        PkDone.chapter_version = PkDone.chapter_version + 1
     end
 end
 

@@ -102,6 +102,9 @@ def test_build_pack_schema_and_meta(tmp_path):
     "SELECT id FROM puzzles WHERE band = 12 AND rnd >= 5 ORDER BY rnd LIMIT 25",
     "SELECT id FROM puzzles WHERE band = 12 AND rnd < 5 ORDER BY rnd LIMIT 25",
     "SELECT puzzle_id FROM puzzle_themes WHERE theme = 'fork' AND band = 12 AND rnd >= 5 ORDER BY rnd LIMIT 25",
+    # the plugin's paged scan (pkpuzzlepack.lua)
+    "SELECT id FROM puzzles WHERE band = 12 AND rnd >= 5 AND rnd < 900 ORDER BY rnd LIMIT 100",
+    "SELECT puzzle_id FROM puzzle_themes WHERE theme = 'fork' AND band = 12 AND rnd >= 5 AND rnd < 900 ORDER BY rnd LIMIT 100",
 ])
 def test_plugin_queries_are_fully_indexed(tmp_path, query):
     """The plugin's pick queries (docs/pack-format.md) must not sort on the device."""
