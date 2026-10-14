@@ -37,6 +37,8 @@ local SettingsWidget = require("pksettingswidget")
 local PkPromotion = require("pkpromotion")
 local PkNav = require("pknav")
 local PkSide = require("pkside")
+local PkRefresh = require("pkrefresh")
+local ConfirmBox = require("ui/widget/confirmbox")
 
 -- Utilities
 local Logger = require("logger")
@@ -147,6 +149,12 @@ end
 function PkGame:initializeEngine()
     Logger.info("PkGame:initializeEngine() starting, engine path: " .. tostring(UCI_ENGINE_PATH))
     dbg("Initializing UCI engine and setting up event listeners", "ENGINE INIT")
+    if not PkGame.hasEngine() then
+        -- no binary: a forked child would only fail and exit; human vs human
+        -- (Play is only offered with the engine installed, pknav.lua)
+        Logger.info("PkGame: no engine at", UCI_ENGINE_PATH)
+        return
+    end
     -- NOTE: pass the engine path as argv[0] so execvp receives a valid argument list
     self.engine = Uci.UCIEngine.spawn(UCI_ENGINE_PATH, { UCI_ENGINE_PATH })
     if not self.engine then
@@ -204,7 +212,7 @@ function PkGame:initializeEngine()
     self.engine:on("eof", function()
         Logger.info("PkGame: UCI engine EOF (process terminated)")
         dbg("UCI: eof (engine process terminated)", "ENGINE")
-        -- Potentially display an error message or attempt to restart the engine
+        if self.engine then self.engine:stop() end -- close the pipes, reap the process
         UIManager:show(infoMessage:new{
             text = _("Engine Offline") .. "\n" .. _("The chess engine has stopped running."),
         })
@@ -301,6 +309,8 @@ function PkGame:buildUILayout()
     -- Create top and bottom bars
     local title_bar = self:createTitleBar()
     local status_bar = self:createStatusBar()
+    self.title_bar = title_bar
+    PkNav.tapTitle(self, function() return self.title_bar end, "play") -- quick settings
 
     -- Calculate dynamic heights for board, PGN log, and toolbar
     local board_h = self.board:getSize().h
@@ -397,7 +407,8 @@ end
 function PkGame:handleUndoMove(all_moves)
     dbg("Handling undo move(s), all: " .. tostring(all_moves), "ACTION")
     self:stopUCI() -- Stop any ongoing engine calculations
-    self.timer:stop() -- Pause the timer during undo/redo
+    local was_running = self.timer.running
+    self.timer:stop() -- Pause the timer during undo/redo (no increment)
 
     local moved = false
     if all_moves then
@@ -411,7 +422,7 @@ function PkGame:handleUndoMove(all_moves)
         self:updatePgnLog() -- Update PGN text
         UIManager:setDirty(self, "ui") -- Request UI redraw
     end
-    self.timer:start() -- Restart timer
+    if was_running then self.timer:start() end -- only if it was running
 end
 
 --- PkGame:handleRedoMove(all_moves)
@@ -421,6 +432,7 @@ end
 function PkGame:handleRedoMove(all_moves)
     dbg("Handling redo move(s), all: " .. tostring(all_moves), "ACTION")
     self:stopUCI()
+    local was_running = self.timer.running
     self.timer:stop()
 
     local moved = false
@@ -435,7 +447,7 @@ function PkGame:handleRedoMove(all_moves)
         self:updatePgnLog()
         UIManager:setDirty(self, "ui")
     end
-    self.timer:start()
+    if was_running then self.timer:start() end
 end
 
 --- PkGame:openLoadPgnDialog()
@@ -461,18 +473,24 @@ function PkGame:openLoadPgnDialog()
 
                 self:stopUCI()
                 self.timer:stop()
+                self.running = false -- a loaded game starts paused
                 self.game.reset() -- Reset current game before loading new PGN
 
-                self.game.load_pgn(pgn_data)
+                if not self.game.load_pgn(pgn_data) then
+                    self.game.reset()
+                    self.board:updateBoard()
+                    self:updatePgnLog()
+                    UIManager:show(infoMessage:new{ text = _("Error") .. "\n" .. _("Not a valid PGN file:\n") .. path })
+                    return
+                end
 
-                -- After loading, rewind to the start of the game if necessary
+                -- After loading, rewind to the start of the game (the moves can be replayed)
                 while self.game.undo() do end
                 self.board:updateBoard()
                 self:updatePgnLog()
                 self:updateTimerDisplay()
                 self:updatePlayerDisplay()
                 UIManager:setDirty(self, "ui")
-                self.timer:start()
             end,
         }
     )
@@ -704,14 +722,22 @@ end
 
 --- PkGame:updateTimerDisplay()
 -- Updates the timer display in the status bar.
+-- The status bar (clocks, players) changed: repaint the screen, refresh only
+-- the bar, without a flash (TitleBar's own refresh is "ui", and was asked for
+-- a widget that is not a window: a whole-screen refresh, every clock tick).
+function PkGame:_refreshStatusBar()
+    local d = self.status_bar.dimen
+    UIManager:setDirty(self, PkRefresh.STEP, d and d.w > 0 and d or nil)
+end
+
 function PkGame:updateTimerDisplay()
     -- dbg("Updating timer display", "UI") -- This can be very chatty if un-commented
     local fmt = self.timer.formatTime -- Timer's formatTime function
     local white_time = self.timer:getRemainingTime(Chess.WHITE)
     local black_time = self.timer:getRemainingTime(Chess.BLACK)
     local player_indicator = getPlayerIndicator(self.running, self.game.turn())
-    self.status_bar:setTitle(fmt(self.timer, white_time) .. player_indicator .. fmt(self.timer, black_time))
-    UIManager:setDirty(self.status_bar, "ui") -- Request redraw for status bar
+    self.status_bar:setTitle(fmt(self.timer, white_time) .. player_indicator .. fmt(self.timer, black_time), true)
+    self:_refreshStatusBar()
 end
 
 --- PkGame:updatePlayerDisplay()
@@ -726,8 +752,8 @@ function PkGame:updatePlayerDisplay()
         return (state.id_name or _("Engine")) .. (elo and elo.value and (" (" .. elo.value .. ")") or "")
     end
     local player_indicator = getPlayerIndicator(self.running, self.game.turn())
-    self.status_bar:setSubTitle(labelFor(Chess.WHITE) .. player_indicator .. labelFor(Chess.BLACK))
-    UIManager:setDirty(self.status_bar, "ui")
+    self.status_bar:setSubTitle(labelFor(Chess.WHITE) .. player_indicator .. labelFor(Chess.BLACK), true)
+    self:_refreshStatusBar()
 end
 
 --- PkGame:resetGame()
@@ -737,7 +763,8 @@ function PkGame:resetGame()
     self.running = false
     self:stopUCI()
     if self.engine and self.engine.state.uciok then
-        self.engine.send("newgame") -- Inform engine of new game
+        self.engine.send("ucinewgame") -- Inform engine of new game
+        self.engine:isready()
     end
     self.game.reset() -- Reset game logic state
     self.game.initial_fen = self.game.fen() -- Reset initial FEN
@@ -931,17 +958,22 @@ end
 function PkGame:createTitleBar()
     dbg("Creating application title bar", "UI")
     return TitleBarWidget:new{
+        show_parent = self,
         fullscreen = true,
         title = _("Paperknight"),
         title_align = "center",
         title_multilines = false,
         title_shrink_font_to_fit = true,
         with_bottom_line = false,
-        left_icon = "home", -- Icon for resetting game
+        left_icon = "plus", -- new game (asks first)
         margin = 0,
         padding_h = 0,
         left_icon_tap_callback = function()
-            self:resetGame()
+            UIManager:show(ConfirmBox:new{
+                text = _("Start a new game?"),
+                ok_text = _("New game"),
+                ok_callback = function() self:resetGame() end,
+            })
         end,
         close_callback = function() self:pk_close() end,
     }
@@ -968,6 +1000,7 @@ end
 function PkGame:createStatusBar()
     dbg("Creating application status bar", "UI")
     return TitleBarWidget:new{
+        show_parent = self,
         fullscreen = true,
         title = "00:00:00 – 00:00:00", -- Placeholder, will be updated live
         title_align = "center",

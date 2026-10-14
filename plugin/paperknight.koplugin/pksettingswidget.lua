@@ -21,6 +21,8 @@ local MovableContainer = require("ui/widget/container/movablecontainer")
 
 local Chess = require("pkchess")
 local _ = require("gettext") -- Localization function
+local T = require("ffi/util").template
+local PkSide = require("pkside")
 
 local BACKGROUND_COLOR = Blitbuffer.COLOR_WHITE
 
@@ -37,7 +39,8 @@ SettingsWidget.__index = SettingsWidget
 --   onApply(settings) = callback when user clicks Apply
 --   onCancel()        = callback when user clicks Cancel (optional)
 function SettingsWidget:new(opts)
-    assert(opts.engine, "engine is required")
+    -- no engine (not installed, or it failed to start): the engine rows are
+    -- hidden (they need state.uciok), the clocks can still be set
     assert(opts.timer,  "timer is required")
     assert(opts.game,   "game is required")
     assert(opts.onApply and type(opts.onApply) == "function",
@@ -45,7 +48,7 @@ function SettingsWidget:new(opts)
     assert(opts.parent,   "parent is required")
 
     self = setmetatable({
-        engine     = opts.engine,
+        engine     = opts.engine or { state = { options = {} } },
         timer      = opts.timer,
         game       = opts.game,
         onApply    = opts.onApply,
@@ -189,7 +192,7 @@ function SettingsWidget:buildEloGroup()
 
     local function updateDisplay()
         tv:setText(tostring(math.floor(self.changes.elo_strength)))
-        UIManager:setDirty(self, "ui")
+        UIManager:setDirty(self.dialog, "ui", tv.dimen) -- the value only
     end
 
     local function onClick(delta)
@@ -238,7 +241,7 @@ function SettingsWidget:buildTimeGroups()
 
         local timeDlg
         timeDlg = InputDialog:new{
-            title           = _(color.." Time Settings"),
+            title           = T(_("%1: time control"), PkSide.name(color)),
             description     = _("Time (min + sec):"),
             allow_newline   = false,
             input           = inputFmt,
@@ -371,6 +374,8 @@ function SettingsWidget:applyAndClose()
     -- 1) ELO
     local opt = self.engine.state.options["UCI_Elo"]
     if opt and tonumber(opt.value) ~= s.elo_strength then
+        -- Stockfish ignores UCI_Elo unless the strength is limited
+        self.engine:setOption("UCI_LimitStrength", "true")
         self.engine:setOption("UCI_Elo", tostring(s.elo_strength))
     end
 

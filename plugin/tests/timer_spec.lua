@@ -34,6 +34,13 @@ return {
         clock.t = clock.t + 10
         t.eq(timer:getRemainingTime(Chess.BLACK), 20, "black runs")
     end },
+    { "a pause, an undo or closing adds no increment; a move does", function(t)
+        local timer, clock = setup()
+        timer:start(); clock.t = clock.t + 10; timer:stop()
+        t.eq(timer:getRemainingTime(Chess.WHITE), 50, "paused: no increment")
+        timer:start(); clock.t = clock.t + 10; timer:switchPlayer()
+        t.eq(timer:getRemainingTime(Chess.WHITE), 42, "move: increment added")
+    end },
     { "reset restores the initial times", function(t)
         local timer, clock = setup()
         timer:start(); clock.t = clock.t + 20; timer:stop()

@@ -26,6 +26,7 @@ local Widget = require("ui/widget/widget")
 local _ = require("gettext")
 local T = require("ffi/util").template
 local PkRefresh = require("pkrefresh")
+local PkSide = require("pkside")
 local PkThemes = require("pkthemes")
 
 -- Missed attempts: a mid grey, told apart from the black clean part and from
@@ -75,6 +76,13 @@ local PkStatsView = InputContainer:extend{
     on_pick = nil, -- function(theme): a row was tapped (theme nil: all themes)
 }
 
+-- Subtitle: the rating and what the bar colours mean. Night mode inverts the
+-- screen: the clean part then shows white.
+function PkStatsView:_legend()
+    return T(Screen.night_mode and _("Your rating %1 · white: clean, grey: missed")
+        or _("Your rating %1 · black: clean, grey: missed"), self.rating)
+end
+
 function PkStatsView:init()
     self.dimen = Geometry:new{ x = 0, y = 0, w = Screen:getWidth(), h = Screen:getHeight() }
     if Device:hasKeys() then
@@ -99,9 +107,7 @@ function PkStatsView:init()
     self.title_bar = TitleBar:new{
         fullscreen = true,
         title = _("Puzzle stats"),
-        -- night mode inverts the screen: the clean part shows white
-        subtitle = T(Screen.night_mode and _("Your rating %1 · white: clean, grey: missed")
-            or _("Your rating %1 · black: clean, grey: missed"), self.rating),
+        subtitle = self:_legend(),
         with_bottom_line = true,
         close_callback = function() self:onClose() end,
     }
@@ -109,6 +115,8 @@ function PkStatsView:init()
     self.label_face = Font:getFace("cfont", 18)
     self.figures_face = Font:getFace("cfont", 16)
     self.page, self.pages = 1, 1
+    -- night mode toggled while the page is open: the legend follows
+    PkSide.followNight(self, function(v) v.title_bar:setSubTitle(v:_legend(), true) end)
     self:_build()
 end
 

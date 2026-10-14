@@ -61,20 +61,21 @@ function Timer:start()
     end
 end
 
---- Stops the clock: the current player's time is updated (with the
--- increment, unless their time ran out).
-function Timer:stop()
+--- Stops the clock: the current player's time is updated, with the
+-- increment when `with_increment` (a move was played: switchPlayer) and their
+-- time did not run out. A pause, an undo or closing adds nothing.
+function Timer:stop(with_increment)
     if not self.running then return end
     local player = self.currentPlayer
     local left = self:getRemainingTime(player)
-    self.time[player] = left > 0 and left + (self.increment[player] or 0) or 0
+    self.time[player] = left > 0 and left + (with_increment and self.increment[player] or 0) or 0
     self.running = false
     self:_scheduler():unschedule(self._tick)
 end
 
 --- Switches the turn to the other player and starts their clock.
 function Timer:switchPlayer()
-    self:stop()
+    self:stop(true)
     self.currentPlayer = (self.currentPlayer == Chess.WHITE) and Chess.BLACK or Chess.WHITE
     self:start()
 end

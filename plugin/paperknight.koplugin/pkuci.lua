@@ -17,15 +17,11 @@ local function parse_uci_line(line, state)
     eng:_trigger("uciok")
   elseif line:match("^Stockfish") and not state.id_name then
     -- Some builds print a banner like "Stockfish 15.1 by ..." before the
-    -- standard UCI handshake. Use it only as a friendly engine name
-    -- fallback. We still rely on a proper "uciok" line so that all options
-    -- (including "Use NNUE") are parsed before we treat the engine as ready.
+    -- standard UCI handshake: only a friendly engine name fallback. The
+    -- engine is ready on the real "uciok" line, once its options are parsed
+    -- (triggering it here too ran the uciok handlers twice).
     state.id_name = line
     eng:_trigger("id_name", state.id_name)
-    if not state.uciok then
-      state.uciok = true
-      eng:_trigger("uciok")
-    end
   elseif line:find("^id name") then
     state.id_name = line:match("^id name%s+(.+)$")
     eng:_trigger("id_name", state.id_name)
@@ -131,7 +127,11 @@ function UCIEngine.spawn(cmd, args)
                                 parse_uci_line(line, self.state)
                                 self:_trigger("line", line)
                               end,
-                              "Paperknight DBG UCI")
+                              "Paperknight DBG UCI",
+                              function() -- the engine exited
+                                self.state.to_uciok = -1
+                                self:_trigger("eof")
+                              end)
   -- the polling loops may run once more after stop(): never read a closed
   -- descriptor (its number can be reused by another file)
   self._reader = function() if not self.stopped then read() end end

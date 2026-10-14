@@ -405,6 +405,17 @@ return function(h)
     local cut = d.x + math.floor(d.w * clean / #attempts)
     h.check(px(cut - 3, mid_y) == 0x00 and px(cut + 3, mid_y) == 0xBB, "split at the clean share")
     h.shot("puzzle-stats")
+    -- night mode toggled while the page is open: the legend follows
+    local NScreen = require("device").screen
+    NScreen:toggleNightMode()
+    require("ui/uimanager"):setDirty("all", "full")
+    h.wait(0.5)
+    local legend = sv.title_bar.subtitle_widget.text
+    NScreen:toggleNightMode()
+    require("ui/uimanager"):setDirty("all", "full")
+    h.wait(0.5)
+    h.check(legend:find("white: clean", 1, true), "night legend: " .. legend)
+    h.check(sv.title_bar.subtitle_widget.text:find("black: clean", 1, true), "day legend back")
     if sv.pages > 1 then
         h.tapWidget(sv.footer:getButtonById("next"))
         h.check(sv.page == 2 and sv.rows[1].entry == sv.entries[sv.per_page + 1], "next page")

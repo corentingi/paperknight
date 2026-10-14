@@ -30,6 +30,16 @@ return function(h)
     h.check(#hist == 1 and hist[1] == "e4", "expected history {e4}, got " .. table.concat(hist, " "))
     h.check(iconFile(4, 3):sub(-6) == "wP.svg", "e4 shows a white pawn")
     h.shot("smoke-e4")
+    -- the settings open without an engine (none installed here): clocks only
+    h.check(view.engine == nil, "no engine binary: none spawned")
+    local settings = require("pksettingswidget"):new{
+        timer = view.timer, game = view.game, parent = view, onApply = function() end,
+    }
+    settings:show()
+    h.wait(0.5)
+    h.check(settings.dialog, "settings dialog shown without an engine")
+    require("ui/uimanager"):close(settings.dialog)
+    h.wait(0.3)
     -- switching mode closes it (and its cleanup runs: clock, engine)
     PkNav.closeScreens(false)
     h.wait(0.5)

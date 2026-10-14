@@ -123,46 +123,46 @@ function Utils.execInSubProcess(cmd, args, with_pipes, double_fork)
   return pid, c2p_r, p2c_w
 end
 
-function Utils.reader(fd, action, dbg)
+--- Returns a function that reads what is available on `fd` without blocking
+-- and calls `action(line)` for each complete line. A line split across reads
+-- is kept until its end arrives. `on_eof()`: called once when the other side
+-- closed the pipe (the process exited).
+function Utils.reader(fd, action, dbg, on_eof)
+    local pending, ended = "", false
+    local function log(line)
+        Logger.dbg((dbg or "") .. "< " .. line)
+        if dbg and dbg:find("Paperknight DBG UCI") then
+            Logger.info((dbg or "") .. " < " .. line)
+        end
+    end
     local _reader = function()
+        if ended then return end
         local pollfds = ffi.new("struct pollfd[1]")
         pollfds[0].fd = fd
         pollfds[0].events = POLLIN
-
         local ret = C.poll(pollfds, 1, 0) -- 0 ms timeout for non-blocking
         if ret <= 0 or pollfds[0].revents == 0 then
             return -- No data available
         end
-
         local buf = ffi.new("char[?]", BUF_SZ)
         local n = C.read(fd, buf, BUF_SZ - 1)
-        if n <= 0 then return end
-
-        local chunk = ffi.string(buf, n)
-        local pending = chunk
-        for line in pending:gmatch("(.-)\n") do
-            Logger.dbg((dbg or "") .. "< " .. line)
-            if dbg and dbg:find("Paperknight DBG UCI") then
-                Logger.info((dbg or "") .. " < " .. line)
-            end
-            if action then
-                action(line)
-            end
+        if n == 0 then -- end of file: the process closed its output
+            ended = true
+            if #pending > 0 then log(pending); if action then action(pending) end end
+            pending = ""
+            if on_eof then on_eof() end
+            return
         end
-
-        local leftover = pending:match("([^\n]*)$") or ""
-        if #leftover > 0 then
-            Logger.dbg((dbg or "") .. " < " .. leftover)
-            if dbg and dbg:find("Paperknight DBG UCI") then
-                Logger.info((dbg or "") .. " < " .. leftover)
-            end
-            if action then
-                action(leftover)
-            end
+        if n < 0 then return end
+        pending = pending .. ffi.string(buf, n)
+        local last = 1
+        for line, next_pos in pending:gmatch("([^\n]*)\n()") do
+            log(line)
+            if action then action(line) end
+            last = next_pos
         end
-
+        pending = pending:sub(last)
     end
-
     return _reader
 end
 
