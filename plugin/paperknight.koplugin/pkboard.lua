@@ -572,22 +572,16 @@ end
 function Board:handleMoveFlags(move, to)
     if not move.flags then return end
 
-    local to_id_result = Board.chessToId(to)
-    if not to_id_result then
-        logger.info(_("Chess: Invalid destination square for move flags: " .. tostring(to)))
+    if not Board.chessToId(to) then
+        logger.info("Chess: invalid destination square for move flags:", tostring(to))
         return
     end
-    local to_id = to_id_result
 
     if move.flags == Chess.FLAGS.EP_CAPTURE then
-        -- En passant: the captured pawn is on the rank of the 'from' square, but the file of the 'to' square.
-        -- We need to clear the square of the captured pawn.
-        local captured_pawn_rank_offset = (move.color == Chess.BLACK and 1 or -1)
-        local captured_pawn_id = to_id + captured_pawn_rank_offset * BOARD_SIZE -- Adjust ID by rank offset, maintaining file
-        local captured_pawn_square_result = Board.idToPosition(captured_pawn_id)
-        if captured_pawn_square_result then
-            self:updateSquare(captured_pawn_square_result)
-        end
+        -- En passant: the captured pawn is on the file of the 'to' square and
+        -- the rank of the 'from' square (ids are file * 8 + rank: build the
+        -- square from its name, not by id arithmetic)
+        self:updateSquare(to:sub(1, 1) .. move.from:sub(2, 2))
     elseif move.flags == Chess.FLAGS.KSIDE_CASTLE then
         -- Kingside castling: King moves two squares, Rook moves to inner square
         -- Rook original square: h1 for White, h8 for Black

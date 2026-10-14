@@ -5,7 +5,8 @@
 # KOREADER_DIR and PKA_URL override the defaults below.
 #
 # Cleaning: the plugin folder is replaced, except packs/ (the archive's
-# puzzle pack overwrites it; a pack copied there by hand survives otherwise). Asset files are removed only if the previous archive
+# puzzle pack overwrites it; a pack copied there by hand survives otherwise)
+# and bin/ (the Stockfish binary, installed by hand). Asset files are removed only if the previous archive
 # installed them (listed in paperknight/.pka-files): studies or repertoires
 # you added yourself are kept. The archive is left in the koreader folder.
 set -e
@@ -31,7 +32,10 @@ echo "Removing the old files"
 if [ -d "$PLUGIN" ]; then
     for entry in "$PLUGIN"/* "$PLUGIN"/.[!.]*; do
         [ -e "$entry" ] || continue
-        [ "$entry" = "$PLUGIN/packs" ] || rm -rf "$entry"
+        case "$entry" in
+            "$PLUGIN/packs"|"$PLUGIN/bin") ;; # kept: the puzzle pack, Stockfish
+            *) rm -rf "$entry" ;;
+        esac
     done
 fi
 if [ -f "$LIST" ]; then

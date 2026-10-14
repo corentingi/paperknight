@@ -126,13 +126,17 @@ function UCIEngine.spawn(cmd, args)
     _engine = self,
   }
 
-  self._reader = Utils.reader(self.fd_read,
+  local read = Utils.reader(self.fd_read,
                               function(line)
                                 parse_uci_line(line, self.state)
                                 self:_trigger("line", line)
                               end,
                               "Paperknight DBG UCI")
-  self.send = Utils.writer(self.fd_write, true, "Paperknight DBG UCI")
+  -- the polling loops may run once more after stop(): never read a closed
+  -- descriptor (its number can be reused by another file)
+  self._reader = function() if not self.stopped then read() end end
+  local write = Utils.writer(self.fd_write, true, "Paperknight DBG UCI")
+  self.send = function(cmd) if not self.stopped then write(cmd) end end
   return self
 end
 
@@ -234,12 +238,15 @@ function UCIEngine:go(opts)
                     function() return not self.state.bestmove and 0 < self.state.to_uciok end)
 end
 
+--- Stops the engine for good: ends the polling loops, asks it to quit (even
+-- mid-search or before "uciok"), closes the pipes and reaps the process.
 function UCIEngine:stop()
-    if self.uciok then
-        self.send("stop")
-        self.send("quit") -- Send quit command to engine before closing
-    end
-    self.state.to_uciok = -1
+    if self.stopped then return end
+    self.state.to_uciok = -1 -- ends the polling loops
+    pcall(self.send, "stop")
+    pcall(self.send, "quit")
+    self.stopped = true
+    Utils.closeProcess(self.pid, { self.fd_read, self.fd_write })
 end
 
 M.UCIEngine = UCIEngine

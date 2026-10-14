@@ -411,5 +411,19 @@ return function(h)
     h.tapWidget(row)
     h.wait(0.5)
     h.check(view.stats_view == nil and view.theme == "intermezzo", "tapping a theme trains it: " .. tostring(view.theme))
+    -- 10. En passant shown like a reply (Board:showMove): the captured pawn
+    -- disappears, for both sides (FENs checked with python-chess)
+    for _, case in ipairs({
+        { fen = "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3", san = "exf6", gone = "f5" },
+        { fen = "rnbqkbnr/ppp1pppp/8/8/3pP3/5N2/PPPP1PPP/RNBQKB1R b KQkq e3 0 3", san = "dxe3", gone = "e4" },
+    }) do
+        view.game.load(case.fen)
+        view.board:updateBoard()
+        local move = view.game.move(case.san)
+        h.check(move, "en passant legal: " .. case.san)
+        view.board:showMove(move)
+        h.check(iconAt(case.gone):find("empty%.svg$"), case.san .. ": captured pawn removed from " .. case.gone
+            .. ", shows " .. iconAt(case.gone))
+    end
     view:onClose()
 end

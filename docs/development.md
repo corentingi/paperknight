@@ -48,7 +48,7 @@ error, any `ERROR` line in the log, a timeout, or a non-zero exit.
 
 ```sh
 # Kindle mounted over USB at /media/$USER/Kindle
-rsync -a --delete plugin/paperknight.koplugin/ /media/$USER/Kindle/koreader/plugins/paperknight.koplugin/
+rsync -a --delete --exclude bin/ --exclude packs/ plugin/paperknight.koplugin/ /media/$USER/Kindle/koreader/plugins/paperknight.koplugin/
 cp build/packs/*.sqlite /media/$USER/Kindle/koreader/plugins/paperknight.koplugin/packs/
 ```
 

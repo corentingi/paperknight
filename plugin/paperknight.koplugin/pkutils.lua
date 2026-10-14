@@ -26,6 +26,8 @@ ffi.cdef[[
     local POLLIN = 0x001
 
 local BUF_SZ = 4096
+local WNOHANG, SIGTERM, SIGKILL = 1, 15, 9
+pcall(ffi.cdef, "int kill(int, int);") -- may already be declared (ffi/posix_h)
 
 
 local Utils = {}
@@ -40,6 +42,29 @@ function Utils.pollingLoop(timeout, action, condition, delayed)
     end
 
     UIManager:scheduleIn(delayed and timeout or 0, loop)
+end
+
+--- Closes a child process's file descriptors and reaps it: it is given about
+-- a second to exit on its own (e.g. after "quit"), then SIGTERM, then SIGKILL.
+-- Never blocks the UI: the checks are scheduled.
+function Utils.closeProcess(pid, fds)
+    for _, fd in ipairs(fds or {}) do
+        if fd and fd >= 0 then C.close(fd) end
+    end
+    if not pid or pid <= 0 then return end
+    local tries = 0
+    local function reap()
+        tries = tries + 1
+        if C.waitpid(pid, nil, WNOHANG) ~= 0 then return end -- exited (pid), or gone (-1)
+        if tries == 6 then C.kill(pid, SIGTERM) end
+        if tries >= 11 then
+            C.kill(pid, SIGKILL)
+            C.waitpid(pid, nil, 0) -- immediate after SIGKILL
+            return
+        end
+        UIManager:scheduleIn(0.2, reap)
+    end
+    reap()
 end
 
 function Utils.execInSubProcess(cmd, args, with_pipes, double_fork)
