@@ -55,8 +55,11 @@
 - No KOReader tap highlight where the board is the feedback: squares
   (`no_feedback`) and arrows (`PkButton.noFeedback`). Subtitles via
   `PkRefresh.setSubTitle` (TitleBar's own refresh is `ui`).
-- Each REAGL refresh waits for the previous one: one refresh per update
-  (`Board.square_refresh` + `Board:joinRefresh`).
+- REAGL is sent as a full update: it redraws every pixel of its region,
+  visibly on grey squares. Keep regions tight: the board's changed squares
+  in one rectangle (`Board.square_refresh`, each REAGL refresh waits for the
+  previous one), the text below as its own refresh (`PkRefresh.below`/
+  `step`); never one region over both (seen on the PW2).
 - Measure, don't guess: `h.recordRefreshes()` in an e2e scenario gives the
   refreshes sent to the screen (after merges and promotions).
 

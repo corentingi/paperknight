@@ -245,7 +245,7 @@ end
 -- KOReader's own full refresh rate applies).
 function PkStudyView:_redraw(page)
     if page then return PkRefresh.page(self) end
-    PkRefresh.step(self, self.board, self.buttons)
+    PkRefresh.below(self, self.board, self.buttons) -- the board refreshes its squares
 end
 
 --- Opens chapter `index` at its start position.

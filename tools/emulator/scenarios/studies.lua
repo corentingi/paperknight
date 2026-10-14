@@ -62,13 +62,35 @@ return function(h)
         return setDirty(um, widget, mode, ...)
     end
 
-    -- what reaches the screen: one [partial] refresh per step (no tap
-    -- highlight on the arrows, no "ui" refresh of the unchanged title bar)
+    -- what reaches the screen: [partial] refreshes only (no tap highlight on
+    -- the arrows, no "ui" refresh of the unchanged title bar), the board's
+    -- changed squares apart from the text below (never one region over both)
+    local intro_circles = {}
+    for _, c in ipairs(view.board.shapes.circles) do intro_circles[#intro_circles + 1] = c.square end
     local stop = h.recordRefreshes()
-    for _ = 1, 4 do tapButton("forward") end
+    tapButton("forward")
+    local first = stop()
+    stop = h.recordRefreshes()
+    for _ = 1, 3 do tapButton("forward") end
     local sent = stop()
-    for _, r in ipairs(sent) do h.check(r.mode == "[partial]", ("step refresh: %s %d,%d %dx%d"):format(r.mode, r.x, r.y, r.w, r.h)) end
-    h.check(#sent == 4, "one refresh per step: " .. #sent)
+    for _, f in ipairs(first) do table.insert(sent, 1, f) end
+    local bd = view.board.dimen
+    -- the intro circles are gone: their squares were refreshed (the board
+    -- refreshes only the squares that change, shapes included)
+    for _, sq in ipairs(intro_circles) do
+        local r = view.board:_screenRect(sq)
+        local covered = false
+        for _, f in ipairs(first) do -- the step that removed them
+            if r.x >= f.x and r.y >= f.y and r.x + r.w <= f.x + f.w and r.y + r.h <= f.y + f.h then covered = true end
+        end
+        h.check(covered, "circle square refreshed when the circle goes: " .. sq)
+    end
+    for _, r in ipairs(sent) do
+        local desc = ("%s %d,%d %dx%d"):format(r.mode, r.x, r.y, r.w, r.h)
+        h.check(r.mode == "[partial]", "step refresh: " .. desc)
+        h.check(r.y >= bd.y + bd.h or r.y + r.h <= bd.y + bd.h, "board and text refreshed apart: " .. desc)
+    end
+    h.check(#sent == 8, "per step: the changed squares, the text: " .. #sent)
     h.check(panel():find("^2%.%.%. Nc6"), "after 4 forwards: " .. panel())
     h.check(panel():find("3. Bc4!? (main)", 1, true) and panel():find("3. Bb5", 1, true), "alternatives listed: " .. panel())
     h.check(view.buttons:getButtonById("lines").enabled, "Lines enabled at a branch")

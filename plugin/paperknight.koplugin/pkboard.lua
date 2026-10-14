@@ -322,8 +322,33 @@ end
 --- Board:setShapes(shapes)
 -- Paperknight: { circles = { {square=}, ... }, arrows = { {from=, to=}, ... } }
 -- drawn over the squares on the next paint (nil clears them).
+-- With square_refresh, the squares under the old and new shapes are
+-- refreshed (an arrow: the rectangle between its ends), when they changed.
 function Board:setShapes(shapes)
+    local function key(s)
+        if not s then return "" end
+        local parts = {}
+        for _, c in ipairs(s.circles or {}) do parts[#parts + 1] = "c" .. c.square end
+        for _, a in ipairs(s.arrows or {}) do parts[#parts + 1] = "a" .. a.from .. a.to end
+        return table.concat(parts, " ")
+    end
+    if key(shapes) == key(self.shapes) then
+        self.shapes = shapes
+        return
+    end
+    local old = self.shapes
     self.shapes = shapes
+    if not self.square_refresh then return end
+    for _, s in ipairs({ old or {}, shapes or {} }) do
+        for _, c in ipairs(s.circles or {}) do self:_refreshSquare(c.square) end
+        for _, a in ipairs(s.arrows or {}) do self:_refreshSquare(a.from); self:_refreshSquare(a.to) end
+    end
+end
+
+-- Adds a square to the pending square refresh (square_refresh boards).
+function Board:_refreshSquare(square)
+    local id = Board.chessToId(square)
+    if id then self:_refreshButton(self.table:getButtonById(id), self:_screenRect(square)) end
 end
 
 function Board:paintTo(bb, x, y)
@@ -371,10 +396,7 @@ function Board:setBadge(square, text)
     local old = self.badge and self.badge.square
     self.badge = (square and text) and { square = square, text = text } or nil
     if not self.square_refresh then return end
-    for _, sq in pairs({ old = old, new = square }) do
-        local id = Board.chessToId(sq)
-        if id then self:_refreshButton(self.table:getButtonById(id), self:_screenRect(sq)) end
-    end
+    for _, sq in pairs({ old = old, new = square }) do self:_refreshSquare(sq) end
 end
 
 function Board:_paintBadge(bb)
@@ -541,16 +563,6 @@ function Board:_refreshButton(button, rect)
         self._batch = nil
         return self.square_refresh, region
     end)
-end
-
---- Adds `rect` (another part of the screen changed by the same update, e.g.
--- the status line) to the pending square refresh. Returns false when none is
--- pending: the caller refreshes it. On REAGL Kindles each refresh waits for
--- the previous one to complete: one refresh per update is faster.
-function Board:joinRefresh(rect)
-    if not (self._batch and rect) then return false end
-    self._batch = self._batch:combine(rect)
-    return true
 end
 
 --- Board:handleMoveFlags(move, to)

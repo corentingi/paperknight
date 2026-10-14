@@ -84,10 +84,12 @@ return function(h)
         return view.board.table:getButtonById(view.board.toId(file - 1, rank - 1)).icon
     end
     -- e-ink (docs/eink-refresh.md): what reaches the screen for a move and
-    -- its reply. Each update is one "[partial]" refresh (the REAGL waveform
-    -- of page turns, not counted towards KOReader's periodic flash) around
-    -- the changed squares and the status line; no tap highlight ("fast"), no
-    -- "ui" (GC16_FAST flickers), no flash, never the whole screen.
+    -- its reply. Each update is a "[partial]" refresh (the REAGL waveform of
+    -- page turns, not counted towards KOReader's periodic flash) of the
+    -- rectangle around the changed squares, and one of the status line: never
+    -- one rectangle spanning both (REAGL redraws every pixel of its region,
+    -- visibly on the grey squares). No tap highlight ("fast"), no "ui"
+    -- (GC16_FAST flickers), no flash.
     local UIManager = require("ui/uimanager")
     local count_before = UIManager.refresh_count
     local stop = h.recordRefreshes()
@@ -100,11 +102,20 @@ return function(h)
     h.check(status():find("Correct"), "correct: " .. status())
     h.wait(1.5) -- opponent reply delay
     local updates = stop()
+    local bd = view.board.dimen
+    local on_board = 0
     for _, r in ipairs(updates) do
-        h.check(r.mode == "[partial]", ("only [partial] refreshes: %s %d,%d %dx%d"):format(r.mode, r.x, r.y, r.w, r.h))
-        h.check(r.h < view.dimen.h, "never the whole screen")
+        local desc = ("%s %d,%d %dx%d"):format(r.mode, r.x, r.y, r.w, r.h)
+        h.check(r.mode == "[partial]", "only [partial] refreshes: " .. desc)
+        local top, bottom = r.y, r.y + r.h
+        if top < bd.y + bd.h then -- touches the board: stays inside it, and smaller
+            on_board = on_board + 1
+            h.check(bottom <= bd.y + bd.h, "a board refresh stops at the board: " .. desc)
+            h.check(r.w * r.h < bd.w * bd.h / 2, "only the changed squares: " .. desc)
+        end
     end
-    h.check(#updates == 2, "one refresh per update (move, reply): " .. #updates)
+    h.check(on_board == 2, "one board refresh per update (move, reply): " .. on_board)
+    h.check(#updates == 4, "plus one status refresh each: " .. #updates)
     h.check(UIManager.refresh_count == count_before, "not counted towards the periodic flash")
     -- what the board shows, not just the game state (which changes immediately)
     h.check(not view.board.locked, "board unlocked after the reply")

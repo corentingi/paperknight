@@ -203,7 +203,7 @@ function PkPuzzleView:_updateTitle()
     if self.theme then -- last: a long theme name may be cut off
         subtitle = subtitle .. " · " .. PkThemes.label(self.theme)
     end
-    PkRefresh.setSubTitle(self, subtitle, function(rect) self:_refreshPart(rect) end)
+    PkRefresh.setSubTitle(self, subtitle)
 end
 
 -- The board refreshes the squares it changes; this refreshes the status and
@@ -211,13 +211,10 @@ end
 -- board. A new puzzle refreshes the page (loadPuzzle).
 function PkPuzzleView:_setStatus(text)
     self.status:setText(text)
-    self:_refreshPart(PkRefresh.region(self, self.status, self.buttons))
-end
-
--- Refreshes `rect` (nil: the whole view) as a step, in the board's refresh
--- when the board changed too (one refresh per update, Board:joinRefresh).
-function PkPuzzleView:_refreshPart(rect)
-    if not self.board:joinRefresh(rect) then UIManager:setDirty(self, PkRefresh.STEP, rect) end
+    -- its own refresh, not joined to the board's: REAGL redraws every pixel of
+    -- the region, so one rectangle from the board to the status line would
+    -- visibly redraw everything below the highest changed square
+    PkRefresh.step(self, self.status, self.buttons)
 end
 
 function PkPuzzleView:_toMoveText()

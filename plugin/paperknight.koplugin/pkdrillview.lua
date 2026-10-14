@@ -145,7 +145,7 @@ end
 -- (`page`); see pkrefresh.lua.
 function PkDrillView:_redraw(page)
     if page then return PkRefresh.page(self) end
-    PkRefresh.step(self, self.board, self.buttons)
+    PkRefresh.below(self, self.board, self.buttons) -- the board refreshes its squares
 end
 
 --- Starts the next line of the session, or shows the summary when done.

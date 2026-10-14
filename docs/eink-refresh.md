@@ -131,10 +131,16 @@ Rules, implemented in `pkrefresh.lua`, `pkbutton.lua` and the views:
    (`no_feedback` in `pkbutton.lua`; the selection border shows the tap) and
    the arrows that step through a line (`PkButton.noFeedback`): no DU
    inversion, and no forced repaint and pause before the move is handled.
-4. **One refresh per update.** The board collects the changed squares into
-   one rectangle (`Board.square_refresh`), and the puzzle view adds the
-   status line and the title bar to it (`Board:joinRefresh`), since each
-   REAGL refresh waits for the previous one.
+4. **Tight regions, one per area.** The board collects the squares an
+   update changes (pieces, last-move tint, badge, arrows and circles) into
+   one rectangle (`Board.square_refresh`), refreshed once: each REAGL
+   refresh waits for the previous one, so one per square would be slow. The
+   text under the board (status line, study panel, buttons) is a separate
+   refresh (`PkRefresh.step` from the status line, `PkRefresh.below` under
+   the board). They are **never joined**: REAGL is sent as a full update and
+   redraws every pixel of its region, which shows on the grey squares. Tried
+   on the PW2: one rectangle from a move's squares down to the status line
+   visibly redrew everything below the highest changed square.
 5. **No `ui` or `fast` on grey content.** GC16_FAST flickers and DU crushes
    the grey squares. The title bar's subtitle is set without TitleBar's own
    `ui` refresh, and only when it changed (`PkRefresh.setSubTitle`).
@@ -144,9 +150,9 @@ After the fix, measured the same way:
 | Action | Refreshes sent |
 |---|---|
 | Tap a piece | one `[partial]`, the square only |
-| Tap the target, then the reply | one `[partial]` per update (board + status line) |
-| The solving move | one `[partial]` (the screen: board, status, new buttons, rating) |
-| A replay or study step | one `[partial]` |
+| Tap the target, then the reply | per update, one `[partial]` around the changed squares and one for the status line |
+| The solving move | the same, plus the title bar (rating) and the new button bar |
+| A replay or study step | the changed squares, and the text below the board |
 | Periodic flash | none during a puzzle or a line; every *N* new puzzles or chapters |
 
 Still left as KOReader does it: the tap highlight of text buttons (Retry,
@@ -158,10 +164,10 @@ button, as a press confirmation), and menus and dialogs.
 - **Ghosting**: with no flash during a puzzle, traces can build up over a
   long line; REAGL limits them, and the next page flash (or a new puzzle)
   clears them. If it is too much, a flash every *K* steps could be added.
-- **Merged regions**: one rectangle from the board to the status line is
-  larger than two; REAGL drives every pixel of the region, without a
-  visible change on unchanged pixels. Expected faster (one wait instead of
-  two), to confirm on the PW2.
+- **Long moves**: the rectangle around a move's squares (and the previous
+  move's tint) can cover a large part of the board, e.g. a1 to h8; REAGL
+  then redraws the unchanged squares inside it too. Refreshing each square
+  apart would avoid that, but each refresh waits for the previous one.
 - **User settings still apply**: a full refresh rate of "never" removes the
   page flashes; *Flash buttons and menu items* off removes the remaining
   button highlights everywhere in KOReader.

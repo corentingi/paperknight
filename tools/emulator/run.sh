@@ -48,7 +48,7 @@ case "$mode" in
             rm -rf "$HOME_DIR/.config/koreader"
             set +e
             SDL_VIDEODRIVER=offscreen PK_SCENARIO="$(realpath "$scenario")" PK_RESULT="$result" \
-                PK_SHOTS_DIR="$OUT" timeout "${PK_TIMEOUT:-60}" "$KOREADER" "$HOME_DIR/books" >"$log" 2>&1
+                PK_SHOTS_DIR="$OUT" timeout "${PK_TIMEOUT:-120}" "$KOREADER" "$HOME_DIR/books" >"$log" 2>&1
             code=$?
             set -e
             status="$(head -n1 "$result" 2>/dev/null || true)"

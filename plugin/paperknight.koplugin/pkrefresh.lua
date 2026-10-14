@@ -9,9 +9,11 @@
 --  * A page (a new puzzle, chapter or line) is a counted, whole-screen
 --    "partial", like a book page: every N pages it becomes a full flash,
 --    which clears the ghosting the steps leave.
--- Unchanged pixels are not touched, so a generous region costs nothing; the
--- puzzle screen still refreshes only the rectangle around the squares that
--- changed, in one refresh (Board.square_refresh), and the status strip.
+-- Regions must stay tight: REAGL updates are sent as full updates, which
+-- redraw every pixel of the region, and on the grey squares that redraw is
+-- visible. The board refreshes the rectangle around the squares that changed
+-- (Board.square_refresh, one refresh per update); the text below it is a
+-- separate refresh (PkRefresh.below), never joined to the board's.
 local Geometry = require("ui/geometry")
 local UIManager = require("ui/uimanager")
 
@@ -29,13 +31,27 @@ end
 
 --- Sets the subtitle of `view.title_bar` when it changed, refreshed as a
 -- step (TitleBar's own refresh is "ui", GC16_FAST: it flickers the changed
--- text). `refresh(rect)`: optional, to join it to another refresh.
-function PkRefresh.setSubTitle(view, text, refresh)
+-- text).
+function PkRefresh.setSubTitle(view, text)
     local title_bar = view.title_bar
     if text == title_bar.subtitle_widget.text then return end
     title_bar:setSubTitle(text, true)
     if not title_bar.dimen then return end -- not shown yet: painted with the view
-    if refresh then refresh(title_bar.dimen) else UIManager:setDirty(view, PkRefresh.STEP, title_bar.dimen) end
+    UIManager:setDirty(view, PkRefresh.STEP, title_bar.dimen)
+end
+
+--- Refreshes the part of `view` below widget `above` (e.g. the board, which
+-- refreshes its own squares) down to widget `last` (the bottom of the view
+-- when it has no position yet): the text and buttons after a step.
+function PkRefresh.below(view, above, last)
+    local a, b = above and above.dimen, last and last.dimen
+    local region
+    if a and a.y then
+        local top = a.y + a.h
+        local bottom = (b and b.y) and (b.y + b.h) or (view.dimen.y or 0) + view.dimen.h
+        region = Geometry:new{ x = 0, y = top, w = view.dimen.w, h = bottom - top }
+    end
+    UIManager:setDirty(view, PkRefresh.STEP, region)
 end
 
 --- The region PkRefresh.step refreshes (nil: the whole view).
