@@ -19,12 +19,12 @@ local BOARD_SIZE = 8
 local SELECTED_BORDER = 5
 -- Paperknight: square colours. E-ink shows 16 grey levels (steps of 0x11);
 -- light squares are white and dark squares a light grey so pieces stay crisp.
--- The last-move tint is the darkest square, two levels below the dark squares,
--- so it stands out from both (a border would be partly painted over by
+-- The last-move tint is the darkest square, three levels below the dark
+-- squares, so it stands out from both (a border would be partly painted over by
 -- neighbouring squares in the ButtonTable).
 -- Night mode (KOReader inverts the whole screen) gets its own palette: the
 -- squares are mid-dark greys, light enough for the black pieces, one level
--- apart; the last-move tint is the lightest, two levels above. Values are
+-- apart; the last-move tint is the lightest, three levels above. Values are
 -- what the panel shows: the board is painted with their inverse, and the piece
 -- sets are swapped (an inverted black piece shows as a white one; inverted
 -- white pieces give black ones a light outline that reads on dark squares).
@@ -32,7 +32,7 @@ local PALETTES = {
     day = {
         light = Blitbuffer.COLOR_WHITE,        -- 0xFF
         dark = Blitbuffer.COLOR_GRAY_D,        -- 0xDD
-        highlight = Blitbuffer.COLOR_GRAY_B,   -- 0xBB
+        highlight = Blitbuffer.Color8(0xAA),
         -- study shapes ([%csl] circles, [%cal] arrows). Brush colours can't be
         -- told apart on e-ink, so all shapes share one style (docs/studies.md).
         shape = Blitbuffer.COLOR_GRAY_4,
@@ -40,7 +40,7 @@ local PALETTES = {
     night = {
         light = Blitbuffer.Color8(0x66),
         dark = Blitbuffer.Color8(0x55),
-        highlight = Blitbuffer.Color8(0x99),
+        highlight = Blitbuffer.Color8(0xAA),
         shape = Blitbuffer.Color8(0xCC),
     },
 }

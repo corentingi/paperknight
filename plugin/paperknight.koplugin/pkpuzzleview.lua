@@ -381,7 +381,7 @@ function PkPuzzleView:_finishAttempt(reason)
                 self.progress:saveReview(self.puzzle.id, PkPuzzleReview.missed(nil))
             end
         end)
-        if r_ok then note = _("It will come back tomorrow for a review.")
+        if r_ok then note = T(_("It will come back in %1 days for a review."), PkPuzzleReview.AFTER_MISS)
         else logger.warn("Paperknight: cannot save the review:", err) end
     end
     return before, after, note
@@ -403,7 +403,7 @@ function PkPuzzleView:_gradeReview(clean)
             end
         else
             self.progress:saveReview(id, PkPuzzleReview.missed(self.review))
-            note = _("It will come back tomorrow.")
+            note = T(_("It will come back in %1 days."), PkPuzzleReview.AFTER_MISS)
         end
     end)
     if not ok then logger.warn("Paperknight: cannot save the review:", err) end

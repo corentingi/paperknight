@@ -40,3 +40,10 @@ days are turned into reviews once, spread over a week.
 - Replacing the pack drops reviews of puzzles it no longer has.
 - A puzzle in reviews is not picked as a new puzzle.
 - Revisit if users want reviews to affect the rating, or adaptive spacing.
+
+## Amendment (2026-10-14)
+The next-day review made it a memory test more than a tactical one: a
+missed puzzle now comes back after 3 days, then 7, then 21 days, and a clean
+solve of the 21-day review ends it (`AFTER_MISS = 3`, `INTERVALS = {7, 21}`).
+A miss still starts it over at 3 days. Cards scheduled before the change keep
+their due day; a card at its last step is mastered by its next clean solve.

@@ -1,18 +1,20 @@
 -- Missed-puzzle reviews (ADR-0014). Pure Lua, no UI, no storage.
 -- A card is { step, due, lapses, missed }:
---   step    clean solves in a row since the last miss (0..#INTERVALS-1)
+--   step    clean solves in a row since the last miss (0..#INTERVALS)
 --   due     day number (PkSrs.today) from which the puzzle is due
 --   lapses  misses after the first one
 --   missed  timestamp of the first miss (shown to the user)
--- A missed puzzle comes back the next day; each clean solve sends it
--- further (INTERVALS days); after the last one it is mastered (no card).
+-- A missed puzzle comes back after AFTER_MISS days; each clean solve sends
+-- it further (INTERVALS days); the clean solve after the last interval
+-- masters it (no card): 3, 7, 21 days, then it does not come back.
+-- Spaced out so that a review tests the tactic more than the memory of it.
 -- A miss (mistake, hint or solution, as for the rating) starts it over.
 local PkSrs = require("pksrs")
 
 local PkPuzzleReview = {}
 
-PkPuzzleReview.INTERVALS = { 3, 7, 21 } -- days after the 1st, 2nd, 3rd clean solve
-PkPuzzleReview.AFTER_MISS = 1           -- days after a miss
+PkPuzzleReview.INTERVALS = { 7, 21 } -- days after the 1st, 2nd clean solve of a review
+PkPuzzleReview.AFTER_MISS = 3        -- days after a miss
 
 --- Card for a puzzle missed at `now` (first attempt, or a review).
 -- `card`: the existing card, if any.

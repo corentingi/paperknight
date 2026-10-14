@@ -7,7 +7,7 @@ Paperknight is a fork of [Kochess](https://github.com/bateast/kochess) (play aga
 Stockfish, PGN load/save) that grows into a training tool:
 
 - **Puzzles** — rated, themed tactics from the Lichess puzzle database, fully offline;
-  missed puzzles come back as spaced reviews (next day, then 3, 7, 21 days).
+  missed puzzles come back as spaced reviews (after 3, 7, then 21 days; then they stop).
   *Solution* shows the first move you missed; then step through the whole line with ‹ › (or swipes).
   A solved puzzle gets a ✓ badge on the last piece moved; the last move is the darkest square.
   Once a puzzle is over, its themes are shown; *Stats…* (☰) charts your results per theme (clean

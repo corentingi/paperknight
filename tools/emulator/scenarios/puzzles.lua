@@ -49,11 +49,11 @@ return function(h)
     h.check(view.progress:attemptCount() == 1, "attempt recorded")
     h.check(view.progress:rating() < 1200, "failed attempt lowers rating: " .. view.progress:rating())
     h.check(status():find("Solved, after a mistake") and status():find("Rating 1200"), "status: " .. status())
-    h.check(status():find("come back tomorrow", 1, true), "review announced: " .. status())
+    h.check(status():find("come back in 3 days", 1, true), "review announced: " .. status())
     local PkSrs = require("pksrs")
     local today = PkSrs.today()
     local card = view.progress:getReview("004JD")
-    h.check(card and card.due == today + 1 and card.step == 0, "missed puzzle scheduled for tomorrow")
+    h.check(card and card.due == today + 3 and card.step == 0, "missed puzzle scheduled in 3 days")
     h.shot("puzzle-1-solved")
 
     -- 2. Mate in two for White: correct move, opponent replies, finishing move.
@@ -282,7 +282,7 @@ return function(h)
 
     -- 7. Reviews of missed puzzles (ADR-0014): served first when due, no
     -- rating change; clean solve -> 3 days; 4th clean solve -> mastered;
-    -- a miss -> tomorrow again; an untouched review is not served twice.
+    -- a miss -> in 3 days again; an untouched review is not served twice.
     local function makeDue(step, lapses)
         -- as in a new session (a review is shown once per session)
         view._skipped, view.review = {}, nil
@@ -299,12 +299,12 @@ return function(h)
     local rating, attempts = view.progress:rating(), view.progress:attemptCount()
     tapSquare("a3"); tapSquare("c2")
     h.check(view.session.state == "solved", "review solved")
-    h.check(status():find("Next review in 3 days", 1, true), "status: " .. status())
-    h.check(view.progress:getReview("004JD").due == today + 3, "rescheduled in 3 days")
+    h.check(status():find("Next review in 7 days", 1, true), "status: " .. status())
+    h.check(view.progress:getReview("004JD").due == today + 7, "rescheduled in 7 days")
     h.check(view.progress:rating() == rating and view.progress:attemptCount() == attempts, "no rating change")
     h.check(not status():find("Rating", 1, true), "no rating line for a review")
 
-    makeDue(3)
+    makeDue(2) -- the 21-day review: the last one
     view:nextPuzzle()
     h.wait(0.5) -- painted: the squares have their positions
     h.check(view.puzzle.id == "004JD" and view.review, "served again")
@@ -316,9 +316,9 @@ return function(h)
     view:nextPuzzle()
     h.wait(0.5)
     tapButton("solution")
-    h.check(status():find("come back tomorrow", 1, true), "missed review: " .. status())
+    h.check(status():find("come back in 3 days", 1, true), "missed review: " .. status())
     card = view.progress:getReview("004JD")
-    h.check(card.step == 0 and card.lapses == 1 and card.due == today + 1, "starts over, one lapse")
+    h.check(card.step == 0 and card.lapses == 1 and card.due == today + 3, "starts over, one lapse")
 
     makeDue(0, 1)
     view:nextPuzzle()

@@ -14,26 +14,26 @@ local function db()
 end
 
 return {
-    { "a miss comes back tomorrow, then 3, 7, 21 days, then mastered", function(t)
+    { "a miss comes back in 3 days, then 7, 21, then mastered", function(t)
         local today = PkSrs.today(NOW)
         local c = PkPuzzleReview.missed(nil, NOW)
-        t.eq(c.due, today + 1, "tomorrow"); t.eq(c.step, 0, "step"); t.eq(c.missed, NOW, "first miss kept")
-        t.ok(not PkPuzzleReview.isDue(c, today), "not today")
-        t.ok(PkPuzzleReview.isDue(c, today + 1), "due tomorrow")
-        local now, days = NOW + DAY, nil
-        for _, expect in ipairs({ 3, 7, 21 }) do
+        t.eq(c.due, today + 3, "in 3 days"); t.eq(c.step, 0, "step"); t.eq(c.missed, NOW, "first miss kept")
+        t.ok(not PkPuzzleReview.isDue(c, today + 2), "not before")
+        t.ok(PkPuzzleReview.isDue(c, today + 3), "due in 3 days")
+        local now, days = NOW + 3 * DAY, nil
+        for _, expect in ipairs({ 7, 21 }) do
             c, days = PkPuzzleReview.solved(c, now)
             t.eq(days, expect, "interval"); t.eq(c.due, PkSrs.today(now) + expect, "due")
             now = now + expect * DAY
         end
-        t.eq(PkPuzzleReview.solved(c, now), nil, "mastered after the 4th clean solve")
+        t.eq(PkPuzzleReview.solved(c, now), nil, "mastered after the 3rd clean review")
     end },
     { "a miss during reviews starts over and counts a lapse", function(t)
         local c = PkPuzzleReview.missed(nil, NOW)
         c = PkPuzzleReview.solved(c, NOW + DAY)
         c = PkPuzzleReview.missed(c, NOW + 4 * DAY)
         t.eq(c.step, 0, "back to the start"); t.eq(c.lapses, 1, "lapse")
-        t.eq(c.due, PkSrs.today(NOW + 4 * DAY) + 1, "tomorrow again"); t.eq(c.missed, NOW, "first miss date kept")
+        t.eq(c.due, PkSrs.today(NOW + 4 * DAY) + 3, "in 3 days again"); t.eq(c.missed, NOW, "first miss date kept")
     end },
     { "past misses are spread over a week", function(t)
         local ids, at = {}, {}

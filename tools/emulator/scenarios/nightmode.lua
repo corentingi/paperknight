@@ -49,6 +49,8 @@ return function(h)
 
     local day = { light = background(light_sq), dark = background(dark_sq), ring = ring() }
     h.check(day.light == 0xFF and day.dark == 0xDD, ("day colours %x %x"):format(day.light, day.dark))
+    local last_move = next(board.highlighted) -- the setup move's squares
+    h.check(last_move and background(last_move) == 0xAA, ("day last move %x"):format(background(last_move)))
     h.check(day.ring == 0x44, ("day shape %x"):format(day.ring))
     -- a white piece's middle pixel: white whatever the mode
     local function pieceMiddle(sq)
@@ -73,6 +75,7 @@ return function(h)
     local ok, err = pcall(function()
         h.check(background(light_sq) == 0x66, ("night light square shown %x"):format(background(light_sq)))
         h.check(background(dark_sq) == 0x55, ("night dark square shown %x"):format(background(dark_sq)))
+        h.check(background(last_move) == 0xAA, ("night last move shown %x"):format(background(last_move)))
         h.check(ring() == 0xCC, ("night shape shown %x"):format(ring()))
         h.check(iconOn(white_piece) == PkIcons.pieces.r.b, "night: black rook icon, shown inverted")
         h.check(pieceMiddle(white_piece) == 0xFF, ("white piece shown white: %x"):format(pieceMiddle(white_piece)))
