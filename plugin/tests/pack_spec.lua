@@ -84,6 +84,62 @@ return {
         reopened:close()
         os.remove(path)
     end },
+    { "progress: reviews are not rated, but mark the puzzle as seen for good", function(t)
+        local path = tmpdb()
+        local prog = PkProgress.open(path)
+        prog:record({ puzzle_id = "A", puzzle_rating = 1200, success = false, solved = false, mistakes = 1,
+                      used_help = false, ts = 1000 }, { step = 0, due = 5, lapses = 0, missed = 1000 })
+        t.ok(prog:getReview("A"), "review card saved with the attempt")
+        local rating = prog:rating()
+        prog:recordReview("A", true, 1200, nil, 2000) -- mastered: card removed
+        t.eq(prog:getReview("A"), nil, "card removed")
+        t.eq(prog:rating(), rating, "a review does not change the rating")
+        t.eq(prog:attemptCount(), 1, "nor counts as a rated attempt")
+        t.eq(#prog:attempts(), 1, "nor appears in the stats")
+        t.ok(prog:reviewedIds().A, "a mastered puzzle stays reviewed (never new again)")
+        t.ok(prog:attemptedSince(1500).A and not prog:attemptedSince(2500).A, "attemptedSince: reviews included")
+        prog:close()
+        os.remove(path)
+    end },
+    { "progress: older files are migrated (review column, review ladder)", function(t)
+        local path = tmpdb()
+        local SQ3 = require("lua-ljsqlite3/init")
+        local conn = SQ3.open(path)
+        conn:exec([[
+            CREATE TABLE attempts (puzzle_id TEXT NOT NULL, ts INTEGER NOT NULL, solved INTEGER NOT NULL,
+                mistakes INTEGER NOT NULL, used_help INTEGER NOT NULL, puzzle_rating INTEGER NOT NULL,
+                rating_before INTEGER NOT NULL, rating_after INTEGER NOT NULL);
+            INSERT INTO attempts VALUES ('A', 1000, 1, 0, 0, 1200, 1200, 1215);
+            CREATE TABLE puzzle_reviews (puzzle_id TEXT PRIMARY KEY, due INTEGER NOT NULL,
+                step INTEGER NOT NULL, lapses INTEGER NOT NULL, missed INTEGER NOT NULL);
+            INSERT INTO puzzle_reviews VALUES ('B', 10, 0, 0, 1), ('C', 10, 1, 0, 1), ('D', 10, 2, 0, 1);]])
+        conn:close()
+        local prog = PkProgress.open(path)
+        t.eq(prog:attemptCount(), 1, "old attempts kept, rated")
+        t.eq(prog:getReview("B").step, 0, "step 0 stays")
+        t.eq(prog:getReview("C").step, 0, "old step 1 (waiting 3 days) -> new step 0")
+        t.eq(prog:getReview("D").step, 1, "old step 2 (waiting 7 days) -> new step 1")
+        prog:close()
+        prog = PkProgress.open(path)
+        t.eq(prog:getReview("D").step, 1, "the ladder migration runs once")
+        prog:close()
+        os.remove(path)
+    end },
+    { "progress: a failed transaction is rolled back and leaves the connection usable", function(t)
+        local path = tmpdb()
+        local prog = PkProgress.open(path)
+        local ok = pcall(prog._tx, prog, function()
+            prog:setSetting("x", "1")
+            error("boom")
+        end)
+        t.ok(not ok, "error raised")
+        t.eq(prog:getSetting("x"), nil, "rolled back")
+        prog:record{ puzzle_id = "A", puzzle_rating = 1200, success = true, solved = true, mistakes = 0,
+                     used_help = false, ts = 1000 }
+        t.eq(prog:attemptCount(), 1, "later writes work (no transaction left open)")
+        prog:close()
+        os.remove(path)
+    end },
     { "theme filter: every pick carries the theme, themes() lists counts", function(t)
         local pack = assert(PkPuzzlePack.open(FIXTURE))
         local counts = {}

@@ -46,4 +46,10 @@ The next-day review made it a memory test more than a tactical one: a
 missed puzzle now comes back after 3 days, then 7, then 21 days, and a clean
 solve of the 21-day review ends it (`AFTER_MISS = 3`, `INTERVALS = {7, 21}`).
 A miss still starts it over at 3 days. Cards scheduled before the change keep
-their due day; a card at its last step is mastered by its next clean solve.
+their due day, and their step is shifted once (old step k waited for the old
+k-th interval, the new step k-1), so no review is skipped.
+
+Reviews are recorded in `attempts` with `review = 1`: not rated, not in the
+stats, but a puzzle missed once (under review, or mastered) is never picked
+again as a new puzzle. Before, the ladder outlasted the 30-day "recently
+played" window and a mastered puzzle came back as a new, rated one.

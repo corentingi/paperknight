@@ -76,6 +76,24 @@ return {
         t.eq(root.children[2].comment, "Alternatively", "pre-move comment")
         t.eq(root.children[1].children[1].san, "e5", "main line resumes")
     end },
+    { "movetext: a variation opened before any move of its line stays a sideline", function(t)
+        local root = PkPgn.parseMovetext("(1. d4 d5) 1. e4 e5")
+        t.eq(#root.children, 2, "two first moves")
+        t.eq(root.children[1].san, "e4", "the main line stays first")
+        t.eq(root.children[1].children[1].san, "e5", "main line continues")
+        t.eq(root.children[2].san, "d4", "the variation is an alternative to 1. e4")
+        local e4 = PkPgn.parseMovetext("1. e4 e5 ( ( 1... e6 ) 1... c5 ) 2. Nf3").children[1]
+        local sans = {}
+        for i, c in ipairs(e4.children) do sans[i] = c.san end
+        t.eq(table.concat(sans, " "), "e5 c5 e6", "nested at a line start: alternatives to 1... c5")
+        t.eq(e4.children[1].children[1].san, "Nf3", "main line resumes")
+    end },
+    { "index: a tag value ending in an escaped backslash", function(t)
+        local games = PkPgn.index('[Event "x"]\n[Annotator "C:\\\\"]\n[Site "\\"q\\" \\\\"]\n\n1. e4 *\n')
+        t.eq(#games, 1, "one game")
+        t.eq(games[1].tags.Annotator, "C:\\", "backslash kept")
+        t.eq(games[1].tags.Site, '"q" \\', "escaped quotes and backslash")
+    end },
     { "movetext: robustness (unbalanced parens, 0-0, numbers glued to moves)", function(t)
         local root = PkPgn.parseMovetext("1.e4 e5 ) 2.Nf3 ( 2. Bc4 *")
         t.eq(sans(mainline(root)), "e4 e5 Nf3", "stray ')' ignored, glued numbers")

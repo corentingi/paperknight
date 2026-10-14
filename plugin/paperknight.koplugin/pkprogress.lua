@@ -61,12 +61,65 @@ function PkProgress.open(path)
         if ok and lfs.attributes(dir, "mode") ~= "directory" then lfs.mkdir(dir) end
     end
     local conn = SQ3.open(path)
-    conn:exec(SCHEMA)
     local self = setmetatable({ conn = conn, path = path }, PkProgress)
-    self.insert_stmt = conn:prepare("INSERT INTO attempts VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-    self.recent_stmt = conn:prepare("SELECT 1 FROM attempts WHERE puzzle_id = ? AND ts >= ? LIMIT 1")
-    self.kv_stmt = conn:prepare("INSERT OR REPLACE INTO kv (key, value) VALUES ('rating', ?)")
+    local ok, err = pcall(function()
+        -- the rollback journal is truncated, not created and deleted on every
+        -- write (slow flash); syncing stays the default (FULL): no corruption
+        -- on a power cut
+        conn:exec("PRAGMA journal_mode=TRUNCATE")
+        conn:exec(SCHEMA)
+        self:_migrate()
+        self.insert_stmt = conn:prepare("INSERT INTO attempts (puzzle_id, ts, solved, mistakes, used_help,"
+            .. " puzzle_rating, rating_before, rating_after, review) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        self.recent_stmt = conn:prepare("SELECT 1 FROM attempts WHERE puzzle_id = ? AND ts >= ? LIMIT 1")
+        self.kv_stmt = conn:prepare("INSERT OR REPLACE INTO kv (key, value) VALUES ('rating', ?)")
+        self.review_stmt = conn:prepare("SELECT puzzle_id, due, step, lapses, missed FROM puzzle_reviews"
+            .. " WHERE puzzle_id = ?")
+    end)
+    if not ok then
+        self:close()
+        error(err, 0)
+    end
     return self
+end
+
+-- Schema changes of existing files.
+--  * attempts.review: 1 for a review of a missed puzzle (recordReview): not
+--    rated, not in the stats, but it marks the puzzle as seen.
+--  * The review ladder changed on 2026-10-14 (3, 7, 21 days instead of 1, 3,
+--    7, 21, ADR-0014): a card's step k waited for the old k-th interval, the
+--    new step k-1 (one-time shift).
+function PkProgress:_migrate()
+    local has_review = false
+    local info = self.conn:prepare("PRAGMA table_info(attempts)")
+    for row in info:rows() do
+        if row[2] == "review" then has_review = true end
+    end
+    info:close()
+    if not has_review then
+        self.conn:exec("ALTER TABLE attempts ADD COLUMN review INTEGER NOT NULL DEFAULT 0")
+    end
+    if not self.conn:rowexec("SELECT value FROM kv WHERE key = 'migration.review_ladder_3_7_21'") then
+        self:_tx(function()
+            self.conn:exec("UPDATE puzzle_reviews SET step = step - 1 WHERE step > 0")
+            self.conn:exec("INSERT OR REPLACE INTO kv (key, value) VALUES ('migration.review_ladder_3_7_21', '1')")
+        end)
+    end
+end
+
+--- Runs `fn` in a transaction: committed if it succeeds, rolled back (and
+-- the error raised again) otherwise, a failed COMMIT included, so that no
+-- transaction stays open for the rest of the session.
+function PkProgress:_tx(fn)
+    self.conn:exec("BEGIN")
+    local ok, err = pcall(function()
+        fn()
+        self.conn:exec("COMMIT")
+    end)
+    if not ok then
+        pcall(self.conn.exec, self.conn, "ROLLBACK")
+        error(err, 0)
+    end
 end
 
 function PkProgress:rating()
@@ -107,16 +160,24 @@ function PkProgress:setSetting(key, value)
     stmt:close()
 end
 
+--- Rated attempts (first attempts; reviews are not rated).
 function PkProgress:attemptCount()
-    return tonumber(self.conn:rowexec("SELECT count(*) FROM attempts"))
+    return tonumber(self.conn:rowexec("SELECT count(*) FROM attempts WHERE review = 0"))
 end
 
---- Every recorded attempt, oldest first: { {puzzle_id, clean, puzzle_rating} }
--- (clean: solved without a mistake or help, as counted by the rating).
+-- Rated attempts, counted up to `limit` only (the rating only needs to know
+-- whether it is still provisional).
+function PkProgress:_ratedCountUpTo(limit)
+    return tonumber(self.conn:rowexec("SELECT count(*) FROM (SELECT 1 FROM attempts WHERE review = 0 LIMIT "
+        .. math.floor(limit) .. ")"))
+end
+
+--- Every rated attempt: { {puzzle_id, clean, puzzle_rating} } (clean: solved
+-- without a mistake or help, as counted by the rating). Unordered.
 function PkProgress:attempts()
     local out = {}
     local stmt = self.conn:prepare("SELECT puzzle_id, solved, mistakes, used_help, puzzle_rating"
-        .. " FROM attempts ORDER BY ts")
+        .. " FROM attempts WHERE review = 0")
     local row = stmt:step()
     while row do
         out[#out + 1] = {
@@ -130,31 +191,61 @@ function PkProgress:attempts()
     return out
 end
 
+--- Ids of the puzzles attempted (reviews included) since `since_ts`: a set.
+function PkProgress:attemptedSince(since_ts)
+    local set = {}
+    local stmt = self.conn:prepare("SELECT DISTINCT puzzle_id FROM attempts WHERE ts >= ?")
+    stmt:reset():bind(since_ts)
+    for row in stmt:rows() do set[row[1]] = true end
+    stmt:close()
+    return set
+end
+
+--- Ids of the puzzles that are or were under review (missed once): a set.
+-- They never come back as new puzzles, mastered ones included.
+function PkProgress:reviewedIds()
+    local set = {}
+    local stmt = self.conn:prepare("SELECT puzzle_id FROM puzzle_reviews"
+        .. " UNION SELECT puzzle_id FROM attempts WHERE review = 1")
+    for row in stmt:rows() do set[row[1]] = true end
+    stmt:close()
+    return set
+end
+
 function PkProgress:wasAttemptedSince(puzzle_id, since_ts)
     local row = self.recent_stmt:reset():bind(puzzle_id, since_ts):step()
     self.recent_stmt:reset() -- don't keep a read transaction open between calls
     return row ~= nil
 end
 
---- Records a finished attempt and updates the rating.
+--- Records a finished attempt and updates the rating; `review_card`, when
+-- given, is saved in the same transaction (a missed puzzle's review).
 -- @param result { puzzle_id, puzzle_rating, success, solved, mistakes, used_help, ts }
 -- @return rating_before, rating_after
-function PkProgress:record(result)
+function PkProgress:record(result, review_card)
     local before = self:rating()
-    local after = PkProgress.updatedRating(before, result.puzzle_rating, result.success, self:attemptCount())
-    self.conn:exec("BEGIN")
-    local ok, err = pcall(function()
+    local after = PkProgress.updatedRating(before, result.puzzle_rating, result.success,
+        self:_ratedCountUpTo(PROVISIONAL_ATTEMPTS))
+    self:_tx(function()
         self.insert_stmt:reset():bind(result.puzzle_id, result.ts or os.time(),
             result.solved and 1 or 0, result.mistakes or 0, result.used_help and 1 or 0,
-            result.puzzle_rating, before, after):step()
+            result.puzzle_rating, before, after, 0):step()
         self.kv_stmt:reset():bind(tostring(after)):step()
+        if review_card then self:saveReview(result.puzzle_id, review_card) end
     end)
-    if not ok then
-        self.conn:exec("ROLLBACK")
-        error(err)
-    end
-    self.conn:exec("COMMIT")
     return before, after
+end
+
+--- Records a review of a missed puzzle (not rated): it marks the puzzle as
+-- seen (attemptedSince, reviewedIds). `card`: the review card to save (nil:
+-- mastered, the card is removed), in the same transaction.
+function PkProgress:recordReview(puzzle_id, clean, puzzle_rating, card, ts)
+    local rating = self:rating()
+    self:_tx(function()
+        self.insert_stmt:reset():bind(puzzle_id, ts or os.time(), clean and 1 or 0, clean and 0 or 1, 0,
+            puzzle_rating or 0, rating, rating, 1):step()
+        if card then self:saveReview(puzzle_id, card) else self:removeReview(puzzle_id) end
+    end)
 end
 
 ----------------------------------------------------------------------------
@@ -205,10 +296,10 @@ local function reviewRow(row)
 end
 
 function PkProgress:getReview(puzzle_id)
-    local stmt = self.conn:prepare("SELECT puzzle_id, due, step, lapses, missed FROM puzzle_reviews WHERE puzzle_id = ?")
-    local row = stmt:reset():bind(puzzle_id):step()
-    stmt:close()
-    return row and reviewRow(row) or nil
+    local row = self.review_stmt:reset():bind(puzzle_id):step()
+    local card = row and reviewRow(row) or nil
+    self.review_stmt:reset() -- don't keep a read transaction open between calls
+    return card
 end
 
 function PkProgress:saveReview(puzzle_id, card)
@@ -250,7 +341,7 @@ function PkProgress:seedReviews(now, days)
     local ids, at = {}, {}
     local stmt = self.conn:prepare([[
         SELECT a.puzzle_id, a.ts FROM attempts a
-        WHERE a.ts >= ? AND (a.solved = 0 OR a.mistakes > 0 OR a.used_help = 1)
+        WHERE a.ts >= ? AND a.review = 0 AND (a.solved = 0 OR a.mistakes > 0 OR a.used_help = 1)
           AND a.ts = (SELECT max(ts) FROM attempts b WHERE b.puzzle_id = a.puzzle_id)
           AND a.puzzle_id NOT IN (SELECT puzzle_id FROM puzzle_reviews)
         ORDER BY a.ts DESC]])
@@ -263,21 +354,18 @@ function PkProgress:seedReviews(now, days)
     end
     stmt:close()
     local cards = PkPuzzleReview.seed(ids, at, PkSrs.today(now), 7)
-    self.conn:exec("BEGIN")
-    local ok, err = pcall(function()
+    self:_tx(function()
         for _, id in ipairs(ids) do self:saveReview(id, cards[id]) end
         self:setSetting("reviews_seeded", "1")
     end)
-    self.conn:exec(ok and "COMMIT" or "ROLLBACK")
-    if not ok then error(err, 0) end
     return #ids
 end
 
 function PkProgress:close()
     if self.conn then
-        self.insert_stmt:close()
-        self.recent_stmt:close()
-        self.kv_stmt:close()
+        for _, k in ipairs({ "insert_stmt", "recent_stmt", "kv_stmt", "review_stmt" }) do
+            if self[k] then self[k]:close() end
+        end
         self.conn:close()
         self.conn = nil
     end

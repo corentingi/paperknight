@@ -341,6 +341,7 @@ return function(h)
     for _ = 1, 5 do
         view.progress:record{ puzzle_id = view.puzzle.id, puzzle_rating = view.puzzle.rating, success = true,
                               solved = true, mistakes = 0, used_help = false, ts = os.time() }
+        view:_markSeen(view.puzzle.id) -- as _finishAttempt does (session sets)
         h.check(view:nextPuzzle(), "a puzzle is served")
         h.check(view.puzzle.id ~= prev, "not the same puzzle again: " .. view.puzzle.id)
         prev = view.puzzle.id
@@ -351,18 +352,24 @@ return function(h)
     local n = 0
     for _ in pairs(seen) do n = n + 1 end
     h.check(n == 2, "both puzzles of the theme served")
-    view.progress:removeReview("004JD") -- else it waits as a review
-    view:setTheme("cornerMate") -- a single puzzle: 004JD
+    -- a puzzle missed once never comes back as a new puzzle, even once its
+    -- review is over (mastered, or its card gone): 004JD is cornerMate's only
+    -- puzzle
+    view.progress:removeReview("004JD")
+    h.check(not view:setTheme("cornerMate") and view.theme == "intermezzo"
+        and status():find("No other puzzle with this theme", 1, true),
+        "a reviewed puzzle is not served as new: " .. tostring(view.theme) .. " " .. status())
+    view:setTheme("attackingF2F7") -- a single puzzle: 02yxb
     h.wait(0.5)
-    h.check(view.theme == "cornerMate", "single-puzzle theme chosen")
+    h.check(view.theme == "attackingF2F7" and view.puzzle.id == "02yxb", "single-puzzle theme chosen")
     local only = view.puzzle.id
     h.check(not view:nextPuzzle(), "no other puzzle")
     h.check(view.puzzle.id == only and status():find("No other puzzle with this theme", 1, true),
         "the current one stays: " .. status())
 
     -- 9. Stats page: per theme, from the attempts; a tap trains that theme.
-    tapSquare("a3"); tapSquare("c2") -- solved with a theme chosen: no themes line
-    h.check(view.session.state == "solved" and not status():find("Themes:", 1, true), "no themes line: " .. status())
+    tapButton("solution") -- over, with a theme chosen: no themes line
+    h.check(view.session.state == "failed" and not status():find("Themes:", 1, true), "no themes line: " .. status())
     view:showStats()
     h.wait(0.5)
     local sv = view.stats_view

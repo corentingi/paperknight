@@ -20,13 +20,20 @@ end
 local function parseTagLine(line)
     local tags, pos = {}, 1
     while true do
-        local s, e, name, value = line:find('^%s*%[%s*([%w_]+)%s+"(.-[^\\])"%s*%]', pos)
-        if not s then
-            s, e, name = line:find('^%s*%[%s*([%w_]+)%s+""%s*%]', pos)
-            value = ""
+        local _, open, name = line:find('^%s*%[%s*([%w_]+)%s+"', pos)
+        if not open then break end
+        -- the value ends at the first quote not escaped by a backslash
+        -- (a pattern can't tell `\"` from `\\"`: a value ending in a backslash)
+        local i, close = open + 1, nil
+        while true do
+            local q = line:find('["\\]', i)
+            if not q then break end
+            if line:sub(q, q) == "\\" then i = q + 2 else close = q; break end
         end
-        if not s then break end
-        tags[#tags + 1] = { name, unescape(value) }
+        if not close then break end
+        local _, e = line:find('^%s*%]', close + 1)
+        if not e then break end
+        tags[#tags + 1] = { name, unescape(line:sub(open + 1, close - 1)) }
         pos = e + 1
     end
     if #tags > 0 and line:sub(pos):match("^%s*$") then return tags end
@@ -258,6 +265,9 @@ function PkPgn.parseMovetext(text)
     local last, stack = root, {}
     local pending_comment -- comment before the first move of a variation
     local at_line_start = true -- no move yet in the current line (game or variation)
+    -- where the current line's first move goes among `last`'s children when a
+    -- variation was opened before it (it stays first: the main line)
+    local insert_at
     local pos, len = 1, #text
 
     while pos <= len do
@@ -287,17 +297,27 @@ function PkPgn.parseMovetext(text)
             end
             pos = eol + 1
         elseif ch == "(" then
-            -- a variation is an alternative to `last`: its moves branch from last.parent
-            -- save the enclosing line's state, restored at ")"
-            stack[#stack + 1] = { last = last, at_line_start = at_line_start, pending = pending_comment }
-            pending_comment = nil
-            last = last.parent or root
+            -- a variation is an alternative to `last`: its moves branch from
+            -- last.parent. Opened before any move of the current line (at the
+            -- start of the game, or "( (" ), it is an alternative to the move
+            -- that comes next: it branches from `last`, and that move will be
+            -- inserted before it. The enclosing line's state is saved, restored
+            -- at ")".
+            local frame = { last = last, at_line_start = at_line_start, pending = pending_comment }
+            if at_line_start then
+                frame.insert_at = insert_at or (#last.children + 1)
+            else
+                last = last.parent or root
+            end
+            stack[#stack + 1] = frame
+            pending_comment, insert_at = nil, nil
             at_line_start = true
             pos = pos + 1
         elseif ch == ")" then
             if #stack > 0 then
                 local frame = table.remove(stack)
                 last, at_line_start, pending_comment = frame.last, frame.at_line_start, frame.pending
+                insert_at = frame.insert_at
             else
                 pending_comment = nil
             end
@@ -330,7 +350,12 @@ function PkPgn.parseMovetext(text)
                 if looksLikeSan(san) then -- skips "e.p.", stray symbols, etc.
                     local node = newNode(last, san)
                     if INLINE_TO_NAG[suffix] then node.glyphs[1] = INLINE_TO_NAG[suffix] end
-                    table.insert(last.children, node)
+                    if insert_at then
+                        table.insert(last.children, insert_at, node)
+                        insert_at = nil
+                    else
+                        table.insert(last.children, node)
+                    end
                     if pending_comment then
                         addComment(node, pending_comment, wrapped)
                         pending_comment = nil

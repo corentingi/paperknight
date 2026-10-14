@@ -147,11 +147,7 @@ function PkStudyView:toggleFlip()
     end
     self:_build()
     if not self.cursor then -- chapter that cannot be opened: stays locked
-        self.board:updateBoard()
-        self.board:setHighlights({})
-        self.board:setShapes(nil)
-        self.board:setBadge(nil)
-        self.board.locked = true
+        self:_showOpenError()
     elseif self.lesson then
         self:startLesson()
     else
@@ -248,6 +244,17 @@ function PkStudyView:_redraw(page)
     PkRefresh.below(self, self.board, self.buttons) -- the board refreshes its squares
 end
 
+-- A chapter that cannot be opened: empty locked board and the error (again
+-- after a rebuild, e.g. Flip board).
+function PkStudyView:_showOpenError()
+    self.board:updateBoard()
+    self.board:setHighlights({})
+    self.board:setShapes(nil)
+    self.board:setBadge(nil)
+    self.board.locked = true
+    self:_setText(T(_("Cannot open this chapter: %1"), self._open_error or "?"))
+end
+
 --- Opens chapter `index` at its start position.
 function PkStudyView:loadChapter(index)
     self:_cancelReply()
@@ -262,22 +269,19 @@ function PkStudyView:loadChapter(index)
     if not cursor then
         logger.warn("Paperknight: cannot open chapter", index, err)
         self.cursor = nil
+        self._open_error = tostring(err)
         self.game.reset()
         self:_build()
-        self.board:updateBoard()
-        self.board:setHighlights({})
-        self.board:setShapes(nil)
-        self.board:setBadge(nil)
-        self.board.locked = true
+        self:_showOpenError()
         self:_setButtons(self.browse_buttons)
         for _, id in ipairs({ "start", "back", "lines", "forward", "end", "train" }) do
             self.buttons:getButtonById(id):enableDisable(false)
         end
         self.title_bar:setTitle(util.fixUtf8(self.chapter.title, "?"))
-        self:_setText(T(_("Cannot open this chapter: %1"), tostring(err)))
         PkRefresh.page(self)
         return
     end
+    self._open_error = nil
     -- nothing to train in a chapter without moves
     self.browse_buttons:getButtonById("train"):enableDisable(#cursor.root.children > 0)
     self.cursor = cursor

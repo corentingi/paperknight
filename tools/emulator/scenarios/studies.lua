@@ -222,6 +222,8 @@ return function(h)
     h.tapWidget(bview.buttons:getButtonById("forward")) -- must not crash
     bview:onForward()
     bview:toggleFlip() -- rebuilds the board: must stay locked
+    local shown = bview.text.text_widget.text -- the panel widget, rebuilt by the flip
+    h.check(shown:find("Cannot open this chapter"), "error still shown after a flip: " .. tostring(shown))
     h.check(bview.board.flipped and bview.board.locked, "flipped broken chapter stays locked")
     bview:onClose()
     h.wait(0.5)

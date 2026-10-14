@@ -280,8 +280,29 @@ end
 
 --- Picks and loads the next puzzle. Returns true on success. A puzzle that
 -- cannot be set up (bad pack data) is skipped for the session.
+-- Puzzles seen recently and puzzles under review (or mastered), as sets,
+-- read once per session and kept up to date by _finishAttempt and
+-- _gradeReview: the pick tests many candidates per Next.
+function PkPuzzleView:_seenSets()
+    if not self._recent then
+        self._recent = self.progress:attemptedSince(os.time() - RECENT_DAYS * 86400)
+        self._reviewed = self.progress:reviewedIds()
+    end
+    return self._recent, self._reviewed
+end
+
+-- A puzzle was attempted (or reviewed): update the session sets.
+function PkPuzzleView:_markSeen(id, reviewed)
+    if not self._recent then return end -- read later, from the database
+    self._recent[id] = true
+    if reviewed then self._reviewed[id] = true end
+end
+
 function PkPuzzleView:nextPuzzle()
-    local since = os.time() - RECENT_DAYS * 86400
+    -- the puzzle left (touched, not finished) is recorded before the pick:
+    -- the pick uses the rating after it
+    self:_cancelReply()
+    self:_finishAttempt("skipped")
     self._bad = self._bad or {}
     if self.review and self.puzzle then self._skipped[self.puzzle.id] = true end
     local r_ok, review, r_puzzle = pcall(self._nextReview, self)
@@ -296,6 +317,7 @@ function PkPuzzleView:nextPuzzle()
     end
     local err
     local function pick()
+        local recent, reviewed = self:_seenSets()
         return self.pack:pickNear(self.progress:rating(), {
             random = self.random,
             theme = self.theme,
@@ -303,9 +325,10 @@ function PkPuzzleView:nextPuzzle()
                 return not (self.puzzle and p.id == self.puzzle.id)
                     and not self._served[p.id]
                     and not self._bad[p.id]
-                    and not self.progress:getReview(p.id) -- comes back as a review
+                    -- under review: comes back as a review; mastered: never again
+                    and not reviewed[p.id]
             end,
-            fresh = function(p) return not self.progress:wasAttemptedSince(p.id, since) end,
+            fresh = function(p) return not recent[p.id] end,
         })
     end
     for _try = 1, MAX_LOAD_TRIES do
@@ -320,6 +343,8 @@ function PkPuzzleView:nextPuzzle()
             break -- the database itself: retrying will not help
         end
         if not puzzle then
+            -- no puzzle left on screen (a load failed): nothing to move
+            if not self.session and self.board then self.board.locked = true end
             self:_updateTitle()
             if self.puzzle then
                 self:_setStatus(self.theme and _("No other puzzle with this theme in the pack.")
@@ -368,6 +393,9 @@ function PkPuzzleView:_finishAttempt(reason)
     if not s:isOver() and not touched then return end
     self.recorded = true
     if self.review then return nil, nil, self:_gradeReview(s:isCleanSolve()) end
+    -- missed: it will come back as a review (ADR-0014), saved with the attempt
+    local missed = not s:isCleanSolve()
+    local card = missed and not self.progress:getReview(self.puzzle.id) and PkPuzzleReview.missed(nil) or nil
     local ok, before, after = pcall(self.progress.record, self.progress, {
         puzzle_id = self.puzzle.id,
         puzzle_rating = self.puzzle.rating,
@@ -375,22 +403,15 @@ function PkPuzzleView:_finishAttempt(reason)
         solved = s.state == "solved",
         mistakes = s.mistakes,
         used_help = s.used_help,
-    })
+    }, card)
     if not ok then
         logger.warn("Paperknight: cannot save the attempt:", before)
         return nil
     end
     logger.info("Paperknight: attempt", self.puzzle.id, reason, before, "->", after)
+    self:_markSeen(self.puzzle.id, missed)
     local note
-    if not s:isCleanSolve() then -- missed: it will come back (ADR-0014)
-        local r_ok, err = pcall(function()
-            if not self.progress:getReview(self.puzzle.id) then
-                self.progress:saveReview(self.puzzle.id, PkPuzzleReview.missed(nil))
-            end
-        end)
-        if r_ok then note = T(_("It will come back in %1 days for a review."), PkPuzzleReview.AFTER_MISS)
-        else logger.warn("Paperknight: cannot save the review:", err) end
-    end
+    if missed then note = T(_("It will come back in %1 days for a review."), PkPuzzleReview.AFTER_MISS) end
     return before, after, note
 end
 
@@ -399,19 +420,20 @@ end
 function PkPuzzleView:_gradeReview(clean)
     local id, note = self.puzzle.id, nil
     local ok, err = pcall(function()
+        local card
         if clean then
-            local card, days = PkPuzzleReview.solved(self.review)
-            if card then
-                self.progress:saveReview(id, card)
-                note = T(_("Next review in %1 days."), days)
-            else
-                self.progress:removeReview(id)
-                note = _("Mastered: this puzzle will not come back.")
-            end
+            local days
+            card, days = PkPuzzleReview.solved(self.review)
+            note = card and T(_("Next review in %1 days."), days)
+                or _("Mastered: this puzzle will not come back.")
         else
-            self.progress:saveReview(id, PkPuzzleReview.missed(self.review))
+            card = PkPuzzleReview.missed(self.review)
             note = T(_("It will come back in %1 days."), PkPuzzleReview.AFTER_MISS)
         end
+        -- recorded as a review (not rated): the puzzle stays seen, so a
+        -- mastered one never comes back as a new puzzle
+        self.progress:recordReview(id, clean, self.puzzle.rating, card)
+        self:_markSeen(id, true)
     end)
     if not ok then logger.warn("Paperknight: cannot save the review:", err) end
     logger.info("Paperknight: review", id, clean and "clean" or "missed")
@@ -560,16 +582,19 @@ function PkPuzzleView:showStats()
     UIManager:show(self.stats_view)
 end
 
+--- Trains `theme` (nil: all themes). Returns false when it has no puzzle to
+-- offer (the previous theme stays).
 function PkPuzzleView:setTheme(theme)
-    if theme == self.theme then return end -- don't abandon the current puzzle
+    if theme == self.theme then return true end -- don't abandon the current puzzle
     local previous = self.theme
     self.theme = theme
     if self:nextPuzzle() then
-        self.progress:setSetting("theme", theme)
-    else
-        self.theme = previous
-        self:_updateTitle()
+        pcall(self.progress.setSetting, self.progress, "theme", theme)
+        return true
     end
+    self.theme = previous
+    self:_updateTitle()
+    return false
 end
 
 function PkPuzzleView:onHint()

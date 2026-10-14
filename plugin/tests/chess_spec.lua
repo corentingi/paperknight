@@ -28,4 +28,23 @@ return {
         t.ok(game.redo(), "redo")
         t.eq(game.history()[1], "d4", "redone move")
     end },
+    { "the redo history ends with a reset, a load or a new move", function(t)
+        local game = Chess:new()
+        game.move("d4"); game.move("d5")
+        game.undo(); game.undo()
+        t.eq(#game.redo_history(), 2, "two moves to redo")
+        game.reset()
+        t.eq(#game.redo_history(), 0, "reset clears it")
+        t.eq(_G._reset, nil, "no global leaked")
+        game.move("e4"); game.undo()
+        game.load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        t.eq(#game.redo_history(), 0, "load clears it")
+        game.move("e4"); game.move("e5"); game.undo()
+        t.eq(#game.redo_history(), 1, "one move to redo")
+        game.move("c5")
+        t.eq(#game.redo_history(), 0, "a new move clears it")
+        t.eq(game.redo(), nil, "nothing to redo")
+        game.move("Nf3"); game.undo(); game.redo()
+        t.eq(game.history()[3], "Nf3", "redo still works")
+    end },
 }
