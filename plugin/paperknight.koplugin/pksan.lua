@@ -14,14 +14,14 @@
 -- "np" / "cp" for promotions).
 -- Differences from chess.lua, on purpose: pksan is lenient with SAN written
 -- by people and tools (over-disambiguation "Nbd2", a missing or extra "x",
--- "dc5", long form "e2e4", lowercase promotion "a8=q"): the target square
+-- "dc5", long form "e2e4" / "g1f3" / "e1g1", lowercase promotion "a8=q"): the target square
 -- and the legality check decide. It is stricter where chess.lua is wrong
 -- (castling needs the rook on its square) and allows kingless diagrams.
 local PkSan = {}
 
 -- Bump when the output changes (moves, FENs, SAN, legality): it
 -- invalidates the resolved-moves caches (pkrescache.lua).
-PkSan.VERSION = 1
+PkSan.VERSION = 2 -- 2: long-form piece moves ("g1f3", "e1g1")
 
 local byte, char, sub, upper, lower = string.byte, string.char, string.sub, string.upper, string.lower
 
@@ -257,6 +257,16 @@ function PkSan.resolve(pos, san)
     local to = sq(target)
     local color = pos.turn
     local t = (p ~= "" and lower(p)) or "p"
+    -- long form without a piece letter ("g1f3"): the piece on the origin square
+    if p == "" and df ~= "" and dr ~= "" then
+        local piece = pos.board[sq(df .. dr)]
+        if piece and colorOf(piece) == color and lower(piece) ~= "p" then
+            t = lower(piece)
+            if t == "k" and df == "e" and dr == target:sub(2, 2) and (target:sub(1, 1) == "g" or target:sub(1, 1) == "c") then
+                return castle(pos, target:sub(1, 1) == "g" and "k" or "q", san) -- "e1g1"
+            end
+        end
+    end
     local occupant = pos.board[to]
     if occupant and colorOf(occupant) == color then return nil, "own piece on " .. target end
     local origins, ep_capture = {}, nil

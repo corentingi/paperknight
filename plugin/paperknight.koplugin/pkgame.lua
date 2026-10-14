@@ -142,6 +142,51 @@ function PkGame:initializeGameLogic()
             self:updateTimerDisplay() -- Callback to update timer display every second
     end)
     self.running = false -- Game is paused initially, starts on first human move or explicit play
+    self:_loadSettings()
+end
+
+-- Play settings (clocks, increments, who plays which side, engine strength)
+-- are kept in progress.sqlite like the other modes' preferences.
+local function withProgress(fn)
+    local ok, err = pcall(function()
+        local PkProgress = require("pkprogress")
+        local progress = PkProgress.open(DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+        local f_ok, f_err = pcall(fn, progress)
+        progress:close()
+        if not f_ok then error(f_err, 0) end
+    end)
+    if not ok then Logger.warn("PkGame: settings:", err) end
+end
+
+--- Applies the saved settings to a new game (the engine strength once the
+-- engine is ready). Without an engine both sides stay human.
+function PkGame:_loadSettings()
+    withProgress(function(progress)
+        for _, color in ipairs({ Chess.WHITE, Chess.BLACK }) do
+            local base = tonumber(progress:getSetting("play.base." .. color))
+            local incr = tonumber(progress:getSetting("play.incr." .. color))
+            if base and base > 0 then self.timer.base[color] = base end
+            if incr and incr >= 0 then self.timer.increment[color] = incr end
+            if PkGame.hasEngine() and progress:getSetting("play.human." .. color) == "0" then
+                self.game.set_human(color, false)
+            end
+        end
+        self.saved_elo = tonumber(progress:getSetting("play.elo"))
+    end)
+    self.timer:reset()
+end
+
+--- Saves the current settings (after the settings dialog applied them).
+function PkGame:_saveSettings()
+    withProgress(function(progress)
+        for _, color in ipairs({ Chess.WHITE, Chess.BLACK }) do
+            progress:setSetting("play.base." .. color, self.timer.base[color])
+            progress:setSetting("play.incr." .. color, self.timer.increment[color])
+            progress:setSetting("play.human." .. color, self.game.is_human(color) and "1" or "0")
+        end
+        local opt = self.engine and self.engine.state.options and self.engine.state.options["UCI_Elo"]
+        if opt and opt.value then progress:setSetting("play.elo", opt.value) end
+    end)
 end
 
 --- PkGame:initializeEngine()
@@ -171,6 +216,10 @@ function PkGame:initializeEngine()
         Logger.info("PkGame: UCI engine signaled uciok (engine ready)")
         dbg("UCI: uciok received (engine is ready)", "ENGINE")
 
+        if self.saved_elo then -- the strength chosen last time
+            self.engine:setOption("UCI_LimitStrength", "true")
+            self.engine:setOption("UCI_Elo", tostring(self.saved_elo))
+        end
         self:updatePgnLogInitialText() -- Update PGN log with engine name/author
     end)
 
@@ -221,7 +270,7 @@ function PkGame:updatePgnLogInitialText()
     end
     if self.pgn_log then
         self.pgn_log:setText(text)
-        UIManager:setDirty(self, "ui") -- Request UI redraw to show updated text
+        self:_refreshText()
     end
 end
 
@@ -236,6 +285,7 @@ function PkGame:initializeBoard()
         width = self.full_width,
         height = math.floor(0.7 * self.full_height), -- Calculate board height
         show_parent = self, -- PkGame: repaints go through this window
+        square_refresh = PkRefresh.STEP, -- a move refreshes its squares only (pkrefresh.lua)
         -- Callback for when any move (human or engine) has been executed and needs UI updates.
         moveCallback = function(move) self:onMoveExecuted(move) end,
         -- NEW: This callback is expected to be triggered by ChessBoard
@@ -405,7 +455,7 @@ function PkGame:handleUndoMove(all_moves)
     if moved then
         self.board:updateBoard() -- Redraw board after undo
         self:updatePgnLog() -- Update PGN text
-        UIManager:setDirty(self, "ui") -- Request UI redraw
+        self:_refreshText()
     end
     if was_running then self.timer:start() end -- only if it was running
 end
@@ -430,7 +480,7 @@ function PkGame:handleRedoMove(all_moves)
     if moved then
         self.board:updateBoard()
         self:updatePgnLog()
-        UIManager:setDirty(self, "ui")
+        self:_refreshText()
     end
     if was_running then self.timer:start() end
 end
@@ -475,7 +525,7 @@ function PkGame:openLoadPgnDialog()
                 self:updatePgnLog()
                 self:updateTimerDisplay()
                 self:updatePlayerDisplay()
-                UIManager:setDirty(self, "ui")
+                PkRefresh.page(self) -- a new game on screen, like a new puzzle
             end,
         }
     )
@@ -632,13 +682,13 @@ function PkGame:onMoveExecuted(move)
 
         self:updateTimerDisplay()
         self:updatePlayerDisplay()
-        UIManager:setDirty(self, "ui")
+        self:_refreshText()
         return
     end
 
     -- If the game is not over, continue to the next player's turn
     self:launchNextMove() -- Prepare for the next player's turn
-    UIManager:setDirty(self, "ui") -- Request UI redraw
+    self:_refreshText()
 end
 
 --- PkGame:uciMove(inmove_str)
@@ -656,7 +706,17 @@ function PkGame:uciMove(inmove_str)
     local move = self.game.move(tmove) -- Attempt to make the move
     if move then
         self.board:handleGameMove(move) -- Update the board visually
+        return
     end
+    -- an engine move that is not legal here: say so and pause, instead of
+    -- waiting forever for a move that never comes
+    Logger.warn("PkGame: illegal engine move", inmove_str, "in", self.game.fen())
+    self.running = false
+    if self.timer then self.timer:stop() end
+    self:updateTimerDisplay()
+    UIManager:show(infoMessage:new{
+        text = T(_("The engine played an illegal move (%1). The game is paused."), tostring(inmove_str)),
+    })
 end
 
 --- PkGame:launchUCI()
@@ -710,6 +770,12 @@ end
 -- The status bar (clocks, players) changed: repaint the screen, refresh only
 -- the bar, without a flash (TitleBar's own refresh is "ui", and was asked for
 -- a widget that is not a window: a whole-screen refresh, every clock tick).
+-- The text under the board (moves, buttons, status bar) changed: refreshed
+-- without a flash; the board refreshes its own squares.
+function PkGame:_refreshText()
+    PkRefresh.below(self, self.board, self.status_bar)
+end
+
 function PkGame:_refreshStatusBar()
     local d = self.status_bar.dimen
     UIManager:setDirty(self, PkRefresh.STEP, d and d.w > 0 and d or nil)
@@ -760,7 +826,7 @@ function PkGame:resetGame()
 
     self.pgn_log:setText(T(_("New game.\n%1 to play."), PkSide.name("w")))
     self.board:updateBoard()
-    UIManager:setDirty(self, "ui")
+    PkRefresh.page(self) -- a new game on screen, like a new puzzle
 end
 
 --- PkGame:handleSaveFile(dialog, filename_input, current_dir)
@@ -932,7 +998,7 @@ function PkGame:openPromotionDialog(from_sq, to_sq, pawn_color)
                 text = _("Failed to promote pawn. Please try again."),
             })
             self.board:updateBoard()
-            UIManager:setDirty(self, "ui")
+            self:_refreshText()
         end
     end)
 end
@@ -1001,6 +1067,7 @@ function PkGame:createStatusBar()
                 game     = self.game,
                 parent   = self,
                 onApply  = function(_)
+                    self:_saveSettings()
                     if not self.game.is_human(self.game.turn()) then
                         self:launchUCI()
                     end

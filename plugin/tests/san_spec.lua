@@ -91,6 +91,20 @@ return {
         end
         t.ok(checked > 500, "moves checked: " .. checked)
     end },
+    { "long form: pawns and pieces (g1f3), castling (e1g1)", function(t)
+        local m = PkSan.play(START, "e2e4")
+        t.eq(m and m.san, "e4", "pawn")
+        m = PkSan.play(START, "g1f3")
+        t.eq(m and m.san, "Nf3", "knight from its square")
+        local castle = "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1" -- python-chess checked
+        m = PkSan.play(castle, "e1g1")
+        t.eq(m and m.san, "O-O", "king two squares: castling")
+        m = PkSan.play(castle, "e1c1")
+        t.eq(m and m.san, "O-O-O", "queenside")
+        m = PkSan.play(castle, "a1b1")
+        t.eq(m and m.san, "Rb1", "rook")
+        t.eq((PkSan.play(START, "g1g3")), nil, "an impossible long-form move is rejected")
+    end },
     { "castling: rights, path, through check", function(t)
         local fen = "r3kr2/8/8/8/8/8/8/R3K2R w KQ - 0 1"
         rejects(t, fen, "O-O", "f1 attacked by the f8 rook")

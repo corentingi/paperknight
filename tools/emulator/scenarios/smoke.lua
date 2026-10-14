@@ -23,8 +23,14 @@ return function(h)
         h.check(f:sub(1, 1) == "/" and io.open(f) ~= nil, "icon path must be absolute and exist: " .. f)
     end
 
+    local stop = h.recordRefreshes()
     h.tapWidget(board.table:getButtonById(board.toId(4, 1))) -- e2
     h.tapWidget(board.table:getButtonById(board.toId(4, 3))) -- e4
+    local sent = stop()
+    -- a move: the board's squares and the text below, without a flash
+    for _, r in ipairs(sent) do
+        h.check(r.mode == "[partial]", ("game move refresh: %s %d,%d %dx%d"):format(r.mode, r.x, r.y, r.w, r.h))
+    end
     h.settle()
     local hist = view.game.history()
     h.check(#hist == 1 and hist[1] == "e4", "expected history {e4}, got " .. table.concat(hist, " "))
@@ -44,6 +50,27 @@ return function(h)
     h.check(settings.dialog, "settings dialog shown without an engine")
     require("ui/uimanager"):close(settings.dialog)
     h.settle()
+    -- an illegal engine move pauses the game with a message (no endless wait)
+    local UIM = require("ui/uimanager")
+    view.running = true
+    view:uciMove("a1a8")
+    h.settle()
+    local message = UIM._window_stack[#UIM._window_stack].widget
+    h.check(not view.running and message.text and message.text:find("illegal move", 1, true),
+        "illegal engine move reported: " .. tostring(message.text))
+    UIM:close(message)
+    h.settle()
+    -- the settings are saved and come back with the next game
+    view.timer.base.w, view.timer.increment.w = 300, 5
+    view:_saveSettings()
+    local view2 = pk:startGame()
+    h.settle()
+    h.check(view2.timer.base.w == 300 and view2.timer.increment.w == 5, "saved clock settings applied to a new game")
+    view2.timer.base.w, view2.timer.increment.w = 30 * 60, 0
+    view2:_saveSettings()
+    require("ui/uimanager"):close(view2)
+    h.settle()
+    view = pk.game_view or view
     -- switching mode closes it (and its cleanup runs: clock, engine)
     PkNav.closeScreens(false)
     h.settle()
