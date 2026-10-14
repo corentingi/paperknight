@@ -13,7 +13,7 @@ return function(h)
 
     local view = pk:startPuzzles()
     h.check(view, "puzzle view did not open (pack missing?)")
-    h.wait(1)
+    h.settle()
     h.check(view.theme == nil and view.puzzle, "stale theme dropped and a puzzle loaded")
     h.check(view.progress:getSetting("theme") == nil, "stale theme cleared from settings")
 
@@ -34,7 +34,7 @@ return function(h)
 
     -- 1. Mate in one for Black (board flipped): wrong move first, then the mate.
     view:loadPuzzle(view.pack:get("004JD"))
-    h.wait(1)
+    h.settle()
     h.check(view.board.flipped, "board shows Black's side")
     local r, f = labels(view.board)
     h.check(r == "18" and f == "ha", "flipped labels top-down 1..8, h..a: " .. r .. " " .. f)
@@ -58,7 +58,7 @@ return function(h)
 
     -- 2. Mate in two for White: correct move, opponent replies, finishing move.
     view:loadPuzzle(view.pack:get("0042j"))
-    h.wait(1)
+    h.settle()
     -- selection frame on the puzzle board (the board repaints through the view)
     do
         local Screen = require("device").screen
@@ -68,12 +68,12 @@ return function(h)
             return c:getColor8().a
         end
         local r = view.board.table:getButtonById(view.board.chessToId("a2")).dimen
-        tapSquare("a2"); h.wait(0.5)
+        tapSquare("a2"); h.settle()
         h.check(shown(r.x + 1, r.y + math.floor(r.h / 2)) == 0x00, "selection frame shown on the puzzle board")
-        tapSquare("b2"); h.wait(0.5) -- another own piece: selection moves
+        tapSquare("b2"); h.settle() -- another own piece: selection moves
         h.check(view.board.selected == "b2", "selection switched to b2")
         h.check(shown(r.x + 1, r.y + math.floor(r.h / 2)) ~= 0x00, "a2 frame gone")
-        tapSquare("b2"); h.wait(0.3)
+        tapSquare("b2"); h.settle()
     end
     h.check(not view.board.flipped, "board shows White's side")
     r, f = labels(view.board)
@@ -134,7 +134,7 @@ return function(h)
         local d = math.floor(view.board.button_size * 0.32)
         return Screen.bb:getPixel(r.x + r.w - math.floor(d / 2), r.y + math.floor(d / 5)):getColor8().a
     end
-    h.wait(0.5)
+    h.settle()
     -- all themes: the puzzle's themes once it is over (length and "mate" left out)
     h.check(status():find("Themes: Mate in 2, Back rank mate, Middlegame", 1, true), "themes shown: " .. status())
     h.check(not status():find("Short", 1, true), "length tag left out: " .. status())
@@ -156,7 +156,7 @@ return function(h)
     tapButton("back")
     h.check(view.session.pos == 3 and iconAt("d8"):find("bQ%.svg$"), "‹ shows the reply again")
     h.check(view.board.badge == nil, "no badge before the final position")
-    h.wait(0.5)
+    h.settle()
     h.check(badgePixel("d8") ~= 0, ("badge erased: %x"):format(badgePixel("d8")))
     h.check(status():find("Solved!", 1, true) and status():find("Move 2/3: 25… Qxd8", 1, true), "replay status: " .. status())
     h.check(status():find("Themes: Mate in 2", 1, true), "themes kept while stepping: " .. status())
@@ -165,7 +165,7 @@ return function(h)
 
     -- 3. Hint and solution on the same puzzle via Retry.
     tapButton("retry")
-    h.wait(1)
+    h.settle()
     h.check(view.board.badge == nil, "retry removes the badge")
     tapButton("hint")
     h.check(status():find("d2"), "hint names the square: " .. status())
@@ -190,16 +190,16 @@ return function(h)
     h.check(view.session.pos == 1 and status():find("Puzzle position, after 24… dxe5", 1, true), "swipe west: " .. status())
 
     -- 3b. Buttons pressed while the opponent's reply is still pending.
-    view.reply_delay = 3
-    tapButton("retry"); h.wait(1)
+    view.reply_delay = 1 -- the waits below outlast it: a cancelled reply would have fired
+    tapButton("retry"); h.settle()
     tapSquare("d2"); tapSquare("d8")
     h.check(view.board.locked and view._reply_task, "reply pending")
     tapButton("solution")
-    h.wait(3.5) -- past the original reply time
+    h.wait(1.5) -- past the original reply time
     h.check(view.session.state == "failed" and view.board.locked, "still finished and locked")
     h.check(status():find("Solution: 26. Rxd8#", 1, true), "status not overwritten by the reply: " .. status())
     h.check(iconAt("d8"):find("wR%.svg$"), "revealed move drawn (Rxd8#): " .. iconAt("d8"))
-    tapButton("retry"); h.wait(1)
+    tapButton("retry"); h.settle()
     tapSquare("d2"); tapSquare("d8")
     tapButton("hint") -- shows the pending reply at once, then the hint
     h.check(not view._reply_task and not view.board.locked, "reply flushed by hint")
@@ -208,14 +208,14 @@ return function(h)
 
     -- 4. Theme filter: pick "Mate in 1" in the menu by tapping it.
     h.tapWidget(view.title_bar.left_button)
-    h.wait(0.5)
+    h.settle()
     h.check(view.menu_dialog, "title-bar menu opened")
     for _, row in ipairs(view.menu_dialog.buttontable.buttons_layout) do
         for _, btn in ipairs(row) do
             if btn.text == "Theme…" then h.tapWidget(btn) end
         end
     end
-    h.wait(1)
+    h.settle()
     h.check(view.theme_menu, "theme menu opened")
     h.shot("puzzle-themes")
     local target
@@ -224,7 +224,7 @@ return function(h)
     end
     h.check(target, "'Mate in 1' is listed on the first menu page")
     h.tapWidget(target)
-    h.wait(1)
+    h.settle()
     h.check(not view.theme_menu, "menu closed after choosing")
     h.check(view.theme == "mateIn1", "theme set")
     h.check(view.progress:getSetting("theme") == "mateIn1", "theme saved")
@@ -232,7 +232,7 @@ return function(h)
     h.check(subtitle:find("Mate in 1"), "subtitle shows the theme: " .. subtitle)
     for _ = 1, 3 do
         h.check((" " .. view.puzzle.themes .. " "):find(" mateIn1 "), "puzzle has the theme: " .. view.puzzle.themes)
-        tapButton("next"); h.wait(1)
+        tapButton("next"); h.settle()
     end
     h.shot("puzzle-theme-mate1")
     -- choosing the current theme again keeps the current puzzle
@@ -243,7 +243,7 @@ return function(h)
     -- 5. Next picks another puzzle near the rating.
     local last_id = view.puzzle.id
     tapButton("next")
-    h.wait(1)
+    h.settle()
     h.check(view.puzzle and view.puzzle.id ~= last_id, "a new puzzle is loaded")
     h.shot("puzzle-next")
 
@@ -274,11 +274,11 @@ return function(h)
     local line = view.pack:get("0042j")
     local solve = "d2d8"
     view:loadPuzzle(copy(line, { id = "BADLINE", moves = "d6e5 d2d8 a1a1 d1d8" }))
-    h.wait(0.5)
+    h.settle()
     local record = view.progress.record
     view.progress.record = function() error("disk full") end
     tapSquare(solve:sub(1, 2)); tapSquare(solve:sub(3, 4))
-    h.wait(0.5)
+    h.settle()
     h.check(view.session == nil and view.board.locked, "broken line stopped")
     h.check(status():find("invalid move", 1, true), "status: " .. status())
     view.progress.record = record
@@ -310,7 +310,7 @@ return function(h)
 
     makeDue(2) -- the 21-day review: the last one
     view:nextPuzzle()
-    h.wait(0.5) -- painted: the squares have their positions
+    h.settle() -- painted: the squares have their positions
     h.check(view.puzzle.id == "004JD" and view.review, "served again")
     tapSquare("a3"); tapSquare("c2")
     h.check(status():find("Mastered", 1, true) and not view.progress:getReview("004JD"), "mastered: " .. status())
@@ -318,7 +318,7 @@ return function(h)
     view.progress:saveReview("004JD", { step = 2, due = today, lapses = 0, missed = os.time() })
     view._skipped, view.review = {}, nil
     view:nextPuzzle()
-    h.wait(0.5)
+    h.settle()
     tapButton("solution")
     h.check(status():find("come back in 3 days", 1, true), "missed review: " .. status())
     card = view.progress:getReview("004JD")
@@ -334,7 +334,7 @@ return function(h)
     -- 8. A theme that runs out never serves the same puzzle twice in a row:
     -- unplayed ones first, then repeats (announced), alternating.
     view:setTheme("intermezzo") -- 2 puzzles in the fixture pack
-    h.wait(0.5)
+    h.settle()
     local seen, prev = {}, view.puzzle.id
     seen[prev] = true
     h.check(not view.stale, "first one unplayed")
@@ -360,7 +360,7 @@ return function(h)
         and status():find("No other puzzle with this theme", 1, true),
         "a reviewed puzzle is not served as new: " .. tostring(view.theme) .. " " .. status())
     view:setTheme("attackingF2F7") -- a single puzzle: 02yxb
-    h.wait(0.5)
+    h.settle()
     h.check(view.theme == "attackingF2F7" and view.puzzle.id == "02yxb", "single-puzzle theme chosen")
     local only = view.puzzle.id
     h.check(not view:nextPuzzle(), "no other puzzle")
@@ -371,7 +371,7 @@ return function(h)
     tapButton("solution") -- over, with a theme chosen: no themes line
     h.check(view.session.state == "failed" and not status():find("Themes:", 1, true), "no themes line: " .. status())
     view:showStats()
-    h.wait(0.5)
+    h.settle()
     local sv = view.stats_view
     h.check(sv, "stats page open")
     local attempts = view.progress:attempts()
@@ -409,11 +409,11 @@ return function(h)
     local NScreen = require("device").screen
     NScreen:toggleNightMode()
     require("ui/uimanager"):setDirty("all", "full")
-    h.wait(0.5)
+    h.settle()
     local legend = sv.title_bar.subtitle_widget.text
     NScreen:toggleNightMode()
     require("ui/uimanager"):setDirty("all", "full")
-    h.wait(0.5)
+    h.settle()
     h.check(legend:find("white: clean", 1, true), "night legend: " .. legend)
     h.check(sv.title_bar.subtitle_widget.text:find("black: clean", 1, true), "day legend back")
     if sv.pages > 1 then
@@ -421,13 +421,13 @@ return function(h)
         h.check(sv.page == 2 and sv.rows[1].entry == sv.entries[sv.per_page + 1], "next page")
         h.swipe(sv.dimen.w / 2, sv.dimen.h / 2, "east")
         h.check(sv.page == 1, "swipe back to the first page")
-        h.wait(0.5)
+        h.settle()
     end
     local row
     for _, r in ipairs(sv.rows) do if r.entry.label == "Intermezzo" then row = r end end
     h.check(row, "Intermezzo row on the first page")
     h.tapWidget(row)
-    h.wait(0.5)
+    h.settle()
     h.check(view.stats_view == nil and view.theme == "intermezzo", "tapping a theme trains it: " .. tostring(view.theme))
     -- 10. En passant shown like a reply (Board:showMove): the captured pawn
     -- disappears, for both sides (FENs checked with python-chess)

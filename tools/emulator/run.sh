@@ -39,21 +39,27 @@ case "$mode" in
     e2e)
         [[ $# -gt 0 ]] || { echo "e2e: no scenarios given" >&2; exit 2; }
         mkdir -p "$OUT"
-        failed=0
-        for scenario in "$@"; do
+        timeout_s="${PK_TIMEOUT:-120}"
+        # One scenario: its own home (a fresh first launch, nothing shared
+        # with the scenarios running next to it); its status in $OUT/<name>.status.
+        run_one() {
+            local scenario="$1" name home log result code status
             name="$(basename "$scenario" .lua)"
+            home="$BUILD/emulator-home/$name"
             log="$OUT/$name.log"; result="$OUT/$name.result"
             rm -f "$result"
-            # Fresh KOReader state every run: each scenario is a first launch.
-            rm -rf "$HOME_DIR/.config/koreader"
+            rm -rf "$home"
+            mkdir -p "$home/books"
             set +e
-            SDL_VIDEODRIVER=offscreen PK_SCENARIO="$(realpath "$scenario")" PK_RESULT="$result" \
-                PK_SHOTS_DIR="$OUT" timeout "${PK_TIMEOUT:-120}" "$KOREADER" "$HOME_DIR/books" >"$log" 2>&1
+            HOME="$home" SDL_VIDEODRIVER=offscreen PK_SCENARIO="$(realpath "$scenario")" PK_RESULT="$result" \
+                PK_SHOTS_DIR="$OUT" timeout "$timeout_s" "$KOREADER" "$home/books" >"$log" 2>&1
             code=$?
             set -e
             status="$(head -n1 "$result" 2>/dev/null || true)"
-            [[ -n "$status" ]] || status="FAIL: no result written"
-            if [[ "$status" == PASS && $code -ne 0 ]]; then
+            if [[ -z "$status" ]]; then
+                if [[ $code -eq 124 ]]; then status="FAIL: timeout after ${timeout_s}s (PK_TIMEOUT)"
+                else status="FAIL: no result written (exit code $code)"; fi
+            elif [[ "$status" == PASS && $code -ne 0 ]]; then
                 status="FAIL: KOReader exited with code $code"
             fi
             # Any error in the log fails the run (the baseline log has none).
@@ -61,6 +67,20 @@ case "$mode" in
             if [[ "$status" == PASS ]] && grep -qE "ERROR|stack traceback" "$log"; then
                 status="FAIL: errors in log"
             fi
+            echo "$status" > "$OUT/$name.status"
+        }
+        # PK_JOBS scenarios at a time (default 2), reported in the given order
+        jobs_max="${PK_JOBS:-2}"
+        for scenario in "$@"; do
+            while [[ $(jobs -rp | wc -l) -ge $jobs_max ]]; do wait -n || true; done
+            run_one "$scenario" &
+        done
+        wait
+        failed=0
+        for scenario in "$@"; do
+            name="$(basename "$scenario" .lua)"
+            log="$OUT/$name.log"; result="$OUT/$name.result"
+            status="$(cat "$OUT/$name.status" 2>/dev/null || echo "FAIL: not run")"
             echo "$name: $status (log: ${log#"$ROOT"/})"
             if [[ "$status" != PASS ]]; then
                 failed=1

@@ -56,6 +56,27 @@ function Harness:helpers(co)
         coroutine.yield()
     end
 
+    -- Lets the UI catch up after an action, without a fixed delay: paints now
+    -- (rebuilt widgets get their positions), lets the tasks queued for the
+    -- next tick run, and paints again. Timed tasks (an opponent's reply
+    -- after a delay) still need h.wait or h.waitFor.
+    function h.settle()
+        UIManager:forceRePaint()
+        h.wait(0.05)
+        UIManager:forceRePaint()
+    end
+
+    -- Waits until `pred()` is true (polled every 0.05 s), at most `timeout`
+    -- seconds (default 3); returns whether it became true.
+    function h.waitFor(pred, timeout)
+        local deadline = time.now() + time.s(timeout or 3)
+        while not pred() do
+            if time.now() > deadline then return false end
+            h.wait(0.05)
+        end
+        return true
+    end
+
     function h.tap(x, y)
         logger.info("pkharness: tap", x, y)
         UIManager:sendEvent(Event:new("Gesture", {
@@ -63,7 +84,7 @@ function Harness:helpers(co)
             pos = Geometry:new{ x = x, y = y, w = 0, h = 0 },
             time = time.now(),
         }))
-        h.wait(0.5)
+        h.settle()
     end
 
     -- Swipe from (x, y); direction "west" (finger moves left), "east", ...
@@ -76,7 +97,7 @@ function Harness:helpers(co)
             pos = Geometry:new{ x = x, y = y, w = 0, h = 0 },
             time = time.now(),
         }))
-        h.wait(0.5)
+        h.settle()
     end
 
     -- Records the refreshes sent to the screen (after KOReader's merges and
@@ -153,7 +174,10 @@ function Harness:run(scenario_path)
     if not chunk then
         return self:finish("FAIL: cannot load scenario: " .. tostring(load_err))
     end
-    local scenario = chunk()
+    local loaded, scenario = pcall(chunk)
+    if not loaded or type(scenario) ~= "function" then
+        return self:finish("FAIL: the scenario must return a function: " .. tostring(scenario))
+    end
     local co
     co = coroutine.create(function()
         scenario(self:helpers(co))

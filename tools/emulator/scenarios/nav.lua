@@ -28,12 +28,12 @@ return function(h)
     local function tapTitle(widget)
         local d = widget.title_bar.dimen
         h.tap(d.x + math.floor(d.w / 2), d.y + math.floor(d.h / 3))
-        h.wait(0.5)
+        h.settle()
     end
 
     -- 1. Home: the modes with a status, and the screen settings.
     PkNav.home()
-    h.wait(1)
+    h.settle()
     local home = top()
     h.check(home.name == "paperknight_home", "home shown: " .. names())
     local puzzles = menuItem(home, "Puzzles")
@@ -49,18 +49,18 @@ return function(h)
     PkProgress.open = function(...) opens = opens + 1; return open(...) end
     for _ = 1, 3 do
         require("ui/uimanager"):setDirty(home, "ui")
-        h.wait(0.3)
+        h.settle()
     end
     h.check(opens == 0, "home repaints: no database open (" .. opens .. ")")
     PkNav.statusChanged()
     require("ui/uimanager"):setDirty(home, "ui")
-    h.wait(0.3)
+    h.settle()
     PkProgress.open = open
     h.check(opens == 1, "status recomputed once after a change (" .. opens .. ")")
 
     -- 2. A mode opens above the home screen.
     h.tapWidget(puzzles)
-    h.wait(1)
+    h.settle()
     local view = top()
     h.check(view.name == "paperknight_puzzles" and names() == "paperknight_puzzles,paperknight_home",
         "puzzles above home: " .. names())
@@ -72,34 +72,34 @@ return function(h)
     h.check(not dialogButton(quick, "Puzzles"), "the current mode is not offered")
     h.shot("nav-quick")
     h.tapWidget(dialogButton(quick, "Studies"))
-    h.wait(1)
+    h.settle()
     h.check(names() == "paperknight_studies,paperknight_home", "switched to studies: " .. names())
 
     -- 4. Night mode from the ☰ menu of a list, and back.
     local studies = top()
     h.tapWidget(studies.title_bar.left_button)
-    h.wait(0.5)
+    h.settle()
     h.check(top() == PkNav.quick_dialog, "☰ opens the quick settings")
     h.tapWidget(dialogButton(top(), "Night mode: off"))
-    h.wait(1)
+    h.settle()
     h.check(Screen.night_mode, "night mode on")
     h.shot("nav-night")
     tapTitle(studies)
     h.tapWidget(dialogButton(top(), "Night mode: on"))
-    h.wait(1)
+    h.settle()
     h.check(not Screen.night_mode, "night mode off")
 
     -- 5. The puzzle ☰ menu: theme first, then the quick settings.
     tapTitle(studies)
     h.tapWidget(dialogButton(top(), "Puzzles"))
-    h.wait(1)
+    h.settle()
     view = top()
     h.tapWidget(view.title_bar.left_button)
-    h.wait(0.5)
+    h.settle()
     h.check(view.menu_dialog and dialogButton(view.menu_dialog, "Theme") and dialogButton(view.menu_dialog, "Openings"),
         "puzzle menu: theme and modes")
     h.tapWidget(dialogButton(view.menu_dialog, "Home"))
-    h.wait(1)
+    h.settle()
     h.check(names() == "paperknight_home", "back home: " .. names())
 
     -- 6. Frontlight: KOReader's own dialog (the desktop build has no
@@ -108,18 +108,18 @@ return function(h)
     PkNav.hasFrontlight = function() return true end
     PkNav.showFrontlight = function() shown = shown + 1 end
     UIManager:setDirty(home, "ui")
-    h.wait(1) -- home rebuilds its items (Frontlight… appears)
+    h.settle() -- home rebuilds its items (Frontlight… appears)
     h.tapWidget(menuItem(home, "Frontlight"))
-    h.wait(0.5)
+    h.settle()
     tapTitle(home)
     h.check(not dialogButton(top(), "Home"), "no Home button on the home screen")
     h.tapWidget(dialogButton(top(), "Frontlight"))
-    h.wait(0.5)
+    h.settle()
     PkNav.hasFrontlight, PkNav.showFrontlight = has, show
     h.check(shown == 2, "frontlight from the home screen and the quick settings: " .. shown)
 
     -- 7. Closing home leaves Paperknight.
     home:onClose()
-    h.wait(0.5)
+    h.settle()
     h.check(names() == "", "nothing left: " .. names())
 end

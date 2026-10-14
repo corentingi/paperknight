@@ -11,8 +11,15 @@ cd "$(dirname "$0")/../.."
 STAGE=build/dist/all
 [ -d "$STAGE/paperknight" ] || { echo "missing $STAGE/paperknight (staged studies and repertoires)" >&2; exit 1; }
 
-rsync -a --delete --exclude packs/puzzles.sqlite plugin/paperknight.koplugin/ "$STAGE/plugins/paperknight.koplugin/"
+# not shipped: the chess library's development files, a local bin/ (Stockfish
+# is installed by stockfish.sh); the staged puzzle pack is kept (P: protected)
+rsync -a --delete --delete-excluded --filter='P packs/puzzles.sqlite' \
+    --exclude 'pkchesslib/spec/' --exclude 'pkchesslib/perft.lua' --exclude 'pkchesslib/example.lua' \
+    --exclude '.travis.yml' --exclude '.gitignore' --exclude '.gitkeep' --exclude '/bin/' \
+    plugin/paperknight.koplugin/ "$STAGE/plugins/paperknight.koplugin/"
 (cd "$STAGE" && find fonts paperknight -type f ! -name .pka-files | LC_ALL=C sort > paperknight/.pka-files)
 tar czf build/dist/pka.tar.gz --owner=0 --group=0 -C "$STAGE" fonts paperknight plugins
-sed "s#@DIST_URL@#$DIST_URL#" tools/dist/pka.sh > build/dist/pka.sh
+# the installer checks the archive it downloads
+SHA=$(sha256sum build/dist/pka.tar.gz | cut -d' ' -f1)
+sed -e "s/@PKA_SHA256@/$SHA/" -e "s#@DIST_URL@#$DIST_URL#" tools/dist/pka.sh > build/dist/pka.sh
 echo "build/dist/pka.tar.gz ($(wc -l < "$STAGE/paperknight/.pka-files") asset files), build/dist/pka.sh"

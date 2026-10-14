@@ -46,6 +46,17 @@ class Report:
     problems: list[str] = field(default_factory=list)
 
 
+def _count_moves(game: chess.pgn.GameNode) -> int:
+    """Moves in the tree, variations included (iterative: a long chapter would
+    overflow Python's recursion limit)."""
+    moves, stack = 0, [game]
+    while stack:
+        node = stack.pop()
+        moves += len(node.variations)
+        stack.extend(node.variations)
+    return moves
+
+
 def validate(pgn: str) -> Report:
     """Parses every chapter with python-chess; illegal moves become problems (not fatal)."""
     stream = io.StringIO(pgn)
@@ -57,10 +68,7 @@ def validate(pgn: str) -> Report:
         if headers.get("ChapterMode") == "gamebook":
             report.gamebook_chapters += 1
 
-        def count(node: chess.pgn.GameNode) -> int:
-            return sum(1 + count(child) for child in node.variations)
-
-        report.moves += count(game)
+        report.moves += _count_moves(game)
         title = headers.get("ChapterName") or headers.get("Event", f"chapter {report.chapters}")
         for err in game.errors:
             report.problems.append(f"chapter {report.chapters} ({title}): {err}")

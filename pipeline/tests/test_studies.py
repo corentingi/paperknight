@@ -72,3 +72,22 @@ def test_cli_study_from_local_file(tmp_path, capsys):
     out = tmp_path / "paperknight-test-study-Xk3pQ7aZ.pgn"
     assert out.read_text() == FIXTURE.read_text()
     assert "5 chapters (1 interactive)" in capsys.readouterr().out
+
+
+def test_long_chapter_does_not_overflow_the_recursion():
+    import chess
+    board, sans = chess.Board(), []
+    while len(sans) < 1500:  # knights back and forth: 1500 plies, far past the recursion limit
+        for uci in ("g1f3", "g8f6", "f3g1", "f6g8"):
+            sans.append(board.san(chess.Move.from_uci(uci)))
+            board.push_uci(uci)
+    movetext = " ".join(f"{i // 2 + 1}. {s}" if i % 2 == 0 else s for i, s in enumerate(sans))
+    report = studies.validate(f'[Event "long"]\n\n{movetext} *\n')
+    assert report.moves == len(sans)
+
+
+def test_cli_refuses_a_zero_band_size(capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        main(["puzzles", "--input", "x.csv", "--per-band", "0"])
+    assert exit_info.value.code == 2
+    assert "must be at least 1" in capsys.readouterr().err

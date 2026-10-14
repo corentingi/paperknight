@@ -4,6 +4,8 @@ SHELL := /bin/bash
 KOREADER_VERSION := v2026.07.1
 KOREADER_TARBALL := koreader-linux-x86_64-$(KOREADER_VERSION).tar.xz
 KOREADER_URL     := https://github.com/koreader/koreader/releases/download/$(KOREADER_VERSION)/$(KOREADER_TARBALL)
+# the release asset's digest on GitHub (checked before extracting)
+KOREADER_SHA256  := 299aadb28147a25e9432ced1214ea444a4184393b5ae97cf42402c8a61b1a1b0
 
 BUILD     := build
 KOREADER  := $(BUILD)/koreader
@@ -25,6 +27,7 @@ koreader: $(LUAJIT) ## Download the pinned desktop KOReader into build/koreader
 $(LUAJIT):
 	@mkdir -p $(BUILD)/downloads $(KOREADER)
 	test -f $(BUILD)/downloads/$(KOREADER_TARBALL) || { curl -fsSL -o $(BUILD)/downloads/$(KOREADER_TARBALL).part $(KOREADER_URL) && mv $(BUILD)/downloads/$(KOREADER_TARBALL).part $(BUILD)/downloads/$(KOREADER_TARBALL); }
+	echo "$(KOREADER_SHA256)  $(BUILD)/downloads/$(KOREADER_TARBALL)" | sha256sum -c - || { rm -f $(BUILD)/downloads/$(KOREADER_TARBALL); exit 1; }
 	tar -xJf $(BUILD)/downloads/$(KOREADER_TARBALL) -C $(KOREADER)
 	@touch $@
 

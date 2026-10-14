@@ -2,12 +2,11 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
+import urllib.error
 from datetime import date
 from pathlib import Path
-
-import os
-import urllib.error
 
 from . import puzzles, sources, studies
 
@@ -22,7 +21,11 @@ def cmd_puzzles(args: argparse.Namespace) -> int:
         label = f"{src.name} (local file)"
     else:
         print(f"downloading {sources.LICHESS_PUZZLES_URL} (cached in {DOWNLOADS}) ...", file=sys.stderr)
-        src = sources.download(sources.LICHESS_PUZZLES_URL, DOWNLOADS)
+        try:
+            src = sources.download(sources.LICHESS_PUZZLES_URL, DOWNLOADS, force=args.refresh)
+        except (urllib.error.URLError, OSError) as e:
+            print(f"download failed: {e}", file=sys.stderr)
+            return 1
         label = f"{sources.LICHESS_PUZZLES_URL} (downloaded {date.fromtimestamp(src.stat().st_mtime)})"
     sel = puzzles.Selection(
         per_band=args.per_band,
@@ -54,6 +57,9 @@ def cmd_study(args: argparse.Namespace) -> int:
                     if e.code in (401, 403, 404) else "")
             print(f"download failed: HTTP {e.code}{hint}", file=sys.stderr)
             return 1
+        except (urllib.error.URLError, TimeoutError, OSError) as e:  # offline, DNS, timeout
+            print(f"download failed: {getattr(e, 'reason', e)}", file=sys.stderr)
+            return 1
     report = studies.validate(pgn)
     if report.chapters == 0:
         print("no chapters found (private study? set a token with --token-env)", file=sys.stderr)
@@ -65,6 +71,13 @@ def cmd_study(args: argparse.Namespace) -> int:
     return 0
 
 
+def positive_int(text: str) -> int:
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError(f"must be at least 1, got {value}")
+    return value
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="paperknight_pipeline", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -73,8 +86,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--input", help="local CSV or CSV.zst (default: download the Lichess dump)")
     p.add_argument("--output", default=str(PACKS / "puzzles.sqlite"))
     defaults = puzzles.Selection()
-    p.add_argument("--per-band", type=int, default=defaults.per_band, help="max puzzles per rating band")
-    p.add_argument("--band-width", type=int, default=defaults.band_width)
+    p.add_argument("--refresh", action="store_true",
+                   help="download the Lichess dump again (it is cached; Lichess updates it monthly)")
+    p.add_argument("--per-band", type=positive_int, default=defaults.per_band, help="max puzzles per rating band")
+    p.add_argument("--band-width", type=positive_int, default=defaults.band_width)
     p.add_argument("--min-popularity", type=int, default=defaults.min_popularity)
     p.add_argument("--min-plays", type=int, default=defaults.min_plays)
     p.add_argument("--max-rating-dev", type=int, default=defaults.max_rating_dev)

@@ -6,7 +6,7 @@ return function(h)
     local pk = h.ui.paperknight
     h.check(pk, "paperknight plugin is not loaded")
     local view = pk:startGame()
-    h.wait(1)
+    h.settle()
     h.shot("smoke-start")
     -- the game is its own screen, seen by the navigation (pknav.lua)
     local PkNav = require("pknav")
@@ -25,7 +25,7 @@ return function(h)
 
     h.tapWidget(board.table:getButtonById(board.toId(4, 1))) -- e2
     h.tapWidget(board.table:getButtonById(board.toId(4, 3))) -- e4
-    h.wait(1)
+    h.settle()
     local hist = view.game.history()
     h.check(#hist == 1 and hist[1] == "e4", "expected history {e4}, got " .. table.concat(hist, " "))
     h.check(iconFile(4, 3):sub(-6) == "wP.svg", "e4 shows a white pawn")
@@ -40,13 +40,13 @@ return function(h)
         timer = view.timer, game = view.game, parent = view, onApply = function() end,
     }
     settings:show()
-    h.wait(0.5)
+    h.settle()
     h.check(settings.dialog, "settings dialog shown without an engine")
     require("ui/uimanager"):close(settings.dialog)
-    h.wait(0.3)
+    h.settle()
     -- switching mode closes it (and its cleanup runs: clock, engine)
     PkNav.closeScreens(false)
-    h.wait(0.5)
+    h.settle()
     h.check(pk.game_view == nil and PkNav.screens()[1] ~= view, "closed by PkNav")
 
     -- the engine process is stopped for good: quit sent, pipes closed, child
@@ -74,7 +74,7 @@ return function(h)
     local PkPromotion = require("pkpromotion")
     local chosen
     local dialog = PkPromotion.show("w", function(letter) chosen = letter end)
-    h.wait(0.5)
+    h.settle()
     h.check(dialog._input_widget.keyboard == nil, "no keyboard built for the promotion chooser")
     local function find(w, id)
         if type(w) ~= "table" then return nil end

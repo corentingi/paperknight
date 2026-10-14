@@ -8,7 +8,7 @@ return function(h)
 
     -- 1. From the home screen: listed with Play (two players: no engine here)
     PkNav.home()
-    h.wait(1)
+    h.settle()
     local home = PkNav.homeShown()
     local labels = {}
     for _, item in ipairs(home.item_table) do labels[#labels + 1] = item.text end
@@ -16,12 +16,12 @@ return function(h)
     h.check(joined:find("Analysis board", 1, true) and joined:find("Play (two players)", 1, true),
         "home lists the analysis board and Play: " .. joined)
     local view = PkNav.open("analysis")
-    h.wait(1)
+    h.settle()
     h.check(view and view.name == "paperknight_analysis", "analysis board opened")
     h.check(view.engine == nil and view.panel_text:find("Install Stockfish", 1, true),
         "no engine installed: said in the panel: " .. view.panel_text)
     view:onClose()
-    h.wait(0.5)
+    h.settle()
 
     -- 2. With an engine (fake: two info lines and a bestmove per search)
     local script = os.getenv("HOME") .. "/fake-analysis.sh"
@@ -72,13 +72,13 @@ esac; done
     h.check(not view:setPosition("not a fen"), "invalid FEN refused")
     local fen = "6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1" -- back-rank mate in one (python-chess checked)
     h.check(view:setPosition(fen) and #view.line == 0 and view.game.fen() == fen, "position set from FEN")
-    h.wait(0.5) -- the rebuilt board gets its positions when painted
+    h.settle() -- the rebuilt board gets its positions when painted
     h.check(iconAt("g1"):find("wK%.svg$") and iconAt("d1"):find("wR%.svg$"), "the new position is drawn: "
         .. iconAt("g1"))
     tapSquare("d1"); tapSquare("d8")
     h.check(view.game.in_checkmate() and view.panel_text:find("Checkmate", 1, true), "mate shown: " .. view.panel_text)
     view:flip()
-    h.wait(0.5)
+    h.settle()
     h.check(view.board.flipped and view.pos == 1, "flipped, line kept")
     h.check(iconAt("d8"):find("wR%.svg$") and iconAt("g8"):find("bK%.svg$"), "the flipped board shows the pieces")
     h.shot("analysis")
@@ -91,6 +91,6 @@ esac; done
     pcall(ffi.cdef, "int kill(int, int);")
     h.check(ffi.C.kill(pid, 0) ~= 0, "engine stopped and reaped on close")
     PkNav.closeScreens(true)
-    h.wait(0.3)
+    h.settle()
     UIManager:nextTick(function() end)
 end

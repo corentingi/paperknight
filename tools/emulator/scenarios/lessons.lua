@@ -27,7 +27,7 @@ return function(h)
 
     -- 1. gamebook chapter opens in lesson mode, upcoming moves hidden
     view = PkStudies.openChapter(study, 2)
-    h.wait(1)
+    h.settle()
     h.check(view.lesson and view.buttons == view.lesson_buttons, "lesson mode")
     h.check(view.title_bar.subtitle_widget.text:find("Chapter 2/5", 1, true), "subtitle in lesson mode")
     h.check(panel():find("Your move %(○ White%)") and panel():find("mate in two"), "intro + prompt: " .. panel())
@@ -65,15 +65,15 @@ return function(h)
     h.shot("lesson-end")
 
     tapButton("next")
-    h.wait(1)
+    h.settle()
     h.check(view.chapter_index == 3, "Next went to chapter 3")
 
     -- 2. Train an ordinary chapter (as White, its orientation): e4 has a
     --    comment (Next), Nf3 doesn't (automatic reply); variations are sidelines
     view:loadChapter(1)
-    h.wait(1)
+    h.settle()
     h.check(view.buttons == view.browse_buttons, "ordinary chapter opens in browse mode")
-    tapButton("train"); h.wait(1)
+    tapButton("train"); h.settle()
     h.check(view.lesson and panel():find("Welcome!") and panel():find("^Your move %(○ White%)"), "training, status first: " .. panel())
     h.check(view.board.shapes == nil, "annotator shapes hidden while the student is to move")
     tapSquare("e2")
@@ -85,10 +85,10 @@ return function(h)
     h.check(builds == 1, "the panel is built once for the move: " .. builds)
     tapButton("next")
     h.check(view.cursor.node.san == "e5", "reply e5")
-    view.reply_delay = 3 -- generous margin: the tap itself waits 0.5 s
+    view.reply_delay = 1 -- margin over the taps (they settle in ~0.05 s)
     tapSquare("g1"); tapSquare("f3")
     h.check(view._reply_task and not view.waiting_next, "no comment: reply scheduled")
-    h.wait(3.5)
+    h.wait(1.5)
     view.reply_delay = 0.8
     h.check(view.cursor.node.san == "Nc6", "automatic reply Nc6: " .. tostring(view.cursor.node.san))
     tapSquare("f1"); tapSquare("b5")
@@ -98,13 +98,13 @@ return function(h)
     h.shot("lesson-train")
 
     -- 3. acting while a reply is pending: Browse, then Restart, then close
-    view.reply_delay = 3
-    tapButton("restart"); h.wait(1)
+    view.reply_delay = 1 -- the waits below outlast it: a cancelled reply would have fired
+    tapButton("restart"); h.settle()
     tapSquare("e2"); tapSquare("e4"); tapButton("next") -- e5 (commented e4 waits)
     tapSquare("g1"); tapSquare("f3")
     h.check(view._reply_task, "reply pending")
     tapButton("browse")
-    h.wait(3.5)
+    h.wait(1.5)
     h.check(not view.lesson and view.cursor.node.san == "Nf3", "Browse cancelled the reply")
     view:onClose()
 
@@ -116,17 +116,17 @@ return function(h)
     h.check(panel():find("Black to defend"), "intro: " .. panel())
     tapButton("next")
     h.check(view.cursor.node.san == "e4" and panel():find("Your move %(● Black%)"), "then White's first move: " .. panel())
-    view.reply_delay = 3
+    view.reply_delay = 1 -- the waits below outlast it: a cancelled reply would have fired
     tapSquare("e7"); tapSquare("e5")
     h.check(view._reply_task, "reply pending")
     view:onClose() -- must cancel the timer (no crash after close)
-    h.wait(3.5)
+    h.wait(1.5)
 
     -- 5. illegal move in the PGN: error state, not a loop
     local broken = PkStudy.fromText('[Event "x"]\n\n1. e4 Ke3 2. d4 *\n', "broken")
     view = PkStudies.openChapter(broken, 1)
-    h.wait(1)
-    tapButton("train"); h.wait(1)
+    h.settle()
+    tapButton("train"); h.settle()
     tapSquare("e2"); tapSquare("e4")
     h.check(view.lesson.state == "error" and panel():find("illegal move"), "error state: " .. panel())
     h.check(not view._reply_task and view.board.locked, "no timer loop, board locked")
@@ -134,7 +134,7 @@ return function(h)
 
     -- chapter list: ✓ on the finished chapter, "Continue" opens the last one
     local chapters = PkStudies.openStudy(os.getenv("PAPERKNIGHT_STUDIES_DIR") .. "/study.pgn")
-    h.wait(1)
+    h.settle()
     local function item(text)
         for _, w in ipairs(chapters.item_group) do
             if w.text and (w.text:sub(1, #text) == text or (text == "Continue:" and w.text:find(text, 1, true))) then return w end
@@ -146,7 +146,7 @@ return function(h)
     h.check(cont, "Continue entry")
     h.shot("chapters-progress")
     h.tapWidget(cont)
-    h.wait(1)
+    h.settle()
     local last_view = require("ui/uimanager")._window_stack[#require("ui/uimanager")._window_stack].widget
     h.check(last_view.name == "paperknight_study", "Continue opens a chapter: " .. tostring(last_view.name))
     -- manual toggle from the ≡ menu, and back in the list
@@ -154,7 +154,7 @@ return function(h)
     last_view:setChapterDone(true)
     h.check(PkDone.isChapterDone(last_view.progress, "study.pgn", 1), "chapter 1 marked by hand")
     last_view:onClose()
-    h.wait(1)
+    h.settle()
     h.check(item("1. Italian ideas").mandatory == "✓", "list updated: " .. tostring(item("1. Italian ideas").mandatory))
     h.check(item("Continue:") and item("Continue:").text:find("Continue: 1.", 1, true), "Continue follows the last chapter opened")
     require("ui/uimanager"):close(chapters)

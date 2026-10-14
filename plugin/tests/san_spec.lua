@@ -15,10 +15,14 @@ local function read(path)
 end
 
 -- Both engines resolve `san` from `fen`; returns pksan's move and fen.
-local function both(t, fen, san, where)
+-- `game`: a chess.lua game already at `fen` (replayed move by move: loading a
+-- FEN into a new game for every ply made this spec take most of the run).
+local function both(t, fen, san, where, game)
     local move, after = PkSan.play(fen, san)
-    local game = Chess:new()
-    game.load(fen)
+    if not game then
+        game = Chess:new()
+        game.load(fen)
+    end
     local ref = game.move(san)
     t.ok(move ~= nil, where .. ": pksan resolves " .. san .. " (" .. tostring(after) .. ")")
     t.ok(ref ~= nil, where .. ": chess.lua resolves " .. san)
@@ -46,9 +50,10 @@ return {
         local plies = 0
         for gi, g in ipairs(games) do
             local fen = START
+            local game = Chess:new() -- follows the game ply by ply
             local node = PkPgn.parseMovetext(g.movetext).children[1]
             while node do
-                local _, after = both(t, fen, node.san, "game " .. gi .. " ply " .. plies)
+                local _, after = both(t, fen, node.san, "game " .. gi .. " ply " .. plies, game)
                 if not after then break end
                 fen, plies = after, plies + 1
                 node = node.children[1]

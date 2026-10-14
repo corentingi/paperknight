@@ -1,5 +1,6 @@
 -- Minimal test runner for plugin logic that does not need KOReader's UI.
--- Usage: luajit plugin/tests/run.lua [spec files...]   (run from the repo root)
+-- Usage: `make test-lua` (runs it from KOReader's directory, so specs that
+-- need KOReader's modules run too), or luajit plugin/tests/run.lua [specs...].
 -- Each spec file returns a list of { name, fn } pairs; fn receives assertions `t`.
 local here = debug.getinfo(1, "S").source:gsub("^@", ""):match("(.*)/") or "."
 local plugin_dir = here .. "/../paperknight.koplugin"
@@ -15,13 +16,23 @@ end
 PK_REPO_ROOT = here .. "/../.."
 
 local t = {}
+local asserted -- the error comes from t.eq / t.ok (no traceback needed)
 function t.eq(actual, expected, msg)
     if actual ~= expected then
+        asserted = true
         error(("%s: expected %s, got %s"):format(msg or "eq", tostring(expected), tostring(actual)), 2)
     end
 end
 function t.ok(value, msg)
-    if not value then error((msg or "expected truthy value"), 2) end
+    if not value then
+        asserted = true
+        error((msg or "expected truthy value"), 2)
+    end
+end
+-- failed assertion: its message; any other error: with a traceback
+local function onError(err)
+    if asserted then return tostring(err) end
+    return debug.traceback(tostring(err))
 end
 
 local specs = { ... }
@@ -33,9 +44,15 @@ end
 
 local passed, failed = 0, 0
 for _, spec in ipairs(specs) do
-    local cases = dofile(spec)
+    local loaded, cases = pcall(dofile, spec)
+    if not loaded then -- counted, and the other specs still run
+        failed = failed + 1
+        print(("FAIL %s :: cannot load\n     %s"):format(spec:match("[^/]+$"), tostring(cases)))
+        cases = {}
+    end
     for _, case in ipairs(cases) do
-        local ok, err = pcall(case[2], t)
+        asserted = false
+        local ok, err = xpcall(case[2], onError, t)
         if ok then
             passed = passed + 1
         else

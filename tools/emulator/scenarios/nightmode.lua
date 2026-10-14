@@ -9,7 +9,7 @@ return function(h)
     local view = pk:startPuzzles()
     h.check(view, "puzzle view did not open (pack missing?)")
     view:loadPuzzle(view.pack:get("0042j"))
-    h.wait(1)
+    h.settle()
     local board = view.board
 
     local function shown(x, y)
@@ -45,7 +45,7 @@ return function(h)
     end
     board:setShapes({ circles = { { square = circle_sq } }, arrows = {} })
     UIManager:setDirty("all", "full")
-    h.wait(1)
+    h.settle()
 
     local day = { light = background(light_sq), dark = background(dark_sq), ring = ring() }
     h.check(day.light == 0xFF and day.dark == 0xDD, ("day colours %x %x"):format(day.light, day.dark))
@@ -70,7 +70,7 @@ return function(h)
 
     Screen:toggleNightMode()
     UIManager:setDirty("all", "full")
-    h.wait(1)
+    h.settle()
     h.shot("night-board")
     local ok, err = pcall(function()
         h.check(background(light_sq) == 0x66, ("night light square shown %x"):format(background(light_sq)))
@@ -84,13 +84,13 @@ return function(h)
         h.check(status():find("● White to move", 1, true), "night marker on a new text: " .. status())
         -- a single-square repaint (Button:refresh paints the frame directly)
         board:markSelected(light_sq); board:unmarkSelected(light_sq)
-        h.wait(0.5)
+        h.settle()
         h.check(background(light_sq) == 0x66, "night square after refresh")
     end)
     Screen:toggleNightMode() -- leave the emulator home in day mode
     UIManager:setDirty("all", "full")
     if not ok then error(err, 0) end
-    h.wait(1)
+    h.settle()
     h.check(background(light_sq) == 0xFF and background(dark_sq) == 0xDD, "day palette back")
     h.check(iconOn(white_piece) == PkIcons.pieces.r.w, "day piece set back")
     h.check(status():find("○ White to move", 1, true), "day marker back: " .. status())

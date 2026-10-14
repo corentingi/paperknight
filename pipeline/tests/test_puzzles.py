@@ -19,7 +19,8 @@ def make(id="x1", rating=1500, popularity=90, plays=1000, rating_dev=75,
 
 
 def test_reads_fixture_with_header():
-    rows = list(puzzles.read_puzzles(FIXTURE.open()))
+    with FIXTURE.open() as f:
+        rows = list(puzzles.read_puzzles(f))
     assert len(rows) == 63
     assert all(p.id and p.fen and p.moves for p in rows)
 
@@ -74,7 +75,7 @@ def test_castling_is_normalised_to_king_destination():
 def test_solver_color_and_validation():
     assert puzzles.solver_color(make()) == "w"  # black to move in FEN -> white solves
     assert puzzles.solver_color(make(moves="g8h8")) is None  # too short
-    assert puzzles.solver_color(make(moves="g8h8 d1d8 h8h8 a1a1"[:14])) is None  # odd length
+    assert puzzles.solver_color(make(moves="g8h8 d1d8 h8h8")) is None  # odd length
     assert puzzles.solver_color(make(moves="g8h8 d1d9")) is None  # malformed move
     assert puzzles.solver_color(make(moves="g8h8 d1e3")) is None  # illegal move
     assert puzzles.solver_color(make(fen="not a fen")) is None
@@ -82,7 +83,8 @@ def test_solver_color_and_validation():
 
 def test_build_pack_schema_and_meta(tmp_path):
     out = tmp_path / "puzzles.sqlite"
-    stats = puzzles.build_pack(FIXTURE.open(), out, LOOSE, "fixture")
+    with FIXTURE.open() as f:
+        stats = puzzles.build_pack(f, out, LOOSE, "fixture")
     assert stats == {"written": 63, "invalid": 0}
     assert not (tmp_path / "puzzles.sqlite.tmp").exists()
     db = sqlite3.connect(out)
@@ -109,7 +111,8 @@ def test_build_pack_schema_and_meta(tmp_path):
 def test_plugin_queries_are_fully_indexed(tmp_path, query):
     """The plugin's pick queries (docs/pack-format.md) must not sort on the device."""
     out = tmp_path / "puzzles.sqlite"
-    puzzles.build_pack(FIXTURE.open(), out, LOOSE, "fixture")
+    with FIXTURE.open() as f:
+        puzzles.build_pack(f, out, LOOSE, "fixture")
     plan = " | ".join(r[3] for r in sqlite3.connect(out).execute("EXPLAIN QUERY PLAN " + query))
     assert "TEMP B-TREE" not in plan and ("INDEX" in plan or "PRIMARY KEY" in plan), plan
 
@@ -128,7 +131,8 @@ def test_zst_input_and_headerless_rows(tmp_path):
 def test_no_pack_written_when_nothing_selected(tmp_path):
     out = tmp_path / "p.sqlite"
     strict = puzzles.Selection(min_plays=10**9)
-    assert puzzles.build_pack(FIXTURE.open(), out, strict, "x")["written"] == 0
+    with FIXTURE.open() as f:
+        assert puzzles.build_pack(f, out, strict, "x")["written"] == 0
     assert not out.exists() and not (tmp_path / "p.sqlite.tmp").exists()
 
 

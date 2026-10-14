@@ -27,14 +27,20 @@ def download(url: str, dest_dir: Path, force: bool = False, retries: int = 5,
     transfer is resumed with an HTTP Range request, up to `retries` times
     (waiting backoff, 2*backoff, ...); a `.part` left by an earlier run is
     resumed too. A server that ignores Range restarts the file from scratch.
+    The server's validator (ETag, else Last-Modified) is kept next to the
+    `.part` and sent as If-Range: if the file changed on the server since
+    (Lichess publishes a new dump monthly), it sends the whole new file
+    instead of appending its end to the old start.
     """
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / url.rsplit("/", 1)[-1]
     if dest.exists() and not force:
         return dest
     tmp = dest.with_suffix(dest.suffix + ".part")
-    if force and tmp.exists():
-        tmp.unlink()
+    if force:
+        for stale in (tmp, _validator_path(tmp)):
+            if stale.exists():
+                stale.unlink()
     failures = 0
     while True:
         try:
@@ -53,7 +59,13 @@ def download(url: str, dest_dir: Path, force: bool = False, retries: int = 5,
     if total is not None and size != total:
         raise IOError(f"truncated download of {url}: {size} of {total} bytes")
     tmp.rename(dest)
+    if _validator_path(tmp).exists():
+        _validator_path(tmp).unlink()
     return dest
+
+
+def _validator_path(tmp: Path) -> Path:
+    return tmp.with_suffix(tmp.suffix + ".validator")
 
 
 def _fetch(url: str, tmp: Path, timeout: int) -> int | None:
@@ -63,8 +75,11 @@ def _fetch(url: str, tmp: Path, timeout: int) -> int | None:
     """
     have = tmp.stat().st_size if tmp.exists() else 0
     req = urllib.request.Request(url, headers={"User-Agent": "paperknight-pipeline"})
+    validator_file = _validator_path(tmp)
     if have:
         req.add_header("Range", f"bytes={have}-")
+        if validator_file.exists():  # resume only the same version of the file
+            req.add_header("If-Range", validator_file.read_text())
     try:
         resp = urllib.request.urlopen(req, timeout=timeout)
     except urllib.error.HTTPError as err:
@@ -78,10 +93,15 @@ def _fetch(url: str, tmp: Path, timeout: int) -> int | None:
         if have and resp.status == 206:
             total = _range_total(resp.headers.get("Content-Range"))
             mode = "ab"
-        else:  # full body: start over
+        else:  # full body (first request, no Range support, or a changed file): start over
             length = resp.headers.get("Content-Length")
             total = int(length) if length is not None else None
             mode = "wb"
+            validator = resp.headers.get("ETag") or resp.headers.get("Last-Modified")
+            if validator:
+                validator_file.write_text(validator)
+            elif validator_file.exists():
+                validator_file.unlink()
         with open(tmp, mode) as out:
             while chunk := resp.read(CHUNK):
                 out.write(chunk)
