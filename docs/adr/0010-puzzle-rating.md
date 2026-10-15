@@ -1,4 +1,4 @@
-# ADR-0010: Local Elo-style puzzle rating stored in progress.sqlite
+# ADR-0010: Local puzzle rating (Glicko-2) stored in progress.sqlite
 
 - Date: 2026-10-04
 - Status: accepted
@@ -22,7 +22,22 @@ Progress must survive pack upgrades (ADR-0005).
 - Cons: no sense of progress; manual tuning.
 
 ## Decision
-A. Start at 1200. Expected score E = 1 / (1 + 10^((R_puzzle − R_user)/400)).
+B, Glicko-2 (amended 2026-10-15; it was A until then, see below). One update
+per attempt against the puzzle's rating and deviation (`rating_dev` from the
+pack, 75 when unknown); the rating period is one day: the deviation grows
+with the time since the last rated attempt (σ² per day), so after a break
+the rating moves faster again, then settles. Start 1200 ± 350, volatility
+0.06, τ = 0.5; the deviation stays within 45–350, the volatility under 0.1,
+the rating within 400–3000. A settled rating moves about ±6 per puzzle.
+State in `kv`: `rating`, `rating.rd`, `rating.vol`, `rating.ts`. Existing
+files are migrated once by replaying the rated attempts (oldest first).
+Same scoring as before; the panel shows "Rating 1512 (+8)".
+
+Why the change: the Elo rating kept moving ±15 per puzzle for good (noise
+of about ±50 with no change of level), and did not react to long breaks,
+common on an e-reader. Glicko-2 is about 80 lines of pure math.
+
+Former decision (A): Start at 1200. Expected score E = 1 / (1 + 10^((R_puzzle − R_user)/400)).
 Score 1 if solved with no mistake and no hint/solution, else 0.
 K = 60 for the first 20 attempts, 30 afterwards. Rating is clamped to 400–3000.
 Stored in `<KOReader settings>/paperknight/progress.sqlite`:
@@ -46,6 +61,7 @@ ones have been (then a new round starts), nor one waiting as a review
 near ones, which made a small theme repeat the same puzzle.)
 
 ## Consequences
-- Easy to replace by Glicko later: attempts keep enough data to recompute.
+- Attempts keep enough data to recompute the rating (the Glicko migration
+  replayed them).
 - A wrong first move counts as a fail even if the user then finds the line;
   the user can retry the puzzle without rating impact.

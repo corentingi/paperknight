@@ -17,7 +17,7 @@ Template: [`0000-template.md`](0000-template.md).
 | [0007](0007-headless-koreader-emulator.md) | Test in a headless desktop KOReader | accepted |
 | [0008](0008-puzzle-selection.md) | Select puzzles by quality + deterministic per-band quota | accepted |
 | [0009](0009-puzzle-mode-architecture.md) | Puzzle mode as a separate screen with pure-Lua session logic | accepted |
-| [0010](0010-puzzle-rating.md) | Local Elo-style puzzle rating in progress.sqlite | accepted |
+| [0010](0010-puzzle-rating.md) | Local puzzle rating (Glicko-2) in progress.sqlite | accepted |
 | [0011](0011-studies-from-pgn.md) | Studies are PGN files read on the device, parsed lazily | accepted |
 | [0012](0012-openings-trainer.md) | Openings trainer: repertoire PGNs, per-move cards, SM-2 | accepted |
 | [0013](0013-fast-san-resolver.md) | Dedicated SAN resolver for PGN moves; chess.lua for play | accepted |

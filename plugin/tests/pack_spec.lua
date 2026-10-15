@@ -60,13 +60,49 @@ return {
              "nothing accepted: nil")
         pack:close()
     end },
-    { "rating update follows ADR-0010", function(t)
-        local up = PkProgress.updatedRating
-        t.eq(up(1200, 1200, true, 0), 1230, "provisional win vs equal")
-        t.eq(up(1200, 1200, false, 0), 1170, "provisional loss vs equal")
-        t.eq(up(1200, 1200, true, 50), 1215, "established K=30")
-        t.eq(up(410, 410, false, 0), 400, "clamped at 400")
-        t.eq(up(2990, 2990, true, 0), 3000, "clamped at 3000")
+    { "Glicko-2 matches Glickman's worked example", function(t)
+        local PkGlicko = require("pkglicko")
+        local p = PkGlicko.rate({ rating = 1500, rd = 200, vol = 0.06 }, {
+            { rating = 1400, rd = 30, score = 1 },
+            { rating = 1550, rd = 100, score = 0 },
+            { rating = 1700, rd = 300, score = 0 },
+        })
+        t.ok(math.abs(p.rating - 1464.06) < 0.05, "rating " .. p.rating)
+        t.ok(math.abs(p.rd - 151.52) < 0.05, "rd " .. p.rd)
+        t.ok(math.abs(p.vol - 0.05999) < 0.00001, "vol " .. p.vol)
+        t.ok(math.abs(PkGlicko.idleRd({ rd = 50, vol = 0.06 }, 30) - 76) < 1, "idle: the deviation grows")
+    end },
+    { "rating update (ADR-0010): settled ratings move less, breaks loosen them", function(t)
+        local up = PkProgress.updatedState
+        local new = { rating = 1200, rd = 350, vol = 0.06 }
+        local settled = { rating = 1200, rd = 45, vol = 0.06, ts = 0 }
+        local gain_new = up(new, 1200, 75, true, 0).rating - 1200
+        local gain = up(settled, 1200, 75, true, 0).rating - 1200
+        t.ok(gain_new > 100, "a new player moves fast: " .. gain_new)
+        t.ok(gain > 3 and gain < 8, "a settled player moves a little: " .. gain)
+        t.ok(up(settled, 1200, 75, false, 0).rating < 1200, "a miss lowers it")
+        local after_break = up(settled, 1200, 75, true, 60 * 86400).rating - 1200
+        t.ok(after_break > 2 * gain, "after two months it moves more: " .. after_break)
+        t.ok(up(settled, 1600, 75, true, 0).rating - 1200 > gain, "a harder puzzle gives more")
+        t.eq(up({ rating = 410, rd = 350, vol = 0.06 }, 410, 75, false, 0).rating, 400, "clamped at 400")
+    end },
+    { "progress: the Elo history is replayed into Glicko once", function(t)
+        local path = tmpdb()
+        local prog = PkProgress.open(path)
+        for i = 1, 5 do
+            prog:record{ puzzle_id = "P" .. i, puzzle_rating = 1500, success = true, solved = true,
+                         mistakes = 0, used_help = false, ts = i * 1000 }
+        end
+        local rating = prog:rating()
+        prog.conn:exec("DELETE FROM kv WHERE key LIKE 'rating%'")
+        prog.conn:exec("INSERT INTO kv (key, value) VALUES ('rating', '1350')") -- the old Elo rating
+        prog:close()
+        prog = PkProgress.open(path)
+        t.eq(prog:rating(), rating, "same rating as live updates")
+        local state = prog:ratingState()
+        t.ok(state.rd < 350 and state.ts == 5000, "deviation and last attempt restored")
+        prog:close()
+        os.remove(path)
     end },
     { "progress records attempts and persists the rating", function(t)
         local path = tmpdb()

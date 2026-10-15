@@ -43,6 +43,12 @@ local REPLY_DELAY = 0.6 -- seconds before the opponent replies, so the user sees
 local RECENT_DAYS = 30  -- don't repeat puzzles attempted this recently (ADR-0010)
 local SEED_DAYS = 60    -- past misses turned into reviews, once (ADR-0014)
 
+-- "Rating 1512 (+8)", "Rating 1490 (−14)".
+local function ratingChange(before, after)
+    local d = after - before
+    return T(_("Rating %1 (%2)"), after, (d < 0 and "−" or "+") .. math.abs(d))
+end
+
 local PkPuzzleView = InputContainer:extend{
     name = "paperknight_puzzles",
     covers_fullscreen = true,
@@ -415,6 +421,7 @@ function PkPuzzleView:_finishAttempt(reason)
     local ok, before, after = pcall(self.progress.record, self.progress, {
         puzzle_id = self.puzzle.id,
         puzzle_rating = self.puzzle.rating,
+        puzzle_rd = self.puzzle.rating_dev,
         success = s:isCleanSolve(),
         solved = s.state == "solved",
         mistakes = s.mistakes,
@@ -476,7 +483,7 @@ function PkPuzzleView:onUserMove(move)
         result = self:_withThemes(result)
         local text = result
         if before then
-            text = text .. "\n" .. T(_("Rating %1 → %2"), before, after)
+            text = text .. "\n" .. ratingChange(before, after)
         end
         if note then text = text .. "\n" .. note end
         self:_updateTitle()
@@ -657,7 +664,7 @@ function PkPuzzleView:onSolution()
     self.board:updateBoard()
     self.board:setHighlights({ move.from, move.to })
     local text = self:_withThemes(T(_("Solution: %1 (move %2/%3)."), label, s.pos - 1, #s.line - 1))
-    if before then text = text .. "\n" .. T(_("Rating %1 → %2"), before, after) end
+    if before then text = text .. "\n" .. ratingChange(before, after) end
     if note then text = text .. "\n" .. note end
     self:_updateTitle()
     self:_setStatus(text)

@@ -1,10 +1,10 @@
--- User puzzle rating and attempt history (ADR-0010), in a writable SQLite file
+-- User puzzle rating (Glicko-2) and attempt history (ADR-0010), in a writable SQLite file
 -- kept apart from the read-only packs so packs can be replaced freely.
 local SQ3 = require("lua-ljsqlite3/init")
+local PkGlicko = require("pkglicko")
 
-local START_RATING = 1200
 local MIN_RATING, MAX_RATING = 400, 3000
-local PROVISIONAL_ATTEMPTS, K_PROVISIONAL, K_ESTABLISHED = 20, 60, 30
+local DAY = 86400
 
 local PkProgress = {}
 PkProgress.__index = PkProgress
@@ -45,14 +45,19 @@ CREATE TABLE IF NOT EXISTS puzzle_reviews (
 CREATE INDEX IF NOT EXISTS puzzle_reviews_due ON puzzle_reviews (due);
 ]]
 
---- Pure rating update. Returns the new rating (integer).
-function PkProgress.updatedRating(rating, puzzle_rating, success, attempts_so_far)
-    local expected = 1 / (1 + 10 ^ ((puzzle_rating - rating) / 400))
-    local k = (attempts_so_far < PROVISIONAL_ATTEMPTS) and K_PROVISIONAL or K_ESTABLISHED
-    local new = rating + k * ((success and 1 or 0) - expected)
-    new = math.floor(new + 0.5)
-    return math.max(MIN_RATING, math.min(MAX_RATING, new))
+--- Pure rating update (Glicko-2, ADR-0010): the player state { rating, rd,
+-- vol, ts } after an attempt at `ts` on a puzzle rated `puzzle_rating` ±
+-- `puzzle_rd`; the deviation grew with the days since the last attempt.
+function PkProgress.updatedState(state, puzzle_rating, puzzle_rd, success, ts)
+    local days = state.ts and math.max(0, (ts - state.ts) / DAY) or 0
+    local new = PkGlicko.rate(state, { { rating = puzzle_rating, rd = puzzle_rd or PkGlicko.PUZZLE_RD,
+                                         score = success and 1 or 0 } }, days)
+    new.rating = math.max(MIN_RATING, math.min(MAX_RATING, new.rating))
+    new.ts = ts
+    return new
 end
+
+local function round(x) return math.floor(x + 0.5) end
 
 --- The progress file (in KOReader's settings folder).
 function PkProgress.defaultPath()
@@ -77,7 +82,6 @@ function PkProgress.open(path)
         self.insert_stmt = conn:prepare("INSERT INTO attempts (puzzle_id, ts, solved, mistakes, used_help,"
             .. " puzzle_rating, rating_before, rating_after, review) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
         self.recent_stmt = conn:prepare("SELECT 1 FROM attempts WHERE puzzle_id = ? AND ts >= ? LIMIT 1")
-        self.kv_stmt = conn:prepare("INSERT OR REPLACE INTO kv (key, value) VALUES ('rating', ?)")
         self.review_stmt = conn:prepare("SELECT puzzle_id, due, step, lapses, missed FROM puzzle_reviews"
             .. " WHERE puzzle_id = ?")
     end)
@@ -110,6 +114,45 @@ function PkProgress:_migrate()
             self.conn:exec("INSERT OR REPLACE INTO kv (key, value) VALUES ('migration.review_ladder_3_7_21', '1')")
         end)
     end
+    if not self.conn:rowexec("SELECT value FROM kv WHERE key = 'rating.rd'") then
+        self:_tx(function() self:_saveState(self:_replayedState()) end)
+    end
+end
+
+-- The Glicko-2 state from the rated attempts, oldest first (the rating was
+-- Elo until 2026-10-15; the history keeps what Glicko needs).
+function PkProgress:_replayedState()
+    local state = { rating = PkGlicko.START.rating, rd = PkGlicko.START.rd, vol = PkGlicko.START.vol }
+    local stmt = self.conn:prepare("SELECT ts, solved, mistakes, used_help, puzzle_rating FROM attempts"
+        .. " WHERE review = 0 ORDER BY ts, rowid")
+    for row in stmt:rows() do
+        local clean = tonumber(row[2]) == 1 and tonumber(row[3]) == 0 and tonumber(row[4]) == 0
+        state = PkProgress.updatedState(state, tonumber(row[5]), nil, clean, tonumber(row[1]))
+    end
+    stmt:close()
+    return state
+end
+
+function PkProgress:_saveState(state)
+    local stmt = self.conn:prepare("INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)")
+    for _, k in ipairs({ "rating", "rd", "vol", "ts" }) do
+        if state[k] then
+            stmt:reset():bind(k == "rating" and "rating" or "rating." .. k, tostring(state[k])):step()
+        end
+    end
+    stmt:close()
+end
+
+--- The full rating state: { rating, rd, vol, ts } (ts: last rated attempt).
+function PkProgress:ratingState()
+    local state = { rating = PkGlicko.START.rating, rd = PkGlicko.START.rd, vol = PkGlicko.START.vol }
+    local stmt = self.conn:prepare("SELECT key, value FROM kv WHERE key = 'rating' OR key LIKE 'rating.%'")
+    for row in stmt:rows() do
+        local k = row[1] == "rating" and "rating" or row[1]:sub(#"rating." + 1)
+        state[k] = tonumber(row[2])
+    end
+    stmt:close()
+    return state
 end
 
 --- Runs `fn` in a transaction: committed if it succeeds, rolled back (and
@@ -127,9 +170,10 @@ function PkProgress:_tx(fn)
     end
 end
 
+--- The rating, rounded.
 function PkProgress:rating()
     local v = self.conn:rowexec("SELECT value FROM kv WHERE key = 'rating'")
-    return tonumber(v) or START_RATING
+    return round(tonumber(v) or PkGlicko.START.rating)
 end
 
 --- Small settings stored next to the progress (e.g. the chosen puzzle theme).
@@ -168,13 +212,6 @@ end
 --- Rated attempts (first attempts; reviews are not rated).
 function PkProgress:attemptCount()
     return tonumber(self.conn:rowexec("SELECT count(*) FROM attempts WHERE review = 0"))
-end
-
--- Rated attempts, counted up to `limit` only (the rating only needs to know
--- whether it is still provisional).
-function PkProgress:_ratedCountUpTo(limit)
-    return tonumber(self.conn:rowexec("SELECT count(*) FROM (SELECT 1 FROM attempts WHERE review = 0 LIMIT "
-        .. math.floor(limit) .. ")"))
 end
 
 --- Every rated attempt: { {puzzle_id, clean, puzzle_rating} } (clean: solved
@@ -225,17 +262,18 @@ end
 
 --- Records a finished attempt and updates the rating; `review_card`, when
 -- given, is saved in the same transaction (a missed puzzle's review).
--- @param result { puzzle_id, puzzle_rating, success, solved, mistakes, used_help, ts }
--- @return rating_before, rating_after
+-- @param result { puzzle_id, puzzle_rating, puzzle_rd, success, solved, mistakes, used_help, ts }
+-- @return rating_before, rating_after (rounded)
 function PkProgress:record(result, review_card)
-    local before = self:rating()
-    local after = PkProgress.updatedRating(before, result.puzzle_rating, result.success,
-        self:_ratedCountUpTo(PROVISIONAL_ATTEMPTS))
+    local ts = result.ts or os.time()
+    local state = self:ratingState()
+    local new = PkProgress.updatedState(state, result.puzzle_rating, result.puzzle_rd, result.success, ts)
+    local before, after = round(state.rating), round(new.rating)
     self:_tx(function()
-        self.insert_stmt:reset():bind(result.puzzle_id, result.ts or os.time(),
+        self.insert_stmt:reset():bind(result.puzzle_id, ts,
             result.solved and 1 or 0, result.mistakes or 0, result.used_help and 1 or 0,
             result.puzzle_rating, before, after, 0):step()
-        self.kv_stmt:reset():bind(tostring(after)):step()
+        self:_saveState(new)
         if review_card then self:saveReview(result.puzzle_id, review_card) end
     end)
     return before, after
@@ -368,7 +406,7 @@ end
 
 function PkProgress:close()
     if self.conn then
-        for _, k in ipairs({ "insert_stmt", "recent_stmt", "kv_stmt", "review_stmt" }) do
+        for _, k in ipairs({ "insert_stmt", "recent_stmt", "review_stmt" }) do
             if self[k] then self[k]:close() end
         end
         self.conn:close()

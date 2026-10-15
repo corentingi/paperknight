@@ -6,7 +6,8 @@ local SUPPORTED_FORMAT = 1
 local PkPuzzlePack = {}
 PkPuzzlePack.__index = PkPuzzlePack
 
-local COLUMNS = "id, fen, moves, solver, rating, themes, opening, game_url"
+local COLUMNS = "id, fen, moves, solver, rating, themes, opening, game_url, rating_dev"
+local RND = 10 -- the key column, selected after COLUMNS by the range queries
 
 local function rowToPuzzle(row)
     if not row then return nil end
@@ -14,6 +15,7 @@ local function rowToPuzzle(row)
         id = row[1], fen = row[2], moves = row[3], solver = row[4],
         rating = tonumber(row[5]), -- lua-ljsqlite3 returns INTEGER as int64 cdata
         themes = row[6], opening = row[7], game_url = row[8],
+        rating_dev = tonumber(row[9]),
     }
 end
 
@@ -94,7 +96,7 @@ function PkPuzzlePack:_pickInBand(band, rnd, accept, theme)
             local row = stmt:step()
             while row do
                 n = n + 1
-                last = tonumber(row[9])
+                last = tonumber(row[RND])
                 local p = rowToPuzzle(row)
                 if not accept or accept(p) then
                     stmt:reset()

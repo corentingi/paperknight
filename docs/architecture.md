@@ -53,6 +53,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 | `pkpuzzleview.lua` | Puzzle screen: Retry / Hint / Solution / Next while solving, Retry / ‹ / › / Next to step through the line once finished; themes once finished; ☰ Theme…, Stats…, Analyse position |
 | `pkpuzzle.lua` | Puzzle session state machine (pure logic) |
 | `pkpuzzlepack.lua` | Read-only access to `puzzles.sqlite` (paged random picks near the rating) |
+| `pkglicko.lua` | Glicko-2 rating math (ADR-0010) |
 | `pkpuzzlereview.lua` | Missed-puzzle review ladder: 3, 7, 21 days (ADR-0014) |
 | `pkpuzzlestats.lua` | Per-theme stats: clean solves / attempts and a performance rating |
 | `pkstatsview.lua` | Stats screen: a bar per theme; a tap trains the theme |
@@ -92,7 +93,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 
 | File | Role |
 |---|---|
-| `pkprogress.lua` | `progress.sqlite`: rating and attempts (ADR-0010), puzzle reviews (ADR-0014), repertoire cards, settings; migrations |
+| `pkprogress.lua` | `progress.sqlite`: rating (Glicko-2) and attempts (ADR-0010), puzzle reviews (ADR-0014), repertoire cards, settings; migrations |
 
 The menu entry *Paperknight* opens a submenu: *Home*, *Puzzles*, *Studies*,
 *Openings*, *Analysis board* and *Play*. Stockfish is installed apart
