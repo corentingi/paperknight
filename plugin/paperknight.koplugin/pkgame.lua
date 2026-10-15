@@ -62,6 +62,11 @@ local PLUGIN_PATH = getPluginPath()
 
 -- Configuration Constants
 local DEFAULT_TIME_MINUTES = 30
+-- Stockfish's thinking time per move. Given the clocks (wtime/btime), it
+-- budgets like a real game: about a minute a move with 30 minutes left, and
+-- seemed not to play at all (the clock's pause button sent "stop", making
+-- it move). Capped by its clock: never more than 1/30 of what it has left.
+local ENGINE_SECONDS_PER_MOVE = 5
 local UCI_ENGINE_PATH = PLUGIN_PATH .. "/bin/stockfish"
 local BACKGROUND_COLOR = Blitbuffer.COLOR_WHITE
 local PGN_LOG_FONT = "smallinfofont"
@@ -99,6 +104,7 @@ local PkGame = FrameContainer:extend{
     game = nil,
     timer = nil,
     engine = nil,
+    engine_path = nil, -- default bin/stockfish (tests give a fake engine)
     board = nil,
     pgn_log = nil,
     status_bar = nil,
@@ -167,7 +173,7 @@ function PkGame:_loadSettings()
             local incr = tonumber(progress:getSetting("play.incr." .. color))
             if base and base > 0 then self.timer.base[color] = base end
             if incr and incr >= 0 then self.timer.increment[color] = incr end
-            if PkGame.hasEngine() and progress:getSetting("play.human." .. color) == "0" then
+            if (self.engine_path or PkGame.hasEngine()) and progress:getSetting("play.human." .. color) == "0" then
                 self.game.set_human(color, false)
             end
         end
@@ -192,16 +198,15 @@ end
 --- PkGame:initializeEngine()
 -- Spawns and configures the UCI chess engine (e.g., Stockfish).
 function PkGame:initializeEngine()
-    Logger.info("PkGame:initializeEngine() starting, engine path: " .. tostring(UCI_ENGINE_PATH))
-    dbg("Initializing UCI engine and setting up event listeners", "ENGINE INIT")
-    if not PkGame.hasEngine() then
-        -- no binary: a forked child would only fail and exit; human vs human
-        -- (Play is only offered with the engine installed, pknav.lua)
-        Logger.info("PkGame: no engine at", UCI_ENGINE_PATH)
+    local path = self.engine_path or UCI_ENGINE_PATH -- engine_path: tests
+    Logger.info("PkGame:initializeEngine() starting, engine path: " .. tostring(path))
+    if lfs.attributes(path, "mode") ~= "file" then
+        -- no binary: a forked child would only fail and exit; two players
+        Logger.info("PkGame: no engine at", path)
         return
     end
     -- NOTE: pass the engine path as argv[0] so execvp receives a valid argument list
-    self.engine = Uci.UCIEngine.spawn(UCI_ENGINE_PATH, { UCI_ENGINE_PATH })
+    self.engine = Uci.UCIEngine.spawn(path, { path })
     if not self.engine then
         Logger.info("PkGame:initializeEngine() failed to spawn engine at path")
         dbg("Failed to spawn UCI engine at: " .. UCI_ENGINE_PATH, "ERROR")
@@ -225,6 +230,7 @@ function PkGame:initializeEngine()
 
     self.engine:on("bestmove", function(move_uci, ponder_move)
         dbg("UCI: bestmove received: " .. move_uci .. " ponder: " .. (ponder_move or "none"), "ENGINE")
+        self.engine_thinking = false
         -- Only process the bestmove if it's currently the engine's turn
         if not self.game.is_human(self.game.turn()) then
             self:uciMove(move_uci)
@@ -633,6 +639,9 @@ function PkGame:updatePgnLog()
     buildMoves()
     buildComment()
     buildFutures()
+    if self.engine_thinking then
+        push("\n\n" .. T(_("%1 is thinking…"), (self.engine and self.engine.state.id_name) or _("The engine")))
+    end
 
     local final_text = table.concat(pgn_chunks)
     self.pgn_log:setText(final_text)
@@ -719,10 +728,9 @@ end
 -- and requests it to find the best move.
 function PkGame:launchUCI()
     dbg("Requesting bestmove from UCI engine", "UCI")
-    local params = {
-        wtime = self.timer:getRemainingTime(Chess.WHITE) * 1000, -- White's remaining time in ms
-        btime = self.timer:getRemainingTime(Chess.BLACK) * 1000, -- Black's remaining time in ms
-    }
+    local left_ms = self.timer:getRemainingTime(self.game.turn()) * 1000
+    local movetime = math.floor(math.max(200, math.min(ENGINE_SECONDS_PER_MOVE * 1000, left_ms / 30)))
+    local params = { movetime = movetime }
 
     -- Convert game history to UCI move string format (e.g., "e2e4 e7e5 g1f3")
     local moves_uci_format = table.concat(
@@ -736,6 +744,9 @@ function PkGame:launchUCI()
 
     self.engine:position(position) -- Send the position to the engine
     self.engine:go(params) -- Tell the engine to calculate the best move
+    self.engine_thinking = true -- said in the move log until its move arrives
+    self:updatePgnLog()
+    self:_refreshText()
 end
 
 --- PkGame:stopUCI()

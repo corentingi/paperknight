@@ -138,9 +138,9 @@ function Paperknight:startAnalysis(opts)
     return require("pkanalysis").show(opts)
 end
 
-function Paperknight:startGame()
+function Paperknight:startGame(opts)
     Logger.info("Paperknight: new game")
-    self.game_view = PkGame:new{}
+    self.game_view = PkGame:new(opts or {})
     local view = self.game_view
     local on_close = view.onCloseWidget
     view.onCloseWidget = function(v)

@@ -122,4 +122,36 @@ return function(h)
     for _, r in ipairs(sent) do
         h.check(r.w * r.h < S:getWidth() * S:getHeight(), ("closing: not a whole-screen refresh (%s %dx%d)"):format(r.mode, r.w, r.h))
     end
+
+    -- against the engine (fake: logs its "go" commands, answers at once): it
+    -- moves by itself after the human's move, with a fixed thinking time, not
+    -- the clocks' 30 minutes (it seemed to play only when the clock's pause
+    -- button sent "stop")
+    local log = os.getenv("HOME") .. "/go.log"
+    local engine_script = os.getenv("HOME") .. "/fake-play.sh"
+    local ef = assert(io.open(engine_script, "w"))
+    ef:write('#!/bin/sh\nwhile read l; do case "$l" in\n'
+        .. '  uci) echo "id name FakeFish"; echo uciok;;\n'
+        .. '  isready) echo readyok;;\n'
+        .. '  go*) echo "$l" >> "' .. log .. '"; echo "bestmove e7e5";;\n'
+        .. '  quit) exit 0;;\nesac; done\n')
+    ef:close()
+    os.execute("chmod +x '" .. engine_script .. "'")
+    os.remove(log)
+    local game = pk:startGame{ engine_path = engine_script }
+    h.waitFor(function() return game.engine and game.engine.state.uciok end)
+    game.game.set_human("b", false)
+    local gb = game.board
+    h.tapWidget(gb.table:getButtonById(gb.toId(4, 1))) -- e2
+    h.tapWidget(gb.table:getButtonById(gb.toId(4, 3))) -- e4
+    h.check(game.pgn_log.text:find("FakeFish is thinking", 1, true), "thinking shown: " .. game.pgn_log.text)
+    h.check(h.waitFor(function() return #game.game.history() == 2 end), "the engine replied by itself (no tick)")
+    h.check(game.game.history()[2] == "e5", "engine move played: " .. tostring(game.game.history()[2]))
+    local lf = io.open(log)
+    local go = lf and lf:read("*l") or ""
+    if lf then lf:close() end
+    h.check(go == "go movetime 5000", "fixed thinking time per move: " .. go)
+    h.check(not game.pgn_log.text:find("is thinking", 1, true), "thinking line gone once it moved")
+    require("ui/uimanager"):close(game)
+    h.settle()
 end

@@ -6,6 +6,11 @@ against the engine* plays Stockfish and the analysis board shows its
 evaluation and best line. Without it, Play is a two-player board and the
 analysis board has no evaluation. Decision: ADR-0016.
 
+In Play, Stockfish thinks 5 seconds per move (less when its clock runs
+low: at most 1/30 of what it has left), not the clocks' budget of a real
+game. The tick button at the bottom right starts or pauses the clocks; a
+game starts paused, and your first move (or the tick) starts it.
+
 ## Install (on the Kindle, kterm or SSH)
 
     curl -fkL <server>/stockfish.sh | sh
