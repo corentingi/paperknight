@@ -3,6 +3,8 @@
 ## Commands (run from repo root)
 - `make check` — everything (Lua unit + pytest + emulator e2e). Run before committing.
 - `make test-lua` — Lua specs (`plugin/tests/*_spec.lua`), run with KOReader's luajit.
+  A case using over 30 s of CPU fails with a traceback (endless loop); the
+  whole run is killed after 600 s.
 - `make test-py` — pipeline pytest (needs `make venv` once; venv at `pipeline/.venv`).
 - `make e2e` — headless KOReader scenarios (`tools/emulator/scenarios/`).
   Output in `build/e2e/<scenario>.{log,result}`; on failure grep, don't cat:

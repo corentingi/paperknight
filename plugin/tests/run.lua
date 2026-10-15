@@ -15,6 +15,25 @@ if PK_KOREADER_ENV then
 end
 PK_REPO_ROOT = here .. "/../.."
 
+-- A case stuck in a loop fails (with a traceback of where it is stuck)
+-- instead of hanging the run: a count hook checks its CPU time. LuaJIT only
+-- calls hooks from the interpreter, so the JIT is off (no slower here).
+local CASE_SECONDS = 30
+if jit then jit.off() end
+io.stdout:setvbuf("line") -- results show as they come, even through a pipe
+local function withDeadline(fn, ...)
+    local deadline = os.clock() + CASE_SECONDS
+    debug.sethook(function()
+        if os.clock() > deadline then
+            debug.sethook()
+            error(("timed out after %d s of CPU (endless loop?)"):format(CASE_SECONDS), 2)
+        end
+    end, "", 100000)
+    local results = { xpcall(fn, ...) }
+    debug.sethook()
+    return unpack(results)
+end
+
 local t = {}
 local asserted -- the error comes from t.eq / t.ok (no traceback needed)
 function t.eq(actual, expected, msg)
@@ -52,7 +71,7 @@ for _, spec in ipairs(specs) do
     end
     for _, case in ipairs(cases) do
         asserted = false
-        local ok, err = xpcall(case[2], onError, t)
+        local ok, err = withDeadline(case[2], onError, t)
         if ok then
             passed = passed + 1
         else

@@ -105,6 +105,8 @@ function PkPuzzlePack:_pickInBand(band, rnd, accept, theme)
                 row = stmt:step()
             end
             if n < batch then break end
+            -- keys only go forward: a wrong key column would loop for ever
+            assert(last and last >= lo, "puzzle pack paging did not advance")
             lo = last + 1
         end
     end

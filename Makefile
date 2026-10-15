@@ -46,7 +46,7 @@ emulator: koreader ## Desktop KOReader window with the plugin loaded (needs a di
 
 .PHONY: test test-lua test-py check
 test-lua: koreader fixture-packs ## Lua unit tests (KOReader's LuaJIT and environment)
-	cd $(KO_ASSETS) && ./luajit $(abspath plugin/tests/run.lua)
+	cd $(KO_ASSETS) && timeout 600 ./luajit $(abspath plugin/tests/run.lua)
 
 test-py: venv ## Pipeline unit tests (pytest)
 	cd pipeline && .venv/bin/pytest -q
