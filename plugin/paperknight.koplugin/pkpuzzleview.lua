@@ -129,6 +129,7 @@ function PkPuzzleView:init()
     self.board_size = math.min(self.dimen.w, board_h)
     self:_prepareBoard(false) -- the frame exists even if no puzzle can be picked
     self._skipped = {} -- reviews already shown this session
+    self._bad = {}     -- puzzles whose line is broken (never served again)
     self._served = {}  -- puzzles already shown this session (no repeat until all were)
     local ok, err = pcall(self.progress.seedReviews, self.progress, os.time(), SEED_DAYS)
     if not ok then logger.warn("Paperknight: cannot seed puzzle reviews:", err) end
@@ -195,7 +196,7 @@ function PkPuzzleView:_updateTitle()
     local ok, rating = pcall(self.progress.rating, self.progress)
     if not ok then rating = "?" end
     local subtitle = T(_("Your rating: %1"), rating)
-    local c_ok, due = pcall(self.progress.reviewDueCount, self.progress, PkSrs.today())
+    local c_ok, due = pcall(self._servableReviewCount, self)
     if c_ok and due > 0 then subtitle = subtitle .. " · " .. T(_("Reviews: %1"), due) end
     if self.puzzle then
         subtitle = subtitle .. " · " .. T(_("Puzzle %1"), self.puzzle.rating)
@@ -263,6 +264,22 @@ local MAX_LOAD_TRIES = 5
 
 -- First due review not shown yet this session (and of the chosen theme),
 -- with its pack row. Reviews of puzzles gone from the pack are dropped.
+-- Due reviews this session can still serve: of the chosen theme, not
+-- skipped or broken (what "Reviews: N" counts; _nextReview picks among them).
+function PkPuzzleView:_servableReviewCount()
+    local n = 0
+    for _, card in ipairs(self.progress:dueReviews(PkSrs.today())) do
+        local id = card.puzzle_id
+        if not self._skipped[id] and not self._bad[id] then
+            local tags = not self.theme or self.pack:themesOf(id)
+            if tags == true or (tags and (" " .. tags .. " "):find(" " .. self.theme .. " ", 1, true)) then
+                n = n + 1
+            end
+        end
+    end
+    return n
+end
+
 function PkPuzzleView:_nextReview()
     for _, card in ipairs(self.progress:dueReviews(PkSrs.today())) do
         local id = card.puzzle_id
@@ -303,7 +320,6 @@ function PkPuzzleView:nextPuzzle()
     -- the pick uses the rating after it
     self:_cancelReply()
     self:_finishAttempt("skipped")
-    self._bad = self._bad or {}
     if self.review and self.puzzle then self._skipped[self.puzzle.id] = true end
     local r_ok, review, r_puzzle = pcall(self._nextReview, self)
     if not r_ok then
@@ -373,7 +389,7 @@ end
 -- A puzzle whose line contains an impossible move: stop it cleanly.
 function PkPuzzleView:_broken(err)
     logger.warn("Paperknight: broken puzzle", self.puzzle and self.puzzle.id, err)
-    if self.puzzle then self._bad = self._bad or {}; self._bad[self.puzzle.id] = true end
+    if self.puzzle then self._bad[self.puzzle.id] = true end
     self.session = nil
     self.replaying = false
     self:_setButtons(self.solve_buttons)

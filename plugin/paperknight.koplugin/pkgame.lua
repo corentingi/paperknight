@@ -540,10 +540,6 @@ function PkGame:launchNextMove()
 
     -- If it's the engine's turn, initiate UCI calculation
     if self.engine and self.engine.state.uciok then
-        if self.engine.state.bestmove then
-            -- If a previous 'go' command is still active and returned a bestmove, stop it first
-            self:stopUCI()
-        end
         if not self.game.is_human(self.game.turn()) then
             self:launchUCI() -- Tell engine to find best move
         end

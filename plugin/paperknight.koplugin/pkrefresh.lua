@@ -34,9 +34,11 @@ end
 -- text).
 function PkRefresh.setSubTitle(view, text)
     local title_bar = view.title_bar
-    if text == title_bar.subtitle_widget.text then return end
+    -- a title bar made without a subtitle has no widget for one
+    if not title_bar.subtitle_widget or text == title_bar.subtitle_widget.text then return end
     title_bar:setSubTitle(text, true)
-    if not title_bar.dimen then return end -- not shown yet: painted with the view
+    -- the bar is at the top of the view: its region is right even before
+    -- the first paint (then the whole view is being painted anyway)
     UIManager:setDirty(view, PkRefresh.STEP, title_bar.dimen)
 end
 

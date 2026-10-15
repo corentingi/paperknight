@@ -299,6 +299,13 @@ return function(h)
     h.check(status():find("Review: you missed this puzzle", 1, true), "review status: " .. status())
     h.check(view.title_bar.subtitle_widget.text:find("Reviews: 1", 1, true), "due count in the subtitle: "
         .. view.title_bar.subtitle_widget.text)
+    -- the count is of the reviews this session can serve: not those of another theme
+    view.theme = "intermezzo"
+    view:_updateTitle()
+    h.check(not view.title_bar.subtitle_widget.text:find("Reviews:", 1, true),
+        "a review of another theme is not counted: " .. view.title_bar.subtitle_widget.text)
+    view.theme = nil
+    view:_updateTitle()
     h.shot("puzzle-review")
     local rating, attempts = view.progress:rating(), view.progress:attemptCount()
     tapSquare("a3"); tapSquare("c2")

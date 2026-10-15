@@ -1,33 +1,24 @@
 -- Openings drill screen (ADR-0012, docs/openings.md): board + panel + buttons
 -- over a PkDrill session. Logic lives in pkdrill.lua; this file displays.
-local Blitbuffer = require("ffi/blitbuffer")
 local ButtonDialog = require("ui/widget/buttondialog")
 local ButtonTable = require("ui/widget/buttontable")
-local CenterContainer = require("ui/widget/container/centercontainer")
 local Device = require("device")
-local Font = require("ui/font")
-local FrameContainer = require("ui/widget/container/framecontainer")
 local Geometry = require("ui/geometry")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local Screen = Device.screen
-local ScrollTextWidget = require("ui/widget/scrolltextwidget")
 local Size = require("ui/size")
 local TitleBar = require("ui/widget/titlebar")
 local UIManager = require("ui/uimanager")
-local VerticalGroup = require("ui/widget/verticalgroup")
 local util = require("util")
 local _ = require("gettext")
 local T = require("ffi/util").template
 
-local ChessBoard = require("pkboard")
 local PkLinks = require("pklinks")
-local PkPromotion = require("pkpromotion")
 local PkRefresh = require("pkrefresh")
 local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
 local PkNav = require("pknav")
 local PkSide = require("pkside")
-local PkText = require("pktext")
 
 local REPLY_DELAY = 0.8 -- seconds before the opponent's move
 
@@ -40,6 +31,8 @@ local PkDrillView = InputContainer:extend{
     on_close = nil,  -- called after the screen closes (e.g. close the database)
     on_flip = nil,   -- function(chapter): play the other side in that chapter
 }
+-- board + text panel + buttons, the panel's text and refreshes (pkboardscreen.lua)
+require("pkboardscreen").mixin(PkDrillView)
 
 function PkDrillView:init()
     PkNav.tapTitle(self, function() return self.title_bar end, "openings") -- quick settings
@@ -75,76 +68,7 @@ function PkDrillView:init()
 end
 
 function PkDrillView:_build(flipped)
-    if not self.board or self.board.flipped ~= flipped then
-        if self.board then self.board:free() end
-        self.board = ChessBoard:new{
-            game = self.game,
-            width = self.board_size,
-            height = self.board_size,
-            flipped = flipped,
-            show_parent = self,
-            moveCallback = function(move) self:onBoardMove(move) end,
-            onPromotionNeeded = function(from, to, color)
-                PkPromotion.show(color, function(letter)
-                    local move = self.game.move({ from = from, to = to, promotion = letter })
-                    if move then self.board:handleGameMove(move) end
-                end)
-            end,
-        }
-    end
-    if self.text then self.text:free() end
-    self.text = self:_textWidget("")
-    self.vgroup = VerticalGroup:new{
-        align = "center",
-        self.title_bar,
-        CenterContainer:new{
-            dimen = Geometry:new{ w = self.dimen.w, h = self.board_size + Size.padding.default },
-            self.board,
-        },
-        self.text,
-        self.buttons,
-    }
-    self[1] = FrameContainer:new{
-        background = Blitbuffer.COLOR_WHITE,
-        bordersize = 0,
-        padding = 0,
-        width = self.dimen.w,
-        height = self.dimen.h,
-        self.vgroup,
-    }
-end
-
-function PkDrillView:_textWidget(text)
-    return ScrollTextWidget:new{
-        text = text,
-        face = Font:getFace("cfont", 18),
-        width = self.dimen.w - 2 * Size.padding.large,
-        height = self.text_h,
-        dialog = self,
-    }
-end
-
--- ScrollTextWidget has no setText: replace the panel widget.
-function PkDrillView:_setText(text)
-    self.raw_text = text -- before linkify: rewritten when night mode is toggled
-    text = util.fixUtf8(text, "?")
-    text, self.links = PkText.linkify(text) -- web addresses shown short
-    self.panel_text = text
-    local old = self.text
-    self.text = self:_textWidget(text)
-    PkLinks.attach(self.text, self.links) -- tap a link: QR code
-    for i, w in ipairs(self.vgroup) do
-        if w == old then self.vgroup[i] = self.text end
-    end
-    old:free()
-    self.vgroup:resetLayout()
-end
-
--- The area below the title bar after a step, the whole view for a new line
--- (`page`); see pkrefresh.lua.
-function PkDrillView:_redraw(page)
-    if page then return PkRefresh.page(self) end
-    PkRefresh.below(self, self.board, self.buttons) -- the board refreshes its squares
+    self:_buildScreen(flipped)
 end
 
 --- Starts the next line of the session, or shows the summary when done.
@@ -230,16 +154,8 @@ function PkDrillView:_paceOpponent()
     UIManager:scheduleIn(self.reply_delay, self._reply_task)
 end
 
-function PkDrillView:_cancelReply()
-    if self._reply_task then
-        UIManager:unschedule(self._reply_task)
-        self._reply_task = nil
-    end
-end
-
 function PkDrillView:onBoardMove(move)
-    self.game.undo() -- the drill decides what the position is
-    if self.game.redo_stack then table.remove(self.game.redo_stack) end
+    self:_takeBackMove() -- the drill decides what the position is
     if self.drill.state ~= "play" then return self:refresh() end
     self:_afterVerdict(self.drill:onUserMove(move.from, move.to, move.promotion))
 end
