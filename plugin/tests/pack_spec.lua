@@ -44,6 +44,16 @@ return {
             t.ok(p and p.rating >= 1200 and p.rating < 1300, "home band, got " .. tostring(p and p.rating))
             t.eq(fresh, true, "no fresh filter: fresh")
         end
+        -- within ±50 of the rating, across a band boundary (1250..1350)
+        local seen = {}
+        for _, r in ipairs({ 0.0, 0.2, 0.4, 0.6, 0.8, 0.999 }) do
+            local w = pack:pickNear(1300, { random = seq(r) })
+            t.ok(w.rating >= 1250 and w.rating <= 1350, "±50 window, got " .. w.rating)
+            seen[math.floor(w.rating / 100)] = true
+        end
+        t.ok(seen[12] and seen[13], "from both bands of the window")
+        local w = pack:pickNear(1300, { random = seq(0.5), fresh = function(c) return c.rating == 1354 end })
+        t.eq(w.rating, 1354, "fresh within ±100 next")
         local p, fresh = pack:pickNear(1250, { random = seq(0.5), fresh = function(c) return c.rating >= 1400 end })
         t.ok(p.rating >= 1400 and p.rating < 1500, "a fresh neighbouring band first, got " .. p.rating)
         t.eq(fresh, true, "fresh")

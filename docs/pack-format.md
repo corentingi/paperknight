@@ -51,7 +51,8 @@ puzzle (`band`/`rnd` copied from `puzzles`) so theme picks are indexed too.
 puzzles carry each, for building menus.
 
 ### Picking a random puzzle (plugin side)
-Choose a band `b` and a random `r` in [0, 2³¹), then page through the band
+Choose a band `b` (the plugin first tries the bands overlapping a ±50
+window around the user's rating, keeping rows rated inside it) and a random `r` in [0, 2³¹), then page through the band
 in key order from `r`, wrapping around, until a row is acceptable (not seen
 recently, not under review):
 

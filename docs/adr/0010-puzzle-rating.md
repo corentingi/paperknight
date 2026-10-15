@@ -51,7 +51,11 @@ line has been seen). Leaving an untouched puzzle records nothing. Retry after
 a recorded attempt replays without rating impact.
 
 Next puzzle (pack `band` = rating / 100, see pack format): an unseen puzzle
-(not attempted in the last 30 days) within ±2 bands of the user's rating,
+(not attempted in the last 30 days) rated within ±50 of the user's rating,
+then ±100, then ±200 (amended 2026-10-15: the home band alone made a step of
+up to 100 points when the rating crossed a hundred, e.g. 1799 → 1801 went
+from 1700–1799 puzzles to 1800–1899 ones; the window spans the two bands it
+overlaps, weighted by the overlap); else within ±2 bands,
 home band first; else an unseen one in further bands (nearest first); only
 then a recently seen one, near bands first, and the status line says puzzles
 are being repeated. Whatever the fallback, the next puzzle is never the

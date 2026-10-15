@@ -114,10 +114,40 @@ function PkPuzzlePack:_pickInBand(band, rnd, accept, theme)
     return nil
 end
 
+local WINDOWS = { 50, 100, 200 } -- fresh puzzles within rating ± these first
+
+-- A random puzzle rated within `rating` ± `half` that passes `filter`: the
+-- bands the window overlaps, in random order weighted by the overlap.
+function PkPuzzlePack:_pickInWindow(rating, half, random, filter, theme)
+    local lo, hi = rating - half, rating + half
+    local bands = {}
+    for b = math.max(self.min_band, math.floor(lo / 100)), math.min(self.max_band, math.floor(hi / 100)) do
+        local overlap = math.min(hi + 1, (b + 1) * 100) - math.max(lo, b * 100)
+        if overlap > 0 then bands[#bands + 1] = { band = b, w = overlap } end
+    end
+    local function inWindow(p)
+        return p.rating >= lo and p.rating <= hi and (not filter or filter(p))
+    end
+    while #bands > 0 do
+        local total = 0
+        for _, b in ipairs(bands) do total = total + b.w end
+        local r, i = random() * total, 1
+        while i < #bands and r >= bands[i].w do
+            r = r - bands[i].w
+            i = i + 1
+        end
+        local p = self:_pickInBand(bands[i].band, math.floor(random() * 0x7FFFFFFF), inWindow, theme)
+        if p then return p end
+        table.remove(bands, i)
+    end
+    return nil
+end
+
 --- Picks a random puzzle near `rating`. Preference order (ADR-0010):
---  1. a fresh puzzle within ±2 bands (home band first, then neighbours),
---  2. a fresh puzzle further away (nearest bands first),
---  3. a stale one within ±2 bands, 4. a stale one further away.
+--  1. a fresh puzzle within ±50 of the rating, then ±100, then ±200,
+--  2. a fresh puzzle within ±2 bands (home band first, then neighbours),
+--  3. a fresh puzzle further away (nearest bands first),
+--  4. a stale one within ±2 bands, 5. a stale one further away.
 -- `accept` is a hard filter, `fresh` a soft one (dropped in steps 3-4, e.g.
 -- once every puzzle of a theme was played recently).
 -- @param opts { random = function() -> [0,1), accept = function(p) -> bool,
@@ -130,6 +160,10 @@ function PkPuzzlePack:pickNear(rating, opts)
     local accept, fresh = opts.accept, opts.fresh
     local function both(p)
         return (not accept or accept(p)) and (not fresh or fresh(p))
+    end
+    for _, half in ipairs(WINDOWS) do
+        local p = self:_pickInWindow(rating, half, random, both, opts.theme)
+        if p then return p, true end
     end
     local home = math.floor(rating / 100)
     local near, far = { home }, {}
