@@ -115,7 +115,6 @@ function PkAnalysis:_build()
         height = self.board_size,
         flipped = self.flipped,
         show_parent = self,
-        square_refresh = PkRefresh.STEP, -- a move refreshes its squares only
         moveCallback = function(move) self:onBoardMove(move) end,
         onPromotionNeeded = function(from, to, color)
             PkPromotion.show(color, function(letter)

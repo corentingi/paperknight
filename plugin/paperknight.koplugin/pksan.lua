@@ -32,7 +32,6 @@ end
 local function name(s)
     return char(97 + s % 8) .. char(49 + math.floor(s / 8))
 end
-PkSan.square, PkSan.squareName = sq, name
 
 local KNIGHT = { { 1, 2 }, { 2, 1 }, { 2, -1 }, { 1, -2 }, { -1, -2 }, { -2, -1 }, { -2, 1 }, { -1, 2 } }
 local KING = { { 1, 0 }, { 1, 1 }, { 0, 1 }, { -1, 1 }, { -1, 0 }, { -1, -1 }, { 0, -1 }, { 1, -1 } }
@@ -161,7 +160,6 @@ local function attacked(board, s, by)
     end
     return false
 end
-PkSan.attacked = attacked
 
 local function kingSquare(board, color)
     local k = pieceChar("k", color)

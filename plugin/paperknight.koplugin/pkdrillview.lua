@@ -79,7 +79,6 @@ function PkDrillView:_build(flipped)
         if self.board then self.board:free() end
         self.board = ChessBoard:new{
             game = self.game,
-            square_refresh = PkRefresh.STEP, -- squares and selection: never a flash (pkrefresh.lua)
             width = self.board_size,
             height = self.board_size,
             flipped = flipped,

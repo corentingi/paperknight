@@ -2,7 +2,6 @@
 -- Tree logic lives in pkstudy.lua; this file only displays and dispatches.
 local Blitbuffer = require("ffi/blitbuffer")
 local ButtonDialog = require("ui/widget/buttondialog")
-local DataStorage = require("datastorage")
 local ButtonTable = require("ui/widget/buttontable")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local Device = require("device")
@@ -102,7 +101,7 @@ function PkStudyView:init()
     self.board_size = math.min(self.dimen.w, math.floor(free_h * 0.68))
     self.text_h = free_h - self.board_size - 3 * Size.padding.default
     if not self.progress then
-        local ok, progress = pcall(PkProgress.open, DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+        local ok, progress = pcall(PkProgress.open, PkProgress.defaultPath())
         if ok then
             self.progress, self._own_progress = progress, true
         else
@@ -162,7 +161,6 @@ function PkStudyView:_build()
         if self.board then self.board:free() end
         self.board = ChessBoard:new{
             game = self.game,
-            square_refresh = PkRefresh.STEP, -- squares and selection: never a flash (pkrefresh.lua)
             width = self.board_size,
             height = self.board_size,
             flipped = orientation_black,
@@ -463,7 +461,7 @@ function PkStudyView:showMenu()
     for _, row in ipairs(PkNav.quickRows(close, "studies")) do buttons[#buttons + 1] = row end
     local file = PkDone.fileOf(self.study.path)
     if file and self.progress then
-        local ch_done = PkDone.isChapterDone(self.progress, file, self.chapter_index)
+        local ch_done = self:_progressFlag(PkDone.isChapterDone, file, self.chapter_index)
         buttons[#buttons + 1] = {{
             text = ch_done and _("Mark chapter as not done") or _("Mark chapter as done ✓"),
             callback = function()
@@ -471,7 +469,7 @@ function PkStudyView:showMenu()
                 self:setChapterDone(not ch_done)
             end,
         }}
-        local done = PkDone.isDone(self.progress, file)
+        local done = self:_progressFlag(PkDone.isDone, file)
         buttons[#buttons + 1] = {{
             text = done and _("Mark study as not done") or _("Mark study as done ✓"),
             callback = function()
@@ -494,6 +492,14 @@ end
 
 --- Marks the current chapter done (or not) and says so; marking the last
 -- remaining chapter marks the whole study done too.
+-- A done mark read from the progress file; false if it cannot be read (a
+-- locked or damaged file must not break the menu or the panel).
+function PkStudyView:_progressFlag(read, ...)
+    local ok, value = pcall(read, self.progress, ...)
+    if not ok then logger.warn("Paperknight: cannot read the done marks:", value) end
+    return ok and value or false
+end
+
 function PkStudyView:setChapterDone(done)
     local file = PkDone.fileOf(self.study.path)
     if not (file and self.progress) then return end
@@ -612,7 +618,7 @@ function PkStudyView:_lessonRefresh(prefix)
         if not lesson._marked_done and self.cursor.node ~= self.cursor.root then
             lesson._marked_done = true
             local file = PkDone.fileOf(self.study.path)
-            if file and self.progress and not PkDone.isChapterDone(self.progress, file, self.chapter_index) then
+            if file and self.progress and not self:_progressFlag(PkDone.isChapterDone, file, self.chapter_index) then
                 self:setChapterDone(true)
             end
         end

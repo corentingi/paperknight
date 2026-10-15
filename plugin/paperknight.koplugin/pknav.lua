@@ -6,7 +6,6 @@
 -- Frontlight and night mode are KOReader's own (its frontlight dialog and
 -- its ToggleNightMode event), so its settings stay the source of truth.
 local ButtonDialog = require("ui/widget/buttondialog")
-local DataStorage = require("datastorage")
 local Device = require("device")
 local Event = require("ui/event")
 local GestureRange = require("ui/gesturerange")
@@ -146,7 +145,13 @@ function PkNav.showQuick(current)
     local dialog
     local function close() UIManager:close(dialog) end
     dialog = ButtonDialog:new{ title = _("Paperknight"), title_align = "center", buttons = PkNav.quickRows(close, current) }
-    PkNav.quick_dialog = dialog -- tests
+    -- the open dialog (tests), forgotten when it closes
+    PkNav.quick_dialog = dialog
+    local onCloseWidget = dialog.onCloseWidget
+    dialog.onCloseWidget = function(d, ...)
+        if PkNav.quick_dialog == d then PkNav.quick_dialog = nil end
+        if onCloseWidget then return onCloseWidget(d, ...) end
+    end
     UIManager:show(dialog)
     return dialog
 end
@@ -189,7 +194,7 @@ local function computePuzzlesStatus()
     local ok, text = pcall(function()
         local PkProgress = require("pkprogress")
         local PkSrs = require("pksrs")
-        progress = PkProgress.open(DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+        progress = PkProgress.open(PkProgress.defaultPath())
         local rating, due = progress:rating(), progress:reviewDueCount(PkSrs.today())
         local s = T(_("Rating %1"), math.floor(rating + 0.5))
         if due > 0 then s = s .. " · " .. T(_("%1 to review"), due) end

@@ -1,7 +1,6 @@
 -- Paperknight plugin: menu entries, the dispatcher action and the modes'
 -- entry points. Each screen is its own widget (pkgame.lua, pkpuzzleview.lua,
 -- pkstudies.lua, pkopenings.lua; navigation in pknav.lua).
-local DataStorage = require("datastorage")
 local Dispatcher = require("dispatcher")
 local UIManager = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
@@ -117,7 +116,7 @@ function Paperknight:startPuzzles()
         UIManager:show(infoMessage:new{ text = _("The puzzle pack is empty.") })
         return nil
     end
-    local ok, progress = pcall(PkProgress.open, DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+    local ok, progress = pcall(PkProgress.open, PkProgress.defaultPath())
     if not ok then
         pack:close()
         Logger.warn("Paperknight: cannot open progress database:", progress)

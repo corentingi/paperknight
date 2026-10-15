@@ -25,7 +25,7 @@ function PkLesson.new(cursor, student, opts)
     self.variations_are_mistakes = opts.variations_are_mistakes == true
     self.mistakes = 0
     self.used_help = false
-    self.state = "new" -- new | play | reply | end
+    self.state = "new" -- new | play | reply | end | error
     return self
 end
 

@@ -139,7 +139,7 @@ function PkGame:initializeGameLogic()
         {[Chess.WHITE] = DEFAULT_TIME_MINUTES * 60,
             [Chess.BLACK] = DEFAULT_TIME_MINUTES * 60},
         {[Chess.WHITE] = 0, [Chess.BLACK] = 0,}, function()
-            self:updateTimerDisplay() -- Callback to update timer display every second
+            self:updateTimerDisplay() -- on each clock tick (pktimer.lua)
     end)
     self.running = false -- Game is paused initially, starts on first human move or explicit play
     self:_loadSettings()
@@ -150,7 +150,7 @@ end
 local function withProgress(fn)
     local ok, err = pcall(function()
         local PkProgress = require("pkprogress")
-        local progress = PkProgress.open(DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+        local progress = PkProgress.open(PkProgress.defaultPath())
         local f_ok, f_err = pcall(fn, progress)
         progress:close()
         if not f_ok then error(f_err, 0) end
@@ -285,7 +285,6 @@ function PkGame:initializeBoard()
         width = self.full_width,
         height = math.floor(0.7 * self.full_height), -- Calculate board height
         show_parent = self, -- PkGame: repaints go through this window
-        square_refresh = PkRefresh.STEP, -- a move refreshes its squares only (pkrefresh.lua)
         -- Callback for when any move (human or engine) has been executed and needs UI updates.
         moveCallback = function(move) self:onMoveExecuted(move) end,
         -- NEW: This callback is expected to be triggered by ChessBoard

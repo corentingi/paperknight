@@ -20,13 +20,13 @@ local PkStudyView = require("pkstudyview")
 
 local PkStudies = {}
 
---- Studies folder: <KOReader data dir>/paperknight/studies (created if
--- missing); PAPERKNIGHT_STUDIES_DIR overrides it (tests).
-function PkStudies.dir()
-    local dir = os.getenv("PAPERKNIGHT_STUDIES_DIR")
+--- Paperknight folder `name` in KOReader's data dir (created if missing);
+-- the environment variable `env_var` overrides it (tests).
+function PkStudies.dataDir(name, env_var)
+    local dir = os.getenv(env_var)
     if dir then return dir end
     local base = DataStorage:getFullDataDir() .. "/paperknight"
-    dir = base .. "/studies"
+    dir = base .. "/" .. name
     for _, d in ipairs({ base, dir }) do
         if lfs.attributes(d, "mode") ~= "directory" then
             local ok, err = lfs.mkdir(d)
@@ -34,6 +34,11 @@ function PkStudies.dir()
         end
     end
     return dir
+end
+
+--- Studies folder: <KOReader data dir>/paperknight/studies.
+function PkStudies.dir()
+    return PkStudies.dataDir("studies", "PAPERKNIGHT_STUDIES_DIR")
 end
 
 local function byName(a, b) return a:lower() < b:lower() end
@@ -95,7 +100,9 @@ local function fullscreenMenu(title, items)
     return menu
 end
 
-local MAX_STUDY_BYTES = 2 * 1024 * 1024 -- larger files are game databases, not studies
+-- larger PGN files are game databases, not studies or repertoires
+PkStudies.MAX_BYTES = 2 * 1024 * 1024
+local MAX_STUDY_BYTES = PkStudies.MAX_BYTES
 
 local ERRORS = {
     empty = _("This file contains no games."),
@@ -104,7 +111,7 @@ local ERRORS = {
 
 -- Runs fn(progress) with the progress database (nil if it cannot be opened).
 local function withProgress(fn)
-    local ok, progress = pcall(PkProgress.open, DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+    local ok, progress = pcall(PkProgress.open, PkProgress.defaultPath())
     if not ok then
         logger.warn("Paperknight: cannot open progress database:", progress)
         progress = nil

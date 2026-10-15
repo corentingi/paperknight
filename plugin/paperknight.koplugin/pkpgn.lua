@@ -140,10 +140,7 @@ end
 -- author's line breaks. Decided per chapter from the movetext lines.
 local WRAP_WIDTH = 80
 
-local function ulen(s)
-    local _, n = s:gsub("[^\128-\191]", "")
-    return n
-end
+local ulen = require("pktext").ulen -- length in characters (UTF-8)
 
 --- True if `movetext` looks wrapped by a tool: several lines, none longer
 -- than 80 characters, and most of them filled close to that width (a tool

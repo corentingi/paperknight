@@ -26,26 +26,15 @@ local PkStudy = require("pkstudy")
 
 local PkOpenings = {}
 
-local MAX_BYTES = 2 * 1024 * 1024
+local MAX_BYTES = PkStudies.MAX_BYTES
 
---- Repertoire folder (created if missing); PAPERKNIGHT_REPERTOIRES_DIR
--- overrides it (tests).
+--- Repertoire folder: <KOReader data dir>/paperknight/repertoires.
 function PkOpenings.dir()
-    local dir = os.getenv("PAPERKNIGHT_REPERTOIRES_DIR")
-    if dir then return dir end
-    local base = DataStorage:getFullDataDir() .. "/paperknight"
-    dir = base .. "/repertoires"
-    for _, d in ipairs({ base, dir }) do
-        if lfs.attributes(d, "mode") ~= "directory" then
-            local ok, err = lfs.mkdir(d)
-            if not ok then logger.warn("Paperknight: cannot create", d, err) end
-        end
-    end
-    return dir
+    return PkStudies.dataDir("repertoires", "PAPERKNIGHT_REPERTOIRES_DIR")
 end
 
 local function openProgress()
-    local ok, progress = pcall(PkProgress.open, DataStorage:getSettingsDir() .. "/paperknight/progress.sqlite")
+    local ok, progress = pcall(PkProgress.open, PkProgress.defaultPath())
     if ok then return progress end
     logger.warn("Paperknight: cannot open progress database:", progress)
     return nil, progress

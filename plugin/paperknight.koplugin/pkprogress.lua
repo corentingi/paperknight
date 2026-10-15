@@ -54,6 +54,11 @@ function PkProgress.updatedRating(rating, puzzle_rating, success, attempts_so_fa
     return math.max(MIN_RATING, math.min(MAX_RATING, new))
 end
 
+--- The progress file (in KOReader's settings folder).
+function PkProgress.defaultPath()
+    return require("datastorage"):getSettingsDir() .. "/paperknight/progress.sqlite"
+end
+
 function PkProgress.open(path)
     local dir = path:match("(.*)/")
     if dir then

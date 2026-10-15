@@ -127,7 +127,6 @@ end
 
 local Cursor = {}
 Cursor.__index = Cursor
-PkStudy.Cursor = Cursor
 
 --- `game` is a Chess instance; the cursor keeps it on the current node.
 function PkStudy:cursor(i, game)
@@ -239,12 +238,10 @@ function Cursor:onMainline(node)
     return true
 end
 
-local MOVE_MARKS = { [1] = "!", [2] = "?", [3] = "!!", [4] = "??", [5] = "!?", [6] = "?!" }
-
---- The move mark of a node ("!!", "?"…) for the board badge, or nil.
+--- The move mark of a node ("!!", "?"…: NAGs $1-$6) for the board badge, or nil.
 function PkStudy.moveMark(node)
     for _, nag in ipairs(node and node.glyphs or {}) do
-        if MOVE_MARKS[nag] then return MOVE_MARKS[nag] end
+        if nag >= 1 and nag <= 6 then return PkPgn.NAG_SYMBOLS[nag] end
     end
     return nil
 end

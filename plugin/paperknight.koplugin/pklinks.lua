@@ -110,8 +110,14 @@ function PkLinks.menuRow(links, close)
                 end }}
             end
             dialog = ButtonDialog:new{ title = _("Show the QR code of a link"), buttons = rows }
-            UIManager:show(dialog)
+            -- the open dialog (tests), forgotten when it closes
             PkLinks.dialog = dialog
+            local onCloseWidget = dialog.onCloseWidget
+            dialog.onCloseWidget = function(d, ...)
+                if PkLinks.dialog == d then PkLinks.dialog = nil end
+                if onCloseWidget then return onCloseWidget(d, ...) end
+            end
+            UIManager:show(dialog)
         end,
     }}
 end

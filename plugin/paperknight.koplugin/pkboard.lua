@@ -3,7 +3,8 @@ local _ = require("gettext")
 local logger = require("logger")
 local Geom = require("ui/geometry")
 local Blitbuffer = require("ffi/blitbuffer")
-local ButtonTable = require("pkbuttontable")
+local PkButton = require("pkbutton")
+local PkRefresh = require("pkrefresh")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local Font = require("ui/font")
@@ -24,7 +25,7 @@ local SELECTED_BORDER = 5
 -- neighbouring squares in the ButtonTable).
 -- Night mode (KOReader inverts the whole screen) gets its own palette: the
 -- squares are mid-dark greys, light enough for the black pieces, one level
--- apart; the last-move tint is the lightest, three levels above. Values are
+-- apart; the last-move tint is the lightest (0xAA). Values are
 -- what the panel shows: the board is painted with their inverse, and the piece
 -- sets are swapped (an inverted black piece shows as a white one; inverted
 -- white pieces give black ones a light outline that reads on dark squares).
@@ -53,19 +54,26 @@ local PkIcons = require("pkicons")
 local icons = { empty = PkIcons.empty }
 for piece, by_color in pairs(PkIcons.pieces) do icons[piece] = by_color end
 
+-- The squares' grid (instead of a ButtonTable, which adds separators and
+-- spacing the board doesn't want): getButtonById as on a ButtonTable.
+local Grid = VerticalGroup:extend{ by_id = nil }
+function Grid:getButtonById(id) return self.by_id[id] end
+
 local Board = FrameContainer:extend{
     game = nil,
     width = 250,
     height = 250,
     moveCallback = nil,
     holdCallback = nil,
-    onPromotionNeeded = nil, -- NEW: Callback for when a pawn promotion is detected
+    onPromotionNeeded = nil, -- function(from, to, color): a pawn reaches the last rank (the view asks the piece)
     flipped = false, -- Paperknight: true shows the board from Black's side
     locked = false,  -- Paperknight: true ignores taps (e.g. puzzle finished, opponent thinking)
     coordinates = true, -- Paperknight: draw a–h / 1–8 around the board
     padding = 0,
     bordersize = 0,  -- Paperknight: the grey frame is drawn around the squares only
     background = Blitbuffer.COLOR_WHITE,
+    -- Paperknight: e-ink mode of the squares' refreshes (pkrefresh.lua)
+    square_refresh = PkRefresh.STEP,
 }
 
 --- Board.palette(): colours for the current mode (night mode follows Screen),
@@ -111,14 +119,17 @@ function Board:init()
         table.insert(grid, row)
     end
 
-    self.table = ButtonTable:new{
-        buttons = grid,
-        width = BOARD_SIZE * self.button_size, -- Paperknight: exactly 8 squares, no side margins
-        shrink_unneeded_width = false,
-        zero_sep = true,
-        sep_width = 0,
-        addVerticalSpan = function() end, -- No vertical spacing between rows
-    }
+    -- the 8x8 squares: rows of buttons, no separators; buttons found by id
+    self.table = Grid:new{ align = "left", by_id = {} }
+    for _, row in ipairs(grid) do
+        local hgroup = HorizontalGroup:new{ align = "top" }
+        for _, entry in ipairs(row) do
+            local button = PkButton:new(entry)
+            self.table.by_id[entry.id] = button
+            hgroup[#hgroup + 1] = button
+        end
+        self.table[#self.table + 1] = hgroup
+    end
 
     self:applySquareColors()
     for rank = 0, BOARD_SIZE - 1 do
@@ -220,7 +231,7 @@ function Board:handleClick(file, rank)
     if self.locked then return end
     local id = Board.toId(file, rank)
     local square = Board.idToPosition(id) -- Chess algebraic notation (e.g., "e4")
-    logger.dbg("Chess click on square: " .. square)
+    logger.dbg("Paperknight: square tapped", square)
 
     if self.selected then
         -- A piece is already selected, this click is a move attempt
@@ -286,11 +297,9 @@ function Board:handleMove(from, to)
     end
 
     if is_pawn_promotion and self.onPromotionNeeded then
-        -- If it's a promotion and we have a callback, defer the move to Paperknight.lua.
-        -- Paperknight.lua will then prompt for the promotion piece and call game.move().
+        -- a promotion: the view asks for the piece (onPromotionNeeded), then plays the move
         logger.dbg(string.format("Pawn promotion detected: %s pawn from %s to %s. Triggering promotion dialog.", piece.color, from, to))
         self.onPromotionNeeded(from, to, piece.color)
-        -- IMPORTANT: Do NOT call self.game.move() here. Paperknight will handle it after selection.
     else
         -- If not a promotion, or no promotion callback provided, proceed with a normal move.
         local move = self.game.move{ from = from, to = to }
@@ -298,7 +307,7 @@ function Board:handleMove(from, to)
             self:handleGameMove(move)
         else
             -- Move was illegal (e.g., wrong piece, blocked, etc.)
-            logger.dbg(string.format("Illegal move attempted from %s to %s.", from, to), "ERROR")
+            logger.dbg("Paperknight: illegal move", from, to)
             -- Re-render the board to revert any temporary visual changes for the illegal move
             self:updateBoard()
         end
@@ -333,7 +342,7 @@ end
 --- Board:setShapes(shapes)
 -- Paperknight: { circles = { {square=}, ... }, arrows = { {from=, to=}, ... } }
 -- drawn over the squares on the next paint (nil clears them).
--- With square_refresh, the squares under the old and new shapes are
+-- The squares under the old and new shapes are
 -- refreshed (an arrow: the rectangle between its ends), when they changed.
 function Board:setShapes(shapes)
     local function key(s)
@@ -349,14 +358,13 @@ function Board:setShapes(shapes)
     end
     local old = self.shapes
     self.shapes = shapes
-    if not self.square_refresh then return end
     for _, s in ipairs({ old or {}, shapes or {} }) do
         for _, c in ipairs(s.circles or {}) do self:_refreshSquare(c.square) end
         for _, a in ipairs(s.arrows or {}) do self:_refreshSquare(a.from); self:_refreshSquare(a.to) end
     end
 end
 
--- Adds a square to the pending square refresh (square_refresh boards).
+-- Adds a square to the pending square refresh.
 function Board:_refreshSquare(square)
     local id = Board.chessToId(square)
     if id then self:_refreshButton(self.table:getButtonById(id), self:_screenRect(square)) end
@@ -374,7 +382,7 @@ function Board:paintTo(bb, x, y)
     if self.shapes then self:_paintShapes(bb) end
     if self.badge then self:_paintBadge(bb) end
     if self.selected_mark and not self.locked then self:_paintSelection(bb) end
-    if self.square_refresh then self:_cacheRects() end
+    self:_cacheRects()
 end
 
 -- Screen rectangles of the squares, as just painted (see _refreshButton).
@@ -416,11 +424,10 @@ Board.TICK = TICK
 
 --- Board:setBadge(square, text): shows `text` in the top-right corner of
 -- `square`; setBadge(nil) removes it. The caller repaints.
--- With square_refresh, the old and new badge squares are refreshed.
+-- The old and new badge squares are refreshed.
 function Board:setBadge(square, text)
     local old = self.badge and self.badge.square
     self.badge = (square and text) and { square = square, text = text } or nil
-    if not self.square_refresh then return end
     for _, sq in pairs({ old = old, new = square }) do self:_refreshSquare(sq) end
 end
 
@@ -569,20 +576,16 @@ function Board:_screenRect(square)
     return self._rects and self._rects[square]
 end
 
---- Paperknight: e-ink update of one square whose content changed. With
--- `square_refresh` set (e.g. "partial", see pkrefresh.lua), only that square
--- is refreshed with that mode, so that a move never refreshes the whole board
--- (nor flashes it, when KOReader promotes every Nth partial refresh: the
--- promoted flash covers the region only). Otherwise Button:refresh.
--- `rect`: the square on screen (nil before the first paint: then the whole
--- window, which is being shown anyway).
--- The squares changed by one update (a move, its highlights) are refreshed
--- together: one refresh of the rectangle around them, sent after painting.
--- Separate refreshes run one after the other on the e-ink controller (the
--- old highlight cleared, then the piece moved); unchanged pixels inside the
--- rectangle are not touched by a partial refresh.
+--- Paperknight: e-ink update of a square whose content changed, with the
+-- `square_refresh` mode (PkRefresh.STEP: never promoted to a flash,
+-- pkrefresh.lua). `rect`: the square on screen (nil before the first paint:
+-- then the whole window, which is being shown anyway).
+-- The squares changed by one update (a move, its highlights, a badge, the
+-- shapes) are refreshed together: one refresh of the rectangle around them,
+-- sent after painting, since separate refreshes run one after the other on
+-- the e-ink controller. REAGL redraws every pixel of the region: the text
+-- below the board is refreshed apart (docs/eink-refresh.md).
 function Board:_refreshButton(button, rect)
-    if not self.square_refresh then return button:refresh() end
     if not rect then return UIManager:setDirty(self.show_parent or self, self.square_refresh) end
     if self._batch then
         self._batch = self._batch:combine(rect)
@@ -658,18 +661,10 @@ end
 -- drawn by paintTo, so the whole window is painted, but the e-ink refresh is
 -- limited to the square).
 function Board:_repaintSquare(square)
-    -- square_refresh boards: in the update's single refresh (switching the
-    -- selection to another piece is one refresh, not two in a row)
-    if self.square_refresh and square then return self:_refreshSquare(square) end
-    local rect = square and self:_squareRect(square)
-    -- else "ui", not "fast": the fast (DU) waveform is black and white only
-    -- and would degrade the grey squares
-    local mode = self.square_refresh or "ui"
-    if rect and rect.w then
-        UIManager:setDirty(self.show_parent or self, mode, rect)
-    else
-        UIManager:setDirty(self.show_parent or self, mode, self.dimen)
-    end
+    -- in the update's single refresh (switching the selection to another
+    -- piece is one refresh, not two in a row)
+    if square then return self:_refreshSquare(square) end
+    UIManager:setDirty(self.show_parent or self, self.square_refresh, self.dimen)
 end
 
 --- Removes the selection (e.g. before the board is locked).
@@ -697,7 +692,7 @@ function Board:placePiece(square, piece, color, no_refresh)
     local icon = (piece and icons[piece] and icons[piece][color]) or icons.empty
     local id_result = Board.chessToId(square)
     if not id_result then
-        logger.info(_("Error placing " .. tostring(piece) .. " on non-chess position: " .. square))
+        logger.warn("Paperknight: placePiece on an invalid square:", square, piece)
         return
     end
     local button = self.table:getButtonById(id_result)
@@ -791,17 +786,10 @@ end
 -- @param position String, algebraic notation (e.g., "e4").
 -- @return the light or dark square colour of the current palette.
 function Board.positionToColor(position)
-    if type(position) == "string" and #position == 2 then
-        local file_char = position:sub(1, 1)
-        local rank_char = position:sub(2, 2)
-        if 'a' <= file_char and file_char <= 'h' and '1' <= rank_char and rank_char <= '8' then
-            local file_idx = string.byte(file_char) - string.byte('a')
-            local rank_idx = tonumber(rank_char) - 1
-            local palette = Board.palette()
-            return (file_idx + rank_idx) % 2 == 1 and palette.light or palette.dark
-        end
-    end
-    return nil -- Or a default color, depending on desired behavior for invalid input
+    local id = Board.chessToId(position)
+    if not id then return nil end
+    local palette = Board.palette()
+    return (math.floor(id / BOARD_SIZE) + id % BOARD_SIZE) % 2 == 1 and palette.light or palette.dark
 end
 
 function Board:allMarginSizes()

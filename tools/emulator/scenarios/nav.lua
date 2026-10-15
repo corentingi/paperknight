@@ -74,6 +74,7 @@ return function(h)
     h.tapWidget(dialogButton(quick, "Studies"))
     h.settle()
     h.check(names() == "paperknight_studies,paperknight_home", "switched to studies: " .. names())
+    h.check(PkNav.quick_dialog == nil, "the closed quick settings are not kept in memory")
 
     -- 4. Night mode from the ☰ menu of a list, and back.
     local studies = top()

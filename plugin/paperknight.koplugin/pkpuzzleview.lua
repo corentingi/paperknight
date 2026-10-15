@@ -74,11 +74,12 @@ function PkPuzzleView:init()
         left_icon_tap_callback = function() self:showMenu() end,
         close_callback = function() self:onClose() end,
     }
-    self.theme = self.progress:getSetting("theme") -- nil = all themes
+    local t_ok, theme = pcall(self.progress.getSetting, self.progress, "theme")
+    self.theme = t_ok and theme or nil -- nil = all themes
     if self.theme and not self:_packHasTheme(self.theme) then
         -- saved with an older pack that had this theme: fall back to all themes
         self.theme = nil
-        self.progress:setSetting("theme", nil)
+        pcall(self.progress.setSetting, self.progress, "theme", nil)
     end
     self.status = TextBoxWidget:new{
         text = "",
@@ -152,7 +153,6 @@ function PkPuzzleView:_prepareBoard(flipped)
         height = self.board_size,
         flipped = flipped,
         show_parent = self, -- the board repaints through this window (selection overlay)
-        square_refresh = PkRefresh.STEP, -- a move refreshes its squares only (pkrefresh.lua)
         moveCallback = function(move) self:onUserMove(move) end,
         onPromotionNeeded = function(from, to, color)
             PkPromotion.show(color, function(letter)
