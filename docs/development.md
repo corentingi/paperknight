@@ -17,6 +17,7 @@ Run `make help` for the current list. Main ones:
 | `make emulator` | Visible KOReader window with the plugin loaded (needs a display) |
 | `make packs` | Build data packs into `build/packs/` (`--refresh` on the pipeline downloads the dump again) |
 | `make pka` | Device archive and installer in `build/dist/` (see Deploying) |
+| `make pkc` | Code-only device archive and installer (`pkc.tar.gz`, `pkc.sh`) |
 | `make check` | Everything: run it before committing (there is no CI) |
 
 ## The emulator
@@ -67,6 +68,11 @@ checksum); put both on a web server, then on the Kindle run
 `curl -fkL <server>/pka.sh | sh`. It checks the archive, extracts it into a
 staging folder, then swaps the plugin folder (keeping `bin/` and a pack it
 doesn't bring). Stockfish: [stockfish.md](stockfish.md).
+
+When only the code changed, `make pkc` builds a code-only archive
+(`pkc.tar.gz`, about 140 KB) and `pkc.sh`, used the same way
+(`curl -fkL <server>/pkc.sh | sh`): it replaces the plugin's code and keeps
+the puzzle pack, studies, repertoires and fonts already installed.
 
 Over USB:
 

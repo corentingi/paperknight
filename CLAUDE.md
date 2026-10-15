@@ -19,6 +19,9 @@
   rebuilt). Deploy: upload both (remote-file skill); on the Kindle
   `curl -fkL <url>/pka.sh | sh` (it checks the archive's sha256, baked in
   by build-pka.sh: upload both files together).
+- `make pkc` — code-only archive `build/dist/pkc.tar.gz` + `pkc.sh` (~140 KB,
+  no puzzle pack/studies/fonts; the device keeps its assets). Use it when
+  only the plugin code changed; `make pka` when assets changed.
 - Stockfish for the Kindle: `tools/dist/build-stockfish.sh` (docs/stockfish.md);
   upload `stockfish.gz`, `stockfish.sh` and the source tarball.
 
@@ -81,8 +84,10 @@
 - Record decisions as ADRs in `docs/adr/` (template `0000-template.md`);
   update `docs/` with behaviour changes.
 - Routine for a change: implement, quick review of the diff (no review
-  subagents), `make check` green, commit, push to `main`, `make pka` and
-  upload `pka.tar.gz` + `pka.sh` (check the served sha256), then report.
+  subagents), `make check` green, commit, push to `main`, then report.
   No `Co-Authored-By` lines.
+- Device builds only when the user asks: then `make pkc` (code only) or
+  `make pka` (assets changed), upload the archive with its installer
+  (remote-file skill) and check the served sha256.
 - A new e2e check must fail without the fix: revert the fix once and run it
   (mutation check).

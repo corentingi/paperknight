@@ -45,6 +45,7 @@ make study ID=<lichess study id or URL>   # download a study into build/studies/
 make check         # unit tests + headless end-to-end scenarios (screenshots in build/e2e/)
 make emulator      # run the plugin in a desktop KOReader window (see docs/development.md)
 make pka           # device archive + installer in build/dist/ (pka.tar.gz, pka.sh)
+make pkc           # code-only archive + installer (pkc.tar.gz, pkc.sh): keeps the assets on the device
 ```
 
 ## Installing on a Kindle

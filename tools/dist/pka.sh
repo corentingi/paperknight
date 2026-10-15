@@ -14,7 +14,8 @@
 # and bin/ (Stockfish, installed by stockfish.sh). Asset files are removed
 # only if the previous archive installed them (listed in
 # paperknight/.pka-files): studies or repertoires you added are kept. The
-# archive is left in the koreader folder.
+# archive is left in the koreader folder. A code-only archive (pkc.sh,
+# build-pka.sh --code) brings no assets: the ones installed are kept.
 main() {
     set -e
     KOREADER_DIR=${KOREADER_DIR:-/mnt/us/koreader}
@@ -74,6 +75,11 @@ main() {
         rm -rf "$PLUGIN.old"
     fi
 
+    if [ ! -f "$NEW/$LIST" ]; then # code only: the assets stay as they are
+        rm -rf "$NEW"
+        echo "Paperknight updated (code only). Restart KOReader."
+        return 0
+    fi
     echo "Replacing the studies and fonts"
     if [ -f "$LIST" ]; then
         while IFS= read -r file; do
