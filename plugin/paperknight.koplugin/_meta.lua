@@ -1,6 +1,6 @@
 local _ = require("gettext")
 return {
     fullname = _("Paperknight"),
-    description = _([[Offline chess training: play Stockfish, solve puzzles, drill openings. Fork of Kochess.]]),
+    description = _([[Offline chess training: puzzles, Lichess studies and lessons, an openings trainer, an analysis board, and play (Stockfish if installed). Fork of Kochess.]]),
     version = "0.1.0",
 }

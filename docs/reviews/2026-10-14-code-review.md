@@ -209,3 +209,25 @@ Fixed, each with a test that fails without the fix:
 Not done yet: P9 (lazy node tables), the rest of P10 (`parseFen`,
 `checkMark`), P17 (engine polling), bug 20, and sections 3–5 (tooling,
 quality, docs), which were not part of this pass.
+
+## Follow-up (2026-10-15)
+
+Done since the first follow-up, each with tests:
+
+- **Bugs**: 20 (long-form piece moves), the rest of 21–22 (illegal engine
+  move, Play settings saved) and quiet Play refreshes.
+- **Performance**: P9 (lazy node tables), the rest of P10 (FEN bytes,
+  check mark reuse), P14 (icon swap), P17 (one engine polling task).
+- **Tooling (section 3)**: T1–T13 (installer safety and checksum,
+  archive contents, e2e ~250 s → ~35 s, faster san_spec, robust runners,
+  If-Range resume and --refresh, CLI errors, KOReader checksum).
+- **Quality (section 4)**: pkbuttontable gone and PkButton icon-only, one
+  refresh policy, shared board screen for studies and drill, emoji fallback
+  (ADR-0017), test hooks, protected progress reads, shared helpers, dead
+  exports and misleading comments, the reviews count.
+- **Docs (section 5)**: architecture (all modules), development guide,
+  data sources, pack format, plugin description.
+
+Not done: PkLesson and PkDrill still mirror each other (their rules differ
+enough that a shared base would be forced); the promotion chooser still has
+no cancel (a piece must be chosen).

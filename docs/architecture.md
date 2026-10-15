@@ -4,14 +4,15 @@
             PC (developer)                               Kindle (KOReader)
  ┌────────────────────────────────────┐       ┌──────────────────────────────────┐
  │ pipeline/  (Python)                │       │ plugin/paperknight.koplugin (Lua)│
- │                                    │ copy  │                                  │
- │ download ─► filter ─► build pack ──┼──────►│ packs/*.sqlite   (read-only)     │
- │ (Lichess,    (rating,   (SQLite,   │       │        │                         │
- │  PGN Mentor,  themes,    schema in  │       │        ▼                         │
- │  TWIC…)       curation)  pack-format)       │ modes: Play · Puzzles · Openings │
- └────────────────────────────────────┘       │        · Master games            │
-                                               │        │                         │
-                                               │        ▼                         │
+ │                                    │ pka   │                                  │
+ │ download ─► filter ─► build pack ──┼──────►│ packs/puzzles.sqlite (read-only) │
+ │ (Lichess    (rating,   (SQLite,    │       │ paperknight/studies, repertoires │
+ │  puzzles,    themes,    schema in  │       │        │                         │
+ │  studies)    quality)   pack-format)       │        ▼                         │
+ │                                    │       │ Home · Puzzles · Studies ·       │
+ │ tools/dist: pka.tar.gz + pka.sh,   │       │ Openings · Analysis board · Play │
+ │ stockfish.gz + stockfish.sh        │       │        │                         │
+ └────────────────────────────────────┘       │        ▼                         │
                                                │ settings/paperknight/progress.sqlite
                                                │ (user progress, writable)        │
                                                └──────────────────────────────────┘
@@ -19,54 +20,91 @@
 
 ## Plugin (`plugin/paperknight.koplugin/`)
 
-Forked from Kochess (ADR-0003). Inherited modules (renamed with the `pk` prefix so they cannot clash with Kochess or other chess plugins in `package.loaded`):
+Forked from Kochess (ADR-0003); every module has the `pk` prefix so it cannot
+clash with Kochess or other plugins in `package.loaded` (ADR-0009).
+
+### Entry point and navigation
 
 | File | Role |
 |---|---|
-| `_meta.lua` | Plugin name/description for KOReader's plugin manager |
-| `main.lua` | Entry point (the plugin): menu registration, dispatcher action, starting each mode |
-| `pkanalysis.lua` | Analysis board: free moves for both sides, line stepping, FEN, flip; Stockfish evaluation and best line (one search at a time, stopped on close) |
-| `pkgame.lua` | Game screen against the engine (inherited from Kochess), its own widget `paperknight_game`; stops the clock and the engine process on close |
-| `pkboard.lua` | Board widget: draws squares and pieces, handles taps |
-| `pkchess.lua` + `pkchesslib/` | Rules engine (move generation, FEN, SAN, PGN), from arizati/chess.lua |
-| `pkuci.lua` | Talks to a UCI engine (Stockfish) through a subprocess |
+| `_meta.lua` | Plugin name and description for KOReader's plugin manager |
+| `main.lua` | The plugin: menu entries, dispatcher action, starting each mode |
+| `pknav.lua` | Home screen, quick settings (frontlight, night mode, modes), switching modes (ADR-0015) |
+| `pkfonts.lua` | Emoji UI fallback font when Noto Emoji is installed (ADR-0017) |
+
+### Board and screen widgets
+
+| File | Role |
+|---|---|
+| `pkboard.lua` | Board widget: squares, pieces, last move, selection, badges, arrows and circles; refreshes only the squares an update changes |
+| `pkboardscreen.lua` | Board + text panel + buttons shared by the study view and the openings drill (layout, panel text with links, refreshes, reply timer) |
+| `pkbutton.lua` | KOReader's Button for icon buttons given as absolute paths; `no_feedback` (no tap flash) |
+| `pkrefresh.lua` | E-ink refresh policy: steps are `[partial]` (never promoted to a flash), pages a counted `partial`; see [eink-refresh.md](eink-refresh.md) |
+| `pkpromotion.lua` | Promotion piece chooser |
+| `pkicons.lua` | Absolute paths of the piece icons inside the plugin folder |
+| `pkside.lua` | Side names with a disc marker ("○ White", "● Black"), swapped in night mode |
+| `pktext.lua` | Text helpers: UTF-8 length, web addresses shown short (linkify) |
+| `pklinks.lua` | Tapping a link in a panel shows its QR code |
+
+### Puzzles
+
+| File | Role |
+|---|---|
+| `pkpuzzleview.lua` | Puzzle screen: Retry / Hint / Solution / Next while solving, Retry / ‹ / › / Next to step through the line once finished; themes once finished; ☰ Theme…, Stats…, Analyse position |
+| `pkpuzzle.lua` | Puzzle session state machine (pure logic) |
+| `pkpuzzlepack.lua` | Read-only access to `puzzles.sqlite` (paged random picks near the rating) |
+| `pkpuzzlereview.lua` | Missed-puzzle review ladder: 3, 7, 21 days (ADR-0014) |
+| `pkpuzzlestats.lua` | Per-theme stats: clean solves / attempts and a performance rating |
+| `pkstatsview.lua` | Stats screen: a bar per theme; a tap trains the theme |
+| `pkthemes.lua` | Theme labels and menu order; which tags are skills and worth showing |
+
+### Studies and openings
+
+| File | Role |
+|---|---|
+| `pkpgn.lua` | PGN reader: chapter index and movetext tree (ADR-0011) |
+| `pksan.lua` | Fast SAN resolver for study and repertoire trees (ADR-0013) |
+| `pkstudy.lua` | Study chapters and a lazy-resolving tree cursor |
+| `pkstudies.lua` | Studies browser: folders, chapter list, done marks |
+| `pkstudyview.lua` | Study viewer and lesson screen |
+| `pklesson.lua` | Interactive lesson rules (Lichess gamebook) on a cursor |
+| `pkdone.lua` | Done marks of studies and chapters, last chapter opened |
+| `pkopenings.lua` | Openings list: repertoires, their counts, caches (ADR-0012) |
+| `pkrepertoire.lua` | Repertoire cards from a study tree (positions to answer) |
+| `pkdrill.lua` | Drill session over a repertoire, spaced repetition (pure logic) |
+| `pkdrillview.lua` | Drill screen |
+| `pksrs.lua` | SM-2 scheduling and the day boundary (4 am) |
+| `pkrescache.lua` | On-device cache of resolved repertoire moves (ADR-0013) |
+
+### Play and analysis
+
+| File | Role |
+|---|---|
+| `pkanalysis.lua` | Analysis board: moves for both sides, line stepping, FEN, flip; Stockfish evaluation and best line (one search at a time, stopped on close) |
+| `pkgame.lua` | Game screen (from Kochess): against Stockfish when installed, else two players; settings saved; clock and engine stopped on close |
+| `pkuci.lua` | UCI engine in a subprocess: one polling task, stopped and reaped on close |
 | `pktimer.lua` | Chess clocks |
 | `pksettingswidget.lua` | Player types, engine strength, time controls |
-| `pkbutton.lua`, `pkbuttontable.lua` | Patched copies of KOReader button widgets |
-| `pkutils.lua` | Helpers |
+| `pkchess.lua` + `pkchesslib/` | Rules engine (move generation, FEN, SAN, PGN) from arizati/chess.lua, with a redo history |
+| `pkutils.lua` | Subprocess, pipe reader and writer |
 
-Paperknight modules (prefixed `pk` to avoid `package.loaded` clashes, ADR-0009):
+### Storage
 
 | File | Role |
 |---|---|
-| `pkpuzzleview.lua` | Puzzle screen: board, status line; Retry / Hint / Solution / Next while solving, Retry / ‹ / › / Next to step through the line once finished (also swipes); the puzzle's themes once finished (all themes mode); ☰ Theme… and Stats… pages |
-| `pkpuzzlestats.lua` | Per-theme stats from the attempts: clean solves / attempts and a performance rating (average puzzle rating ± 400 by score, from 5 attempts), weakest first |
-| `pkstatsview.lua` | Puzzle stats screen: a row per theme with a bar (clean solves black, missed grey) and the figures; pages; a tap trains the theme |
-| `pkpuzzle.lua` | Puzzle session state machine (pure logic, unit-tested) |
-| `pkpuzzlereview.lua` | Missed-puzzle review ladder (pure logic, ADR-0014) |
-| `pknav.lua` | Home screen, quick settings (frontlight, night mode, modes), switching modes (ADR-0015) |
-| `pkrefresh.lua` | E-ink refresh policy of the board screens: steps are "[partial]" (never promoted to a flash), pages a counted "partial"; see [eink-refresh.md](eink-refresh.md) |
-| `pkside.lua` | Side names with a disc marker ("○ White", "● Black"), swapped in night mode |
-| `pkrescache.lua` | On-device cache of resolved repertoire moves (ADR-0013) |
-| `pkpuzzlepack.lua` | Read-only access to `puzzles.sqlite` (indexed random picks) |
-| `pkprogress.lua` | `progress.sqlite`: rating + attempts (ADR-0010), puzzle reviews (ADR-0014), repertoire cards, settings |
-| `pkpromotion.lua` | Promotion piece chooser shared by both screens |
-| `pkicons.lua` | Absolute paths of the piece icons inside the plugin folder |
-| `pkthemes.lua` | Puzzle theme labels and menu order; which tags are skills (stats) and worth showing after a puzzle |
-| `pkpgn.lua` | PGN reader: chapter index + movetext tree (ADR-0011) |
-| `pkstudy.lua` | Study chapters and a lazy-resolving tree cursor |
-| `pklesson.lua` | Interactive lesson rules (Lichess gamebook) on a cursor |
-| `pkstudies.lua` | Studies browser (folder listing, chapter list) |
-| `pkstudyview.lua` | Study viewer and lesson screen |
+| `pkprogress.lua` | `progress.sqlite`: rating and attempts (ADR-0010), puzzle reviews (ADR-0014), repertoire cards, settings; migrations |
 
-The menu entry *Paperknight* opens a submenu: *Puzzles*, *Studies* and
-*Play against the engine*. Planned additions are tracked in [`roadmap.md`](roadmap.md).
+The menu entry *Paperknight* opens a submenu: *Home*, *Puzzles*, *Studies*,
+*Openings*, *Analysis board* and *Play*. Stockfish is installed apart
+([stockfish.md](stockfish.md), ADR-0016). Planned additions are tracked in
+[`roadmap.md`](roadmap.md).
 
 ## Pipeline (`pipeline/`)
 
 Python package `paperknight_pipeline` (ADR-0006). One sub-command per pack:
-`python -m paperknight_pipeline puzzles …`. Inputs are cached in
-`build/downloads/`, outputs written to `build/packs/`.
+`python -m paperknight_pipeline puzzles …` (and `study` to download a
+Lichess study). Inputs are cached in `build/downloads/`, outputs written to
+`build/packs/`.
 
 ## Data contract
 
@@ -75,7 +113,7 @@ tested against it; the plugin checks `meta.format_version` before use (ADR-0005)
 
 ## Testing
 
-- Pipeline: `pytest` on small fixtures.
-- Plugin logic: plain Lua tests run with the LuaJIT bundled in KOReader.
+- Pipeline: `pytest` on small fixtures and a local HTTP server.
+- Plugin logic: plain Lua specs run with the LuaJIT bundled in KOReader.
 - End to end: headless desktop KOReader with a harness plugin that drives
   scenarios and takes screenshots (ADR-0007, [`development.md`](development.md)).

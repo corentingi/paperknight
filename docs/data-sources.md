@@ -8,7 +8,7 @@ with attribution only.
 
 | Source | Content | License | Use |
 |---|---|---|---|
-| [Lichess puzzle DB](https://database.lichess.org/#puzzles) | 6.16M puzzles, CSV (`PuzzleId, FEN, Moves, Rating, RatingDeviation, Popularity, NbPlays, Themes, GameUrl, OpeningTags`), ~300 MB `.zst`, monthly | CC0 | Main source. Filter by popularity/plays, stratify by rating × theme |
+| [Lichess puzzle DB](https://database.lichess.org/#puzzles) | 6.16M puzzles, CSV (`PuzzleId, FEN, Moves, Rating, RatingDeviation, Popularity, NbPlays, Themes, GameUrl, OpeningTags, DailyDate`; the pipeline ignores the last), ~300 MB `.zst`, monthly | CC0 | Main source. Filter by popularity/plays, stratify by rating × theme |
 | [lichess-puzzler](https://github.com/ornicar/lichess-puzzler) | Generator (Stockfish) + theme tagger, Python | AGPL-3.0 (tool only; its output is ours) | Later: puzzles from master games |
 | [Theme list](https://github.com/lichess-org/lila/blob/master/translation/source/puzzleTheme.xml) | Theme keys, names, descriptions | AGPL (lila) — reuse keys, write our own short labels | Theme menu |
 

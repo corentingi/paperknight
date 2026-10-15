@@ -8,13 +8,17 @@
   Output in `build/e2e/<scenario>.{log,result}`; on failure grep, don't cat:
   `grep -nE -A8 "ERROR|stack traceback" build/e2e/<name>.log`
   One scenario: `make e2e E2E_SCENARIOS=tools/emulator/scenarios/<name>.lua`
-  (a path, not a bare name).
+  (a path, not a bare name). Scenarios run 2 at a time (`PK_JOBS`), each in
+  its own home, within `PK_TIMEOUT` s (default 120).
 - `make koreader` once if `build/koreader` is missing.
 - `make pka` — device archive `build/dist/pka.tar.gz` + installer
   `build/dist/pka.sh` (`tools/dist/`). Repacks the current plugin with the
   assets staged in `build/dist/all` (studies, repertoires, puzzle pack: not
   rebuilt). Deploy: upload both (remote-file skill); on the Kindle
-  `curl -fkL <url>/pka.sh | sh`.
+  `curl -fkL <url>/pka.sh | sh` (it checks the archive's sha256, baked in
+  by build-pka.sh: upload both files together).
+- Stockfish for the Kindle: `tools/dist/build-stockfish.sh` (docs/stockfish.md);
+  upload `stockfish.gz`, `stockfish.sh` and the source tarball.
 
 ## Token hygiene
 - Don't read `main.lua`, `pkboard.lua`, `pkstudyview.lua` in full: grep for the
@@ -38,9 +42,10 @@
 - Always cancel `UIManager:scheduleIn` tasks on close/restart (crash risk).
 - `Button:setIcon` / `enableDisable` rebuild the button: its frame has no
   `dimen` until the next paint (cache square rects at paint time, pkboard).
-- e2e: `h.wait()` after a programmatic view change (`loadChapter`, `toEnd`…)
-  before tapping: rebuilt widgets have no position yet (IconButton crash, or
-  the tap lands at 0,0).
+- e2e: `h.settle()` after a programmatic view change (`loadChapter`,
+  `setPosition`…) before tapping: rebuilt widgets have no position yet
+  (IconButton crash, or the tap lands at 0,0). Taps settle by themselves;
+  `h.waitFor(pred)` for a condition, `h.wait(s)` only for timed tasks.
 - In a ButtonTable, icon buttons are taller than text ones: size the icons
   to the text row, or the board moves when the bar is swapped.
 

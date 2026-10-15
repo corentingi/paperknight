@@ -18,8 +18,9 @@ user progress lives in a separate `progress.sqlite` (ADR-0005).
 
 ## `puzzles` pack, format_version 1
 
-File: `puzzles.sqlite`. Extra meta keys: `puzzle_count`, `selection` (the
-thresholds used, ADR-0008).
+File: `puzzles.sqlite`. Extra meta keys: `puzzle_count`, and `selection`:
+the build thresholds as space-separated `key=value` pairs (informational,
+ADR-0008).
 
 ### `puzzles`
 | column | type | meaning |
@@ -49,20 +50,18 @@ puzzle (`band`/`rnd` copied from `puzzles`) so theme picks are indexed too.
 `(theme TEXT PK, count INTEGER)`: themes present in the pack and how many
 puzzles carry each, for building menus.
 
-Extra meta key `selection` holds the build thresholds as space-separated
-`key=value` pairs (informational only).
-
 ### Picking a random puzzle (plugin side)
-Choose a band `b` and a random `r` in [0, 2³¹), then:
+Choose a band `b` and a random `r` in [0, 2³¹), then page through the band
+in key order from `r`, wrapping around, until a row is acceptable (not seen
+recently, not under review):
 
 ```sql
-SELECT … FROM puzzles WHERE band = :b AND rnd >= :r ORDER BY rnd LIMIT 25;
--- if no acceptable row, wrap around:
-SELECT … FROM puzzles WHERE band = :b AND rnd <  :r ORDER BY rnd LIMIT 25;
--- by theme: same shape on puzzle_themes (theme = :t AND band = :b AND rnd …), then join by id
+SELECT … , rnd FROM puzzles WHERE band = :b AND rnd >= :lo AND rnd < :hi ORDER BY rnd LIMIT 100;
+-- first [r, 2^31), then [0, r); the next page starts after the last rnd read
+-- by theme: same shape on puzzle_themes (theme = :t AND band = :b AND rnd …), joined by id
 ```
 
-All three are answered from an index without sorting (tested in the pipeline).
+Both are answered from an index without sorting (tested in the pipeline).
 
 ### Solving rules (plugin side)
 1. Load `fen`, play `moves[1]` (opponent), show the board from `solver`'s side.
