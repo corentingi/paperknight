@@ -43,10 +43,10 @@ local REPLY_DELAY = 0.6 -- seconds before the opponent replies, so the user sees
 local RECENT_DAYS = 30  -- don't repeat puzzles attempted this recently (ADR-0010)
 local SEED_DAYS = 60    -- past misses turned into reviews, once (ADR-0014)
 
--- "Rating 1512 (+8)", "Rating 1490 (−14)".
+-- "Rating: 1512 (+8)", "Rating: 1490 (−14)".
 local function ratingChange(before, after)
     local d = after - before
-    return T(_("Rating %1 (%2)"), after, (d < 0 and "−" or "+") .. math.abs(d))
+    return T(_("Rating: %1 (%2)"), after, (d < 0 and "−" or "+") .. math.abs(d))
 end
 
 local PkPuzzleView = InputContainer:extend{

@@ -31,7 +31,7 @@ the rating moves faster again, then settles. Start 1200 ± 350, volatility
 the rating within 400–3000. A settled rating moves about ±6 per puzzle.
 State in `kv`: `rating`, `rating.rd`, `rating.vol`, `rating.ts`. Existing
 files are migrated once by replaying the rated attempts (oldest first).
-Same scoring as before; the panel shows "Rating 1512 (+8)".
+Same scoring as before; the panel shows "Rating: 1512 (+8)".
 
 Why the change: the Elo rating kept moving ±15 per puzzle for good (noise
 of about ±50 with no change of level), and did not react to long breaks,
