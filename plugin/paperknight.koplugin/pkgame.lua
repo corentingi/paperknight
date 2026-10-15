@@ -66,6 +66,7 @@ local DEFAULT_TIME_MINUTES = 30
 -- budgets like a real game: about a minute a move with 30 minutes left, and
 -- seemed not to play at all (the clock's pause button sent "stop", making
 -- it move). Capped by its clock: never more than 1/30 of what it has left.
+-- The default; the game settings change it (saved as play.thinking).
 local ENGINE_SECONDS_PER_MOVE = 5
 local UCI_ENGINE_PATH = PLUGIN_PATH .. "/bin/stockfish"
 local BACKGROUND_COLOR = Blitbuffer.COLOR_WHITE
@@ -178,6 +179,8 @@ function PkGame:_loadSettings()
             end
         end
         self.saved_elo = tonumber(progress:getSetting("play.elo"))
+        local seconds = tonumber(progress:getSetting("play.thinking"))
+        if seconds and seconds > 0 then self.engine_seconds = seconds end
     end)
     self.timer:reset()
 end
@@ -190,6 +193,7 @@ function PkGame:_saveSettings()
             progress:setSetting("play.incr." .. color, self.timer.increment[color])
             progress:setSetting("play.human." .. color, self.game.is_human(color) and "1" or "0")
         end
+        progress:setSetting("play.thinking", self.engine_seconds or ENGINE_SECONDS_PER_MOVE)
         local opt = self.engine and self.engine.state.options and self.engine.state.options["UCI_Elo"]
         if opt and opt.value then progress:setSetting("play.elo", opt.value) end
     end)
@@ -729,7 +733,8 @@ end
 function PkGame:launchUCI()
     dbg("Requesting bestmove from UCI engine", "UCI")
     local left_ms = self.timer:getRemainingTime(self.game.turn()) * 1000
-    local movetime = math.floor(math.max(200, math.min(ENGINE_SECONDS_PER_MOVE * 1000, left_ms / 30)))
+    local seconds = self.engine_seconds or ENGINE_SECONDS_PER_MOVE
+    local movetime = math.floor(math.max(200, math.min(seconds * 1000, left_ms / 30)))
     local params = { movetime = movetime }
 
     -- Convert game history to UCI move string format (e.g., "e2e4 e7e5 g1f3")
@@ -1072,7 +1077,9 @@ function PkGame:createStatusBar()
                 timer    = self.timer,
                 game     = self.game,
                 parent   = self,
-                onApply  = function(_)
+                thinking_seconds = self.engine_seconds or ENGINE_SECONDS_PER_MOVE,
+                onApply  = function(changes)
+                    self.engine_seconds = changes.thinking_seconds
                     self:_saveSettings()
                     if not self.game.is_human(self.game.turn()) then
                         self:launchUCI()
@@ -1082,6 +1089,7 @@ function PkGame:createStatusBar()
                     self:updateTimerDisplay()
                 end
             }
+            self.settings_widget = widget -- tests
             widget:show()
         end,
         right_icon = "check", -- Generic icon, will represent play/pause

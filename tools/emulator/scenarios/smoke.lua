@@ -152,6 +152,30 @@ return function(h)
     if lf then lf:close() end
     h.check(go == "go movetime 5000", "fixed thinking time per move: " .. go)
     h.check(not game.pgn_log.text:find("is thinking", 1, true), "thinking line gone once it moved")
+    -- the engine's thinking time, from the game settings: + steps 5 s -> 10 s
+    h.tapWidget(game.status_bar.left_button)
+    local sw = game.settings_widget
+    h.check(sw and sw.thinkingIncButton and sw.thinkingIncButton.dimen, "thinking time shown in the settings")
+    h.shot("play-settings")
+    h.tapWidget(sw.thinkingIncButton)
+    h.check(sw.changes.thinking_seconds == 10, "10 s chosen: " .. tostring(sw.changes.thinking_seconds))
+    sw:applyAndClose()
+    h.settle()
+    h.check(game.engine_seconds == 10, "applied to the game")
+    local gb2 = game.board
+    h.tapWidget(gb2.table:getButtonById(gb2.toId(3, 1))) -- d2
+    h.tapWidget(gb2.table:getButtonById(gb2.toId(3, 3))) -- d4
+    h.waitFor(function() return #game.game.history() == 4 end)
+    lf = io.open(log)
+    local lines = {}
+    for l in lf:lines() do lines[#lines + 1] = l end
+    lf:close()
+    h.check(lines[2] == "go movetime 10000", "the next move uses it: " .. tostring(lines[2]))
+    local PkProgress = require("pkprogress")
+    local prog = PkProgress.open(PkProgress.defaultPath())
+    h.check(prog:getSetting("play.thinking") == "10", "saved with the other Play settings")
+    prog:setSetting("play.thinking", nil)
+    prog:close()
     require("ui/uimanager"):close(game)
     h.settle()
 end

@@ -49,6 +49,7 @@ function SettingsWidget:new(opts)
 
     self = setmetatable({
         engine     = opts.engine or { state = { options = {} } },
+        thinking_seconds = opts.thinking_seconds or 5, -- the engine's time per move
         timer      = opts.timer,
         game       = opts.game,
         onApply    = opts.onApply,
@@ -85,6 +86,7 @@ function SettingsWidget:initializeState()
             [Chess.BLACK] = self.game.is_human(Chess.BLACK),
         },
         elo_strength = (uciEloOpt and uciEloOpt.value) or 1500,
+        thinking_seconds = self.thinking_seconds,
         time_control = {
             [Chess.WHITE] = {
                 base_minutes  = self.timer.base[Chess.WHITE] / 60,
@@ -115,6 +117,7 @@ function SettingsWidget:show()
     -- Build the UI groups
     self:buildPlayerTypeGroup()
     self:buildEloGroup()
+    self:buildThinkingGroup()
 
     self:buildTimeGroups()
     self:assembleContent()
@@ -230,6 +233,44 @@ function SettingsWidget:buildEloGroup()
 end
 
 -- ============================================================================
+--  ENGINE THINKING TIME: seconds per move, stepped through a few choices
+-- ============================================================================
+local THINKING_CHOICES = { 1, 2, 3, 5, 10, 15, 30, 60 }
+
+function SettingsWidget:buildThinkingGroup()
+    local function label() return T(_("%1 s"), self.changes.thinking_seconds) end
+    local tv = TextWidget:new{ text = label(), face = Font:getFace("cfont", 22), width = 80 }
+    self.thinkingValueText = tv
+    local function step(dir)
+        local cur = self.changes.thinking_seconds
+        local index = #THINKING_CHOICES
+        for i, v in ipairs(THINKING_CHOICES) do
+            if v >= cur then index = i; break end
+        end
+        if THINKING_CHOICES[index] ~= cur and dir > 0 then index = index - 1 end -- off the list
+        index = math.max(1, math.min(#THINKING_CHOICES, index + dir))
+        self.changes.thinking_seconds = THINKING_CHOICES[index]
+        tv:setText(label())
+        UIManager:setDirty(self.dialog, "ui", tv.dimen) -- the value only
+        self:markDirty()
+    end
+    local function button(text, dir)
+        return ButtonWidget:new{
+            text = text, callback = function() step(dir) end,
+            width = Screen:scaleBySize(50), -- as wide as a finger, like the strength buttons
+            face = Font:getFace("cfont", 20), padding = Size.padding.small,
+            radius = Size.radius.button, parent = self.dialog,
+        }
+    end
+    self.thinkingDecButton, self.thinkingIncButton = button("−", -1), button("+", 1)
+    self.thinkingSettingsGroup = HorizontalGroup:new{
+        width = self.dialog.element_width,
+        TextWidget:new{ text = _("Engine thinking time") .. ":", face = Font:getFace("cfont", 22) },
+        HorizontalGroup:new{ spacing = Size.padding.small, self.thinkingDecButton, tv, self.thinkingIncButton },
+    }
+end
+
+-- ============================================================================
 --  TIME GROUPS: one button per color that opens a sub-dialog
 -- ============================================================================
 function SettingsWidget:buildTimeGroups()
@@ -339,6 +380,14 @@ function SettingsWidget:assembleContent()
             self.engine.state.uciok and CenterContainer:new{
                 dimen = Geometry:new{ w=D.width, h=self.eloSettingsGroup:getSize().h },
                 self.eloSettingsGroup
+            } or VerticalSpan:new{ width = 0 },
+
+            self.engine.state.uciok and VerticalSpan:new{ width = Size.padding.large } or empty,
+
+            -- engine thinking time only if engine is ready
+            self.engine.state.uciok and CenterContainer:new{
+                dimen = Geometry:new{ w=D.width, h=self.thinkingSettingsGroup:getSize().h },
+                self.thinkingSettingsGroup
             } or VerticalSpan:new{ width = 0 },
 
             self.engine.state.uciok and VerticalSpan:new{ width = Size.padding.large } or empty,
