@@ -23,6 +23,8 @@ return function(h)
         h.check(f:sub(1, 1) == "/" and io.open(f) ~= nil, "icon path must be absolute and exist: " .. f)
     end
 
+    local e4_button = board.table:getButtonById(board.toId(4, 3))
+    local e4_frame = e4_button.frame
     local stop = h.recordRefreshes()
     h.tapWidget(board.table:getButtonById(board.toId(4, 1))) -- e2
     h.tapWidget(board.table:getButtonById(board.toId(4, 3))) -- e4
@@ -35,6 +37,8 @@ return function(h)
     local hist = view.game.history()
     h.check(#hist == 1 and hist[1] == "e4", "expected history {e4}, got " .. table.concat(hist, " "))
     h.check(iconFile(4, 3):sub(-6) == "wP.svg", "e4 shows a white pawn")
+    h.check(e4_button.frame == e4_frame and e4_frame.dimen and e4_frame.dimen.w > 0,
+        "the square kept its frame (only the icon changed)")
     -- empty squares don't paint their transparent icon (pkboard _showIcon)
     local function hidden(file, rank) return board.table:getButtonById(board.toId(file, rank)).label_widget.hide end
     h.check(hidden(4, 1) and hidden(4, 4) and not hidden(4, 3) and not hidden(4, 0),

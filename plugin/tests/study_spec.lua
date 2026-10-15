@@ -211,7 +211,7 @@ return {
     { "variation start: NAG dropped, ';' and '{}' comments go to the first move", function(t)
         local root = PkPgn.parseMovetext("1. e4 e5 2. Nf3 ( $5 2. Bc4 ) *")
         local e5 = root.children[1].children[1]
-        t.eq(#e5.glyphs, 0, "no NAG on e5")
+        t.eq(e5.glyphs, nil, "no NAG on e5 (no glyphs table)")
         root = PkPgn.parseMovetext("1. e4 e5 ( ; note\n 1... c5 ) *")
         t.eq(root.children[1].comment, nil, "nothing on e4")
         t.eq(root.children[1].children[2].comment, "note", "on c5")

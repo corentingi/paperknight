@@ -704,9 +704,9 @@ function Board:placePiece(square, piece, color, no_refresh)
     -- Paperknight: skip unchanged squares; each refresh is an e-ink update
     if button.icon == icon then return end
     local rect = self:_screenRect(square)
-    button:setIcon(icon, self.button_size)
+    button:swapIcon(icon) -- the icon only: the frame and its position stay
     self:_showIcon(button)
-    button.frame.background = self:squareColor(square) -- Re-apply background color in case it was changed
+    button.frame.background = self:squareColor(square)
     if not no_refresh then self:_refreshButton(button, rect) end
 end
 

@@ -220,6 +220,26 @@ function Button:init()
     }
 end
 
+--- Replaces the icon of an icon button of the same size: only the icon
+-- widget changes (setIcon rebuilds the whole button: frame, containers,
+-- gestures; and the frame loses its position until the next paint).
+function Button:swapIcon(icon)
+    if icon == self.icon then return end
+    if self.text or not self.label_container then return self:setIcon(icon, self.width) end
+    self.icon = icon
+    self.label_widget:free()
+    self.label_widget = IconWidget:new{
+        icon = icon,
+        file = icon and icon:sub(1, 1) == "/" and icon or nil,
+        alpha = self.alpha,
+        rotation_angle = self.icon_rotation_angle,
+        dim = not self.enabled,
+        width = self.icon_width,
+        height = self.icon_height,
+    }
+    self.label_container[1] = self.label_widget
+end
+
 -- `no_feedback` buttons (board squares) skip KOReader's tap feedback: an
 -- inverted highlight refreshed in black and white ("fast", DU), then the
 -- unhighlight, both flashing on e-ink, plus a forced repaint and a pause

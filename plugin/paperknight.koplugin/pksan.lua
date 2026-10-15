@@ -50,6 +50,9 @@ end
 
 --- Parses a FEN into a position { board = {[sq] = "P"|"n"…}, turn, castling
 -- = { K, Q, k, q booleans }, ep = sq|nil, half, full }. nil if malformed.
+local FEN_PIECES = {} -- byte -> piece letter
+for c in ("pnbrqkPNBRQK"):gmatch(".") do FEN_PIECES[byte(c)] = c end
+
 function PkSan.parseFen(fen)
     local fields = {}
     for part in fen:gmatch("%S+") do fields[#fields + 1] = part end
@@ -60,19 +63,19 @@ function PkSan.parseFen(fen)
     if not tonumber(half) or not tonumber(full) then return nil end
     local board = {}
     local r, f = 7, 0
-    for c in placement:gmatch(".") do
-        if c == "/" then
+    for i = 1, #placement do -- bytes, not one pattern match per character
+        local b = byte(placement, i)
+        if b == 47 then -- "/"
             if f ~= 8 then return nil end -- each rank has 8 squares
             r, f = r - 1, 0
-        elseif c:match("[1-8]") then
-            f = f + tonumber(c)
+        elseif b >= 49 and b <= 56 then -- "1".."8"
+            f = f + (b - 48)
             if f > 8 then return nil end
-        elseif c:match("[pnbrqkPNBRQK]") then
-            if f > 7 or r < 0 then return nil end
+        else
+            local c = FEN_PIECES[b]
+            if not c or f > 7 or r < 0 then return nil end
             board[r * 8 + f] = c
             f = f + 1
-        else
-            return nil
         end
     end
     if r ~= 0 or f ~= 8 then return nil end
@@ -216,11 +219,13 @@ local function pieceOrigins(pos, t, to)
 end
 
 -- "+" if the side that just moved gives check; "#" if the PGN said mate.
+-- The check mark of `move`, and the position after it (computed for the
+-- check test; returned so that callers don't apply the move again).
 local function checkMark(pos, move, written)
     local after = PkSan.apply(pos, move)
     local k = kingSquare(after.board, after.turn)
-    if not (k and attacked(after.board, k, pos.turn)) then return "" end
-    return written:find("#", 1, true) and "#" or "+"
+    if not (k and attacked(after.board, k, pos.turn)) then return "", after end
+    return written:find("#", 1, true) and "#" or "+", after
 end
 
 local function castle(pos, side, san)
@@ -243,11 +248,13 @@ local function castle(pos, side, san)
     end
     local move = { from = name(king_from), to = name(r * 8 + (side == "k" and 6 or 2)), piece = "k",
                    color = color, flags = side }
-    move.san = (side == "k" and "O-O" or "O-O-O") .. checkMark(pos, move, san)
-    return move
+    local mark, after = checkMark(pos, move, san)
+    move.san = (side == "k" and "O-O" or "O-O-O") .. mark
+    return move, nil, after
 end
 
---- Resolves `san` in position `pos`. Returns a move, or nil and an error.
+--- Resolves `san` in position `pos`. Returns a move (and, third, the
+-- position after it), or nil and an error.
 function PkSan.resolve(pos, san)
     local clean = san:gsub("[+#!?]+$", ""):gsub("^0%-0%-0$", "O-O-O"):gsub("^0%-0$", "O-O")
     if clean == "O-O" then return castle(pos, "k", san) end
@@ -355,9 +362,10 @@ function PkSan.resolve(pos, san)
             end
         end
     end
+    local mark, after = checkMark(pos, move, san)
     move.san = prefix .. (capture and "x" or "") .. target
-        .. (move.promotion and ("=" .. upper(move.promotion)) or "") .. checkMark(pos, move, san)
-    return move
+        .. (move.promotion and ("=" .. upper(move.promotion)) or "") .. mark
+    return move, nil, after
 end
 
 local CORNER_RIGHT = { [0] = "Q", [7] = "K", [56] = "q", [63] = "k" }
@@ -418,9 +426,9 @@ end
 --- Resolves `san` from a parsed position. Returns move, position after it,
 -- FEN after it; or nil, error. (Tree walks pass positions down.)
 function PkSan.playPos(pos, san)
-    local move, err = PkSan.resolve(pos, san)
+    local move, err, after = PkSan.resolve(pos, san)
     if not move then return nil, err end
-    local after = PkSan.apply(pos, move)
+    after = after or PkSan.apply(pos, move)
     return move, after, PkSan.toFen(after)
 end
 
@@ -428,9 +436,9 @@ end
 function PkSan.play(fen, san)
     local pos = parsed(fen)
     if not pos then return nil, "invalid FEN" end
-    local move, err = PkSan.resolve(pos, san)
+    local move, err, after = PkSan.resolve(pos, san)
     if not move then return nil, err end
-    return move, PkSan.toFen(PkSan.apply(pos, move))
+    return move, PkSan.toFen(after or PkSan.apply(pos, move))
 end
 
 return PkSan

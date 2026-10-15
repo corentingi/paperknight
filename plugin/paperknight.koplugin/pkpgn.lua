@@ -2,7 +2,7 @@
 --   PkPgn.index(text)          -> list of chapters { tags = {...}, movetext = "..." }
 --                                 (tag sections only, movetext kept as a string)
 --   PkPgn.parseMovetext(text)  -> root node of the move tree
--- A node is { san, glyphs = {...}, comment, shapes = { circles, arrows },
+-- A node is { san, glyphs = {...} (if any), comment, shapes = { circles, arrows } (if any),
 -- children = { mainline, variation, ... }, parent }. The root has no san;
 -- its comment is the chapter introduction.
 local PkPgn = {}
@@ -256,12 +256,15 @@ function PkPgn.hasMoves(text)
 end
 
 local function newNode(parent, san)
-    return { san = san, glyphs = {}, children = {}, parent = parent }
+    -- glyphs and shapes are created only when a node has some (most have
+    -- none: a large study has tens of thousands of nodes)
+    return { san = san, children = {}, parent = parent }
 end
 
 local function addComment(node, raw, wrapped)
-    node.shapes = node.shapes or { circles = {}, arrows = {} }
-    local text = PkPgn.cleanComment(raw, node.shapes, wrapped)
+    local shapes = node.shapes or { circles = {}, arrows = {} }
+    local text = PkPgn.cleanComment(raw, shapes, wrapped)
+    if #shapes.circles > 0 or #shapes.arrows > 0 then node.shapes = shapes end
     if text then
         node.comment = node.comment and (node.comment .. "\n" .. text) or text
     end
@@ -339,6 +342,7 @@ function PkPgn.parseMovetext(text)
         elseif ch == "$" then
             local digits = text:match("^%$(%d+)", pos)
             if digits and last ~= root and not at_line_start then
+                last.glyphs = last.glyphs or {}
                 table.insert(last.glyphs, tonumber(digits))
             end
             pos = pos + 1 + (digits and #digits or 0)
@@ -349,6 +353,7 @@ function PkPgn.parseMovetext(text)
             elseif token:match("^[!?]+$") then -- glyph separated from its move ("e4 !")
                 pos = pos + #token
                 if INLINE_TO_NAG[token] and last ~= root and not at_line_start then
+                    last.glyphs = last.glyphs or {}
                     table.insert(last.glyphs, INLINE_TO_NAG[token])
                 end
             elseif token:match("^%d+%.+$") or token:match("^%.+$") then -- move number "12." / "12..."
@@ -363,7 +368,7 @@ function PkPgn.parseMovetext(text)
                 san = san:gsub("^0%-0%-0", "O-O-O"):gsub("^0%-0", "O-O")
                 if looksLikeSan(san) then -- skips "e.p.", stray symbols, etc.
                     local node = newNode(last, san)
-                    if INLINE_TO_NAG[suffix] then node.glyphs[1] = INLINE_TO_NAG[suffix] end
+                    if INLINE_TO_NAG[suffix] then node.glyphs = { INLINE_TO_NAG[suffix] } end
                     if insert_at then
                         table.insert(last.children, insert_at, node)
                         insert_at = nil
