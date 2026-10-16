@@ -123,7 +123,8 @@ return function(h)
         h.check(r.w * r.h < S:getWidth() * S:getHeight(), ("closing: not a whole-screen refresh (%s %dx%d)"):format(r.mode, r.w, r.h))
     end
 
-    -- against the engine (fake: logs its "go" commands, answers at once): it
+    -- against the engine (fake: logs its "go" commands, answers after a
+    -- second, so that "thinking" can be seen whatever the host's load): it
     -- moves by itself after the human's move, with a fixed thinking time, not
     -- the clocks' 30 minutes (it seemed to play only when the clock's pause
     -- button sent "stop")
@@ -133,7 +134,7 @@ return function(h)
     ef:write('#!/bin/sh\nwhile read l; do case "$l" in\n'
         .. '  uci) echo "id name FakeFish"; echo uciok;;\n'
         .. '  isready) echo readyok;;\n'
-        .. '  go*) echo "$l" >> "' .. log .. '"; echo "bestmove e7e5";;\n'
+        .. '  go*) echo "$l" >> "' .. log .. '"; sleep 1; echo "bestmove e7e5";;\n'
         .. '  quit) exit 0;;\nesac; done\n')
     ef:close()
     os.execute("chmod +x '" .. engine_script .. "'")

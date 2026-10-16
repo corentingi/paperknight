@@ -3,7 +3,9 @@
 Paperknight looks for a UCI engine at
 `koreader/plugins/paperknight.koplugin/bin/stockfish`. With it, *Play
 against the engine* plays Stockfish and the analysis board shows its
-evaluation and best line. Without it, Play is a two-player board and the
+evaluation and best line once the knight button (bottom left) turns it on
+(off by default; Stockfish is started on the first tap and kept until the
+board closes). Without it, Play is a two-player board and the
 analysis board has no evaluation. Decision: ADR-0016.
 
 In Play, Stockfish thinks 5 seconds per move by default (game settings ⚙ →

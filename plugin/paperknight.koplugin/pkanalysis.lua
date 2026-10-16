@@ -29,6 +29,7 @@ local Screen = Device.screen
 local Chess = require("pkchess")
 local ChessBoard = require("pkboard")
 local PkButton = require("pkbutton")
+local PkIcons = require("pkicons")
 local PkMoveList = require("pkmovelist")
 local PkNav = require("pknav")
 local PkPromotion = require("pkpromotion")
@@ -79,6 +80,8 @@ function PkAnalysis:init()
     self.buttons = ButtonTable:new{
         width = self.dimen.w - 2 * Size.padding.default,
         buttons = {{
+            -- the engine: a white knight when off, a black one when on
+            { id = "engine", icon = "chevron.first", callback = function() self:toggleEngine() end },
             { id = "start", icon = "chevron.first", callback = function() self:toStart() end },
             { id = "back", icon = "chevron.left", callback = function() self:step(-1) end },
             { id = "forward", icon = "chevron.right", callback = function() self:step(1) end },
@@ -88,12 +91,27 @@ function PkAnalysis:init()
         zero_sep = true,
     }
     -- stepping: the board changing is the feedback (no flashing highlight)
-    PkButton.noFeedback(self.buttons, { "start", "back", "forward", "end" })
+    PkButton.noFeedback(self.buttons, { "engine", "start", "back", "forward", "end" })
     self.free_h = self.dimen.h - self.title_bar:getHeight() - self.buttons:getSize().h
     self.game = Chess:new()
-    self.engine_on = true
+    -- the engine is off at first; Stockfish starts when it is first turned on
+    self.engine_on = false
+    local lfs = require("libs/libkoreader-lfs")
+    self.engine_missing = lfs.attributes(self:_enginePath(), "mode") ~= "file"
+    self:_updateEngineButton()
     self:setPosition(self.fen or START_FEN)
-    self:_startEngine()
+end
+
+-- The engine button: its icon says whether the engine is on; greyed
+-- without Stockfish (a tap then says how to install it).
+function PkAnalysis:_updateEngineButton()
+    local button = self.buttons:getButtonById("engine")
+    button.enabled = not self.engine_missing
+    button.allow_tap_when_disabled = true
+    local knight = PkIcons.pieces[Chess.KNIGHT]
+    PkButton.setFileIcon(button, self.engine_on and knight[Chess.BLACK] or knight[Chess.WHITE])
+    local d = button.dimen -- (none before the first paint, which draws it anyway)
+    if d and d.x then UIManager:setDirty(self, PkRefresh.STEP, d) end
 end
 
 ---------------------------------------------------------------------------
@@ -318,10 +336,7 @@ function PkAnalysis:_lineText()
 end
 
 function PkAnalysis:_engineText()
-    if not self.engine then
-        return self.engine_missing and _("Install Stockfish (bin/stockfish) for an evaluation.") or nil
-    end
-    if not self.engine_on then return _("Engine off.") end
+    if not (self.engine and self.engine_on) then return nil end
     if self.game.game_over() then return nil end
     local info = self.info
     if not info then return _("Engine: thinking…") end
@@ -373,7 +388,8 @@ function PkAnalysis:_startEngine()
     local path = self:_enginePath()
     local lfs = require("libs/libkoreader-lfs")
     if lfs.attributes(path, "mode") ~= "file" then
-        self.engine_missing = true
+        self.engine_missing, self.engine_on = true, false
+        self:_updateEngineButton()
         self:_setText()
         return
     end
@@ -381,7 +397,8 @@ function PkAnalysis:_startEngine()
     local engine = Uci.UCIEngine.spawn(path, { path })
     if not engine then
         logger.warn("Paperknight: cannot start the engine", path)
-        self.engine_missing = true
+        self.engine_missing, self.engine_on = true, false
+        self:_updateEngineButton()
         return
     end
     self.engine = engine
@@ -395,7 +412,8 @@ function PkAnalysis:_startEngine()
         logger.warn("Paperknight: the engine exited")
         if self.engine then self.engine:stop() end
         self.engine = nil
-        self.engine_missing = true
+        self.engine_missing, self.engine_on = true, false
+        self:_updateEngineButton()
         self:_setText()
     end)
     engine:uci()
@@ -510,12 +528,6 @@ function PkAnalysis:showMenu()
             end },
         },
     }
-    if self.engine then
-        buttons[#buttons + 1] = {{
-            text = self.engine_on and _("Engine: on") or _("Engine: off"),
-            callback = function() close(); self:toggleEngine() end,
-        }}
-    end
     buttons[#buttons + 1] = PkNav.moreRow(close, "analysis")
     dialog = ButtonDialog:new{ buttons = buttons }
     self.menu_dialog = dialog
@@ -529,8 +541,18 @@ function PkAnalysis:flip()
 end
 
 function PkAnalysis:toggleEngine()
+    if self.engine_missing then
+        UIManager:show(InfoMessage:new{
+            text = _("Stockfish is not installed (bin/stockfish in the plugin folder). See the Paperknight docs: stockfish.md."),
+        })
+        return
+    end
     self.engine_on = not self.engine_on
+    -- started the first time; afterwards kept (idle) until the board closes,
+    -- so that turning it on again is immediate
+    if self.engine_on and not self.engine then self:_startEngine() end
     if not self.engine_on and self.searching and self.engine then self.engine.send("stop") end
+    self:_updateEngineButton()
     self.info = nil
     self:_updateList()
     self:_setText()

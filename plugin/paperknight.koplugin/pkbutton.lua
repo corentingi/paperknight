@@ -129,6 +129,16 @@ function Button:onTapSelectButton()
     return KOButton.onTapSelectButton(self)
 end
 
+--- Gives a button of a KOReader ButtonTable (which only takes icon names)
+-- an icon file at an absolute path (e.g. a piece, pkicons.lua). Not to be
+-- followed by setIcon/enableDisable, which would look the path up as a name.
+function Button.setFileIcon(button, path)
+    button.icon = path
+    if button.label_widget then button.label_widget:free() end
+    button.label_widget = Button._iconWidget(button, path)
+    button.label_container[1] = button.label_widget
+end
+
 --- Drops the tap highlight of buttons `ids` of `button_table` (KOReader's
 -- ButtonTable has no such option): for buttons pressed in a row (‹ ›), whose
 -- effect on the board is the feedback.

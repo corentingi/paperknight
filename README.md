@@ -17,7 +17,8 @@ Stockfish, PGN load/save) that grows into a training tool:
 - **Openings** — drill your own repertoire (a PGN / Lichess study) with spaced
   repetition. See [`docs/openings.md`](docs/openings.md).
 - **Analysis board** — move freely for both sides, step through the line, set a
-  position from FEN; with Stockfish installed, its evaluation and best line.
+  position from FEN; with Stockfish installed, its evaluation and best line
+  (the knight button turns it on and off; off by default).
   Also opens the current puzzle or study position (☰ → *Analyse position*).
 - **Play** — against Stockfish, or two players on one board without it.
 - **Master games** — curated notable games, replayed in "guess the move" mode.

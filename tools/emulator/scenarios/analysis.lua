@@ -18,8 +18,15 @@ return function(h)
     local view = PkNav.open("analysis")
     h.settle()
     h.check(view and view.name == "paperknight_analysis", "analysis board opened")
-    h.check(view.engine == nil and view.panel_text:find("Install Stockfish", 1, true),
-        "no engine installed: said in the panel: " .. view.panel_text)
+    -- no Stockfish: the engine button is greyed; a tap says how to install it
+    local engine_btn = view.buttons:getButtonById("engine")
+    h.check(view.engine == nil and not engine_btn.enabled, "no engine installed: button greyed")
+    h.tapWidget(engine_btn)
+    h.settle()
+    local msg = UIManager._window_stack[#UIManager._window_stack].widget
+    h.check(msg.text and msg.text:find("Stockfish is not installed", 1, true), "tap: how to install it")
+    UIManager:close(msg)
+    h.settle()
     view:onClose()
     h.settle()
 
@@ -37,6 +44,17 @@ esac; done
     f:close()
     os.execute("chmod +x '" .. script .. "'")
     view = PkAnalysis.show{ engine_path = script }
+    h.settle()
+    -- off at first: no process until the knight button turns it on
+    local knight = view.buttons:getButtonById("engine")
+    h.check(view.engine == nil and not view.engine_on and knight.icon:find("wN%.svg$"), "engine off by default")
+    local stop = h.recordRefreshes()
+    h.tapWidget(knight)
+    local sent = stop()
+    h.check(view.engine_on and knight.icon:find("bN%.svg$"), "knight button: engine on, black knight")
+    for _, r in ipairs(sent) do
+        h.check(r.mode == "[partial]", ("engine button refresh: %s %dx%d"):format(r.mode, r.w, r.h))
+    end
     h.wait(1.5)
     h.check(view.engine and view.engine_ready, "engine started")
     local function tapSquare(sq)
@@ -57,6 +75,12 @@ esac; done
     h.wait(1.5) -- the engine answers; the last line is shown when the search ends
     h.check(view.panel_text:find("Engine: #-3 (depth 6)", 1, true), "evaluation from White's side: " .. view.panel_text)
     h.check(view.panel_text:find("1… e5 2. Nf3 Nc6", 1, true), "engine line in SAN: " .. view.panel_text)
+    h.tapWidget(knight)
+    h.check(not view.engine_on and knight.icon:find("wN%.svg$") and not view.panel_text:find("Engine", 1, true),
+        "off again: no evaluation shown")
+    local pid_kept = view.engine.pid
+    h.tapWidget(knight)
+    h.check(view.engine_on and view.engine.pid == pid_kept, "on again: the same process (kept while the board is open)")
 
     -- 3. Both sides move; stepping back and forth
     tapSquare("e7"); tapSquare("e5")
