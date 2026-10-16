@@ -63,8 +63,13 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
   line, *Lines* without alternatives). At the end of a line (or in a chapter
   without moves), ▶ opens the next chapter, announced in the panel; leaving
   a chapter with moves this way marks it as done.
+- **Move list** beside the board (#, White, Black): the moves up to the one
+  shown (framed), then the line that follows; in a variation, that
+  variation's line. Tap a move to go to it; swipe up/down on the list (or
+  drag it) to scroll a long one. During a lesson it lists only the moves
+  played. ≡ → *Hide move list* gives the board the full width (remembered).
 - Title-bar menu (≡): *Chapters…* (chapter list; • marks the chapter shown),
-  *Flip board*, *Links…* (when the panel has links), *Mark chapter as done*,
+  *Flip board*, *Hide/Show move list*, *Links…* (when the panel has links), *Mark chapter as done*,
   *Mark study as done*. A flip is
   remembered per study file and chapter (in `progress.sqlite`) and also sets
   the side trained in lessons; a running lesson restarts from the new side.

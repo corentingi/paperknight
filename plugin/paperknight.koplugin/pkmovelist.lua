@@ -174,8 +174,11 @@ function PkMoveList:setMoves(moves, current)
     self.scroll:setScrolledOffset(Geometry:new{ x = 0, y = (top - 1) * self.row_h })
 end
 
+-- Refreshes the rows (not the blank below them): a region touching the
+-- panel's would be merged with it by KOReader, and then with the board's.
 function PkMoveList:refresh()
-    UIManager:setDirty(self.show_parent, PkRefresh.STEP, self.dimen.x and self.dimen or nil)
+    local d = self.scroll.dimen
+    UIManager:setDirty(self.show_parent, PkRefresh.STEP, d.x and d or nil)
 end
 
 function PkMoveList:onTap(_, ges)

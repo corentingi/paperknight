@@ -101,6 +101,10 @@ function PkStudyView:init()
             logger.warn("Paperknight: no progress database, flips are not remembered:", progress)
         end
     end
+    -- the move list beside the board (☰ Hide/Show move list, remembered)
+    self.list_shown = not (self.progress and self:_progressFlag(function(p)
+        return p:getSetting("study.movelist") == "0"
+    end))
     self:loadChapter(self.chapter_index)
 end
 
@@ -150,6 +154,54 @@ end
 
 function PkStudyView:_build()
     self:_buildScreen(self:orientation() == "black")
+end
+
+--- Shows or hides the move list beside the board (remembered).
+function PkStudyView:toggleList()
+    self.list_shown = not self.list_shown
+    if self.progress then
+        pcall(self.progress.setSetting, self.progress, "study.movelist", (not self.list_shown) and "0" or nil)
+    end
+    self:_build()
+    if not self.cursor then
+        self:_showOpenError()
+    elseif self.lesson then
+        self:_lessonRefresh()
+        self:_updateList()
+    else
+        self:refresh(nil, true)
+    end
+    PkRefresh.page(self)
+end
+
+-- The move list: the moves from the chapter start to the current one,
+-- then the line that follows (first moves) to its end; during a lesson,
+-- only the moves played (the list must not give the answer away).
+function PkStudyView:_updateList()
+    if not (self.movelist and self.cursor) then return end
+    local nodes = {}
+    local n = self.cursor.node
+    while n.parent do table.insert(nodes, 1, n); n = n.parent end
+    local current = #nodes
+    if not self.lesson then
+        n = self.cursor.node
+        while n.children[1] and self.cursor:resolve(n.children[1]) do
+            n = n.children[1]
+            nodes[#nodes + 1] = n
+        end
+    end
+    local sans = {}
+    for i, node in ipairs(nodes) do sans[i] = node.move and node.move.san or node.san end
+    self.list_nodes = nodes
+    local ply = self.cursor.root.ply or 0
+    self:_setListMoves(sans, current, math.floor(ply / 2) + 1, ply % 2 == 1)
+end
+
+--- A move tapped in the list: its position (browsing only).
+function PkStudyView:onListSelect(i)
+    local node = self.list_nodes and self.list_nodes[i]
+    if not node or not self:_canBrowse() or node == self.cursor.node then return end
+    if self.cursor:jump(node) then self:refresh() end
 end
 
 -- Swaps the button row (browse <-> lesson).
@@ -275,6 +327,7 @@ function PkStudyView:refresh(prefix, full)
         self:_setText(prefix and (prefix .. "\n\n" .. self:_panelText()) or self:_panelText())
         self:_updateBrowseButtons()
     end
+    self:_updateList()
     self:_redraw(full)
 end
 
@@ -370,6 +423,10 @@ function PkStudyView:showMenu()
         {{ text = _("Chapters…"), callback = function() close(); self:showChapterMenu() end }},
         {
             { text = _("Flip board"), callback = function() close(); self:toggleFlip() end },
+            { text = self.list_shown and _("Hide move list") or _("Show move list"),
+              callback = function() close(); self:toggleList() end },
+        },
+        {
             -- the position shown, on the analysis board (closing it comes back here)
             { text = _("Analyse position"), callback = function()
                 close()

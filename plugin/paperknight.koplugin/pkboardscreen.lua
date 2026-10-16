@@ -4,12 +4,15 @@
 -- reply timer, and taking back a move the board played (the view decides
 -- what the position is). Mixed into each view's class (PkBoardScreen.mixin);
 -- a view provides title_bar, buttons, game, board_size, text_h and dimen,
--- and its own onBoardMove.
+-- and its own onBoardMove. With `list_shown`, a move list (pkmovelist.lua)
+-- stands beside the board, as tall as it; `onListSelect(ply)` handles a tap.
 local Blitbuffer = require("ffi/blitbuffer")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local Font = require("ui/font")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geometry = require("ui/geometry")
+local HorizontalGroup = require("ui/widget/horizontalgroup")
+local HorizontalSpan = require("ui/widget/horizontalspan")
 local ScrollTextWidget = require("ui/widget/scrolltextwidget")
 local Size = require("ui/size")
 local UIManager = require("ui/uimanager")
@@ -17,21 +20,29 @@ local VerticalGroup = require("ui/widget/verticalgroup")
 local util = require("util")
 local ChessBoard = require("pkboard")
 local PkLinks = require("pklinks")
+local PkMoveList = require("pkmovelist")
 local PkPromotion = require("pkpromotion")
 local PkRefresh = require("pkrefresh")
 local PkText = require("pktext")
 
 local PkBoardScreen = {}
 
---- (Re)builds the screen: the board only when its orientation changes, an
--- empty panel, the layout.
+--- (Re)builds the screen: the board only when its orientation or the list
+-- changes, an empty panel, the layout.
 function PkBoardScreen:_buildScreen(flipped)
-    if not self.board or self.board.flipped ~= flipped then
+    local with_list = self.list_shown == true
+    -- beside a list, the board is narrower (the list needs about a fifth of
+    -- the width); the panel below gets the height it no longer uses
+    local size = with_list and math.min(math.floor(self.dimen.w * 0.78), self.board_size) or self.board_size
+    self.text_extra_h = self.board_size - size
+    if not self.board or self.board.flipped ~= flipped or self.board.width_list ~= with_list then
         if self.board then self.board:free() end
         self.board = ChessBoard:new{
             game = self.game,
-            width = self.board_size,
-            height = self.board_size,
+            width = size,
+            height = size,
+            width_list = with_list,
+            centre_squares = not with_list, -- the list takes the room on the right
             flipped = flipped,
             show_parent = self,
             moveCallback = function(move) self:onBoardMove(move) end,
@@ -45,12 +56,22 @@ function PkBoardScreen:_buildScreen(flipped)
     end
     if self.text then self.text:free() end
     self.text = self:_textWidget("")
+    local pad = Size.padding.default
+    if self.movelist then self.movelist:free() end
+    self.movelist = with_list and PkMoveList:new{
+        width = self.dimen.w - self.board:getSize().w - 2 * pad,
+        height = size,
+        show_parent = self,
+        onSelect = function(ply) if self.onListSelect then self:onListSelect(ply) end end,
+    } or nil
     self.vgroup = VerticalGroup:new{
         align = "center",
         self.title_bar,
         CenterContainer:new{
-            dimen = Geometry:new{ w = self.dimen.w, h = self.board_size + Size.padding.default },
-            self.board,
+            dimen = Geometry:new{ w = self.dimen.w, h = size + pad },
+            self.movelist and HorizontalGroup:new{
+                align = "top", self.board, HorizontalSpan:new{ width = pad }, self.movelist,
+            } or self.board,
         },
         self.text,
         self.buttons,
@@ -70,7 +91,7 @@ function PkBoardScreen:_textWidget(text)
         text = text,
         face = Font:getFace("cfont", 18),
         width = self.dimen.w - 2 * Size.padding.large,
-        height = self.text_h,
+        height = self.text_h + (self.text_extra_h or 0),
         dialog = self,
     }
 end
@@ -97,6 +118,16 @@ end
 function PkBoardScreen:_redraw(page)
     if page then return PkRefresh.page(self) end
     PkRefresh.below(self, self.board, self.buttons)
+end
+
+--- Shows `sans` in the move list (if shown), `current` framed; refreshed
+-- as a step, apart from the board and the panel.
+function PkBoardScreen:_setListMoves(sans, current, first_number, black_first)
+    local list = self.movelist
+    if not list then return end
+    list.first_number, list.black_first = first_number or 1, black_first or false
+    list:setMoves(sans, current)
+    list:refresh()
 end
 
 --- Drops a scheduled opponent reply.

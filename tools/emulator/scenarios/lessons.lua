@@ -29,6 +29,9 @@ return function(h)
     view = PkStudies.openChapter(study, 2)
     h.settle()
     h.check(view.lesson and view.buttons == view.lesson_buttons, "lesson mode")
+    local depth, n = 0, view.cursor.node
+    while n.parent do depth, n = depth + 1, n.parent end
+    h.check(view.movelist and #view.movelist.moves == depth, "move list: only the moves played (no answer given away)")
     h.check(view.title_bar.subtitle_widget.text:find("Chapter 2/5", 1, true), "subtitle in lesson mode")
     h.check(panel():find("Your move %(○ White%)") and panel():find("mate in two"), "intro + prompt: " .. panel())
     h.check(not panel():find("Qxd8"), "solution not revealed")

@@ -96,7 +96,7 @@ return function(h)
         h.check(r.mode == "[partial]", "step refresh: " .. desc)
         h.check(r.y >= bd.y + bd.h or r.y + r.h <= bd.y + bd.h, "board and text refreshed apart: " .. desc)
     end
-    h.check(#sent == 8, "per step: the changed squares, the text: " .. #sent)
+    h.check(#sent == 12, "per step: the changed squares, the move list, the text: " .. #sent)
     h.check(panel():find("^2%.%.%. Nc6"), "after 4 forwards: " .. panel())
     h.check(panel():find("3. Bc4!? (main)", 1, true) and panel():find("3. Bb5", 1, true), "alternatives listed: " .. panel())
     h.check(view.buttons:getButtonById("lines").enabled, "Lines enabled at a branch")
@@ -432,4 +432,39 @@ return function(h)
     h.check(PkLinks.linkAtTap(short, links2, strip) == nil, "strip below the last visible line: hidden link not opened")
     short:free()
     found.box:free()
+    -- move list beside the board: the moves to the current one, then the line
+    -- that follows; a tap on a move goes there; in a variation, that line;
+    -- hidden from the menu (remembered), the board back to full width
+    local vstudy = PkStudy.fromText('[Event "v"]\n\n1. e4 e5 (1... c5 2. Nf3 d6) 2. Nf3 Nc6 3. Bb5 a6 *\n', "v")
+    local lview = PkStudies.openChapter(vstudy, 1)
+    h.settle()
+    lview:forward(); lview:forward()
+    h.settle()
+    local function listed() return table.concat(lview.movelist.moves, " ") .. "@" .. lview.movelist.current end
+    h.check(listed() == "e4 e5 Nf3 Nc6 Bb5 a6@2", "list: path and continuation: " .. listed())
+    local ml = lview.movelist
+    local stop = h.recordRefreshes()
+    h.tap(ml.dimen.x + ml.num_w + 10, ml.dimen.y + 2 * ml.row_h + math.floor(ml.row_h / 2)) -- 3. Bb5
+    local sent = stop()
+    h.check(lview.cursor.node.san == "Bb5" and listed() == "e4 e5 Nf3 Nc6 Bb5 a6@5", "tap: 3. Bb5 shown: " .. listed())
+    for _, r in ipairs(sent) do
+        h.check(r.mode == "[partial]", ("list tap refresh: %s %dx%d"):format(r.mode, r.w, r.h))
+    end
+    lview:toStart(); lview:forward(); lview:forward(2)
+    h.settle()
+    h.check(listed() == "e4 c5 Nf3 d6@2", "in a variation: its line: " .. listed())
+    local with_list = lview.board:getSize().w
+    lview:toggleList()
+    h.settle()
+    h.check(lview.movelist == nil and lview.board:getSize().w > with_list, "list hidden: a wider board")
+    lview:onClose()
+    h.settle()
+    lview = PkStudies.openChapter(vstudy, 1)
+    h.settle()
+    h.check(lview.movelist == nil, "hidden list remembered")
+    lview:toggleList()
+    h.settle()
+    h.check(lview.movelist ~= nil, "shown again")
+    lview:onClose()
+    h.settle()
 end
