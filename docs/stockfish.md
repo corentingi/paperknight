@@ -17,35 +17,43 @@ game starts paused, and your first move (or the tick) starts it.
 
     curl -fkL <server>/stockfish.sh | sh
 
-It downloads `stockfish.gz` (~80 MB), checks its sha256, unpacks it into
-`bin/` and runs it once. `pka.sh` updates keep `bin/`. Restart KOReader.
+It downloads `stockfish.gz` (~3 MB), checks its sha256, unpacks it into
+`bin/` (replacing an older Stockfish) and runs it once. `pka.sh` updates
+keep `bin/`. Restart KOReader.
 
 ## The binary
 
-- Stockfish 19 (`sf_19`), its network embedded (nn-1a298aa575a0.nnue,
-  109 MiB in memory).
+- Stockfish 18 (`sf_18`) with its **small network only**
+  (nn-37f18f62d772.nnue, 3.5 MB, embedded), patched by
+  `tools/dist/stockfish-sf_18-smallnet.patch`: Stockfish 18 normally loads a
+  109 MB big network as well and uses the small one only for lopsided
+  positions; the patch never loads the big one and evaluates every position
+  with the small one. Stockfish 19 has no small network any more.
 - ARMv7 + NEON (Cortex-A9), static, against musl: no system library, runs on
   the PW2's kernel 3.0.
-- ~100 MB on disk; it needs about 110 MB of RAM plus its hash table (16 MB
-  by default). The PW2 has 512 MB, of which about 100 MB are free with the
-  Kindle framework running; the analysis board and Play log the free and
+- ~5 MB on disk; a few tens of MB of RAM with its 16 MB hash table, where
+  Stockfish 19 needed about 130 MB (under qemu, which adds its own
+  overhead: 80 MB searching against 265 MB just loaded). The PW2 has
+  512 MB, of which about 100 MB are free with the Kindle framework running; the analysis board and Play log the free and
   available memory and the engine's resident size when it is ready
   (`crash.log`, "engine ready, memory:"), after a freeze was seen on the
   device with the engine on.
 
 ## Build
 
-    tools/dist/build-stockfish.sh            # or: tools/dist/build-stockfish.sh sf_19
+    tools/dist/build-stockfish.sh            # sf_18 small network; or: tools/dist/build-stockfish.sh sf_19
 
 Downloads Zig 0.17.0 and the Stockfish source, cross-compiles, and writes
-`build/dist/stockfish`, `stockfish.gz`, `stockfish-sf_19-src.tar.gz` and
-`stockfish.sh` (with the checksum). Check it under qemu-user
+`build/dist/stockfish`, `stockfish.gz`, `stockfish-sf_18-src.tar.gz`, the
+patch, and `stockfish.sh` (with the checksum). Check it under qemu-user
 (`qemu-arm-static -cpu cortex-a9 build/dist/stockfish`, then `uci`,
-`go depth 10`). Upload the four files.
+`go depth 10`). Upload the five files.
 
 ## License
 
 Stockfish is free software under the GNU GPL v3. Its source code is hosted
-next to the binary: <server>/stockfish-sf_19-src.tar.gz
-(upstream: https://github.com/official-stockfish/Stockfish, tag `sf_19`);
-the build is the script above.
+next to the binary: <server>/stockfish-sf_18-src.tar.gz
+and the patch applied to it,
+<server>/stockfish-sf_18-smallnet.patch (upstream:
+https://github.com/official-stockfish/Stockfish, tag `sf_18`); the build is
+the script above.

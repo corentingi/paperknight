@@ -37,3 +37,15 @@ for every update): `stockfish.sh` installs it once into `bin/`, which
   runs one engine at a time and stops it when closed.
 - Revisit if memory is short on the device (a smaller network or option C),
   or if the Kindle firmware changes the ABI (kindlehf).
+
+## Amendment (2026-10-16): Stockfish 18, small network only
+The PW2 froze with the analysis engine on; memory is the suspect (about
+100 MB free with the Kindle framework, against ~130 MB for Stockfish 19).
+Stockfish 19 has only its big network; Stockfish 18 has a 3.5 MB small one
+next to its 109 MB big one. We build Stockfish 18 with a patch
+(`tools/dist/stockfish-sf_18-smallnet.patch`, hosted with the source) that
+never embeds or loads the big network (its unused arrays shrunk to a tiny
+width) and evaluates every position with the small one: a ~5 MB binary
+using a few tens of MB. Weaker than the big network, still far beyond
+human strength; preferred to option C (Stockfish 11) for its modern search
+and evaluation. Cost: a small patch to carry when changing version.

@@ -3,11 +3,12 @@
 # engine" and evaluates on the analysis board). Run it on the Kindle (kterm
 # or SSH):
 #   curl -fkL <server>/stockfish.sh | sh
-# KOREADER_DIR and SF_URL override the defaults below. The binary (~100 MB:
-# Stockfish 19 with its network, static, ARMv7 + NEON) goes to
-# plugins/paperknight.koplugin/bin/stockfish; pka.sh updates keep it.
-# Stockfish is GPLv3: its source is next to it on the server
-# (stockfish-sf_19-src.tar.gz), the build is tools/dist/build-stockfish.sh.
+# KOREADER_DIR and SF_URL override the defaults below. The binary (~5 MB:
+# Stockfish 18 with its small network only, static, ARMv7 + NEON) goes to
+# plugins/paperknight.koplugin/bin/stockfish (replacing the one there);
+# pka.sh updates keep it. Stockfish is GPLv3: its source is next to it on
+# the server (stockfish-sf_18-src.tar.gz and stockfish-sf_18-smallnet.patch),
+# the build is tools/dist/build-stockfish.sh.
 #
 # Everything is in main(), called on the last line: a download cut short
 # runs nothing.
@@ -24,7 +25,7 @@ main() {
     fi
     mkdir -p "$BIN"
     cd "$BIN"
-    echo "Downloading Stockfish (about 80 MB)"
+    echo "Downloading Stockfish (about 3 MB)"
     curl -fkL "$SF_URL" -o stockfish.gz.part
     if command -v sha256sum >/dev/null 2>&1 && [ "${SF_SHA256#@}" = "$SF_SHA256" ]; then
         if ! echo "$SF_SHA256  stockfish.gz.part" | sha256sum -c - >/dev/null 2>&1; then
