@@ -140,6 +140,13 @@ function PkNav.quickRows(close, current)
     return rows
 end
 
+--- Last row of a mode's ☰ menu (the menu of that screen's actions): opens
+-- the title-tap menu (frontlight, night mode, modes), so that it can be
+-- found without knowing the gesture.
+function PkNav.moreRow(close, current)
+    return {{ text = _("Settings & modes…"), callback = function() close(); PkNav.showQuick(current) end }}
+end
+
 --- The quick settings pop-up (`current`: the mode shown).
 function PkNav.showQuick(current)
     local dialog
@@ -249,9 +256,8 @@ function PkNav.showHome()
         is_popout = false,
         width = Screen:getWidth(),
         height = Screen:getHeight(),
-        title_bar_left_icon = "appbar.menu",
     }
-    menu.onLeftButtonTap = function() PkNav.showQuick("home") end
+    -- no ☰: the home screen is itself the general menu (title tap: quick settings)
     PkNav.tapTitle(menu, function() return menu.title_bar end, "home")
     menu._pk_key = itemsKey(items)
     local paintTo = menu.paintTo

@@ -435,7 +435,6 @@ function PkStudyView:showMenu()
         },
     }
     buttons[#buttons + 1] = PkLinks.menuRow(self.links, close)
-    for _, row in ipairs(PkNav.quickRows(close, "studies")) do buttons[#buttons + 1] = row end
     local file = PkDone.fileOf(self.study.path)
     if file and self.progress then
         local ch_done = self:_progressFlag(PkDone.isChapterDone, file, self.chapter_index)
@@ -462,6 +461,7 @@ function PkStudyView:showMenu()
             end,
         }}
     end
+    buttons[#buttons + 1] = PkNav.moreRow(close, "studies")
     dialog = ButtonDialog:new{ buttons = buttons }
     self.menu_dialog = dialog
     UIManager:show(dialog)

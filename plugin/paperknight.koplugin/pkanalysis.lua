@@ -516,7 +516,7 @@ function PkAnalysis:showMenu()
             callback = function() close(); self:toggleEngine() end,
         }}
     end
-    for _, row in ipairs(PkNav.quickRows(close, "analysis")) do buttons[#buttons + 1] = row end
+    buttons[#buttons + 1] = PkNav.moreRow(close, "analysis")
     dialog = ButtonDialog:new{ buttons = buttons }
     self.menu_dialog = dialog
     UIManager:show(dialog)

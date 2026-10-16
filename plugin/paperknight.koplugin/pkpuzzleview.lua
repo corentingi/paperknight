@@ -536,7 +536,7 @@ end
 
 --- Theme picker: "All themes" + the pack's themes with counts (pack format:
 -- `themes` table). The current choice is marked with a check mark.
---- ☰ menu: the theme, then the quick settings (pknav.lua).
+--- ☰ menu: this screen's actions, then a way to the quick settings (pknav.lua).
 function PkPuzzleView:showMenu()
     local dialog
     local function close() UIManager:close(dialog); self.menu_dialog = nil end
@@ -553,7 +553,7 @@ function PkPuzzleView:showMenu()
             end },
         },
     }
-    for _, row in ipairs(PkNav.quickRows(close, "puzzles")) do buttons[#buttons + 1] = row end
+    buttons[#buttons + 1] = PkNav.moreRow(close, "puzzles")
     dialog = ButtonDialog:new{ buttons = buttons }
     self.menu_dialog = dialog
     UIManager:show(dialog)

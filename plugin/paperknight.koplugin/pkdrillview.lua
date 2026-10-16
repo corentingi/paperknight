@@ -205,7 +205,7 @@ function PkDrillView:showMenu()
            end }},
     }
     buttons[#buttons + 1] = PkLinks.menuRow(self.links, close)
-    for _, row in ipairs(PkNav.quickRows(close, "openings")) do buttons[#buttons + 1] = row end
+    buttons[#buttons + 1] = PkNav.moreRow(close, "openings")
     dialog = ButtonDialog:new{ buttons = buttons }
     self.menu_dialog = dialog
     UIManager:show(dialog)

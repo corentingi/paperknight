@@ -67,9 +67,10 @@ make pkc           # code-only archive + installer (pkc.tar.gz, pkc.sh): keeps t
    (play against it, evaluation on the analysis board), run
    `curl -fkL <server>/stockfish.sh | sh` on the Kindle
    (see [`docs/stockfish.md`](docs/stockfish.md)).
-   The home screen lists the modes and the screen settings; in any screen,
-   ☰ or a tap on the title opens the quick settings (frontlight, night mode,
-   switch mode, home). Tip: assign the *Paperknight* gesture action in
+   The home screen lists the modes and the screen settings; in any screen, a
+   tap on the title opens the quick settings (frontlight, night mode, switch
+   mode, home). ☰ has the actions of the screen shown, and *Settings &
+   modes…* leads to the quick settings too. Tip: assign the *Paperknight* gesture action in
    KOReader to open the home screen in one tap.
 
 ## License

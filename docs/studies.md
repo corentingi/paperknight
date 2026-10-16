@@ -75,8 +75,9 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
   the side trained in lessons; a running lesson restarts from the new side.
   After a finished lesson, *Next* opens the next chapter.
 - **Done marks**: long-press a study in the Studies list, or ≡ → *Mark study
-  as done*, to put a ✓ at the right of its name (again to remove it). Marks are
-  kept in `progress.sqlite`, by file name.
+  as done* (in a chapter or the chapter list), to put a ✓ at the right of its
+  name (again to remove it). Marks are kept in `progress.sqlite`, by file
+  name. ≡ → *Hide done studies* in the Studies list hides them (remembered).
 - **Chapter progress**: a finished lesson puts a ✓ next to its chapter in the
   chapter list (≡ → *Mark chapter as done* does it by hand); when every
   chapter is done the study gets its ✓ too (it stays until you remove it).

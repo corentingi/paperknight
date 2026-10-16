@@ -33,6 +33,16 @@ to it; switching closes the Paperknight screens above home (found by their
 `paperknight_` widget name, a screen may clean up in `pk_close`). The
 KOReader menu entries and the Paperknight gesture action go through it.
 
+Amended 2026-10-16: the two menus are split. A tap on the title opens the
+quick settings (frontlight, night mode, modes, Home: Paperknight as a
+whole); ☰ holds only the actions of the screen shown, then one last row,
+*Settings & modes…*, which opens the quick settings (one way to them, and
+the gesture can be learnt from it). They used to end every ☰ menu, so the
+two menus mostly offered the same things. List screens have a ☰ only when
+the list has actions of its own (Studies: hide done studies; a study's
+chapter list: its done mark); the home screen and the Openings list have
+none.
+
 ## Consequences
 - New screens must have a `paperknight_` name to be closed when switching.
 - The home screen is the place for Paperknight's own settings later.

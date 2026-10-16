@@ -1,6 +1,7 @@
 -- Studies browser: PGN files in the studies folder, then their chapters
 -- (ADR-0011). Opening a chapter shows pkstudyview.
 local DataStorage = require("datastorage")
+local ButtonDialog = require("ui/widget/buttondialog")
 local InfoMessage = require("ui/widget/infomessage")
 local Menu = require("ui/widget/menu")
 local PathChooser = require("ui/widget/pathchooser")
@@ -81,7 +82,10 @@ local function studiesUnder(dir, depth, out)
     return out
 end
 
-local function fullscreenMenu(title, items)
+-- A list screen; `actions(close)` (optional) gives the rows (lists of
+-- buttons) of its ☰ menu:
+-- actions on the list as a whole (the title tap has the quick settings).
+local function fullscreenMenu(title, items, actions)
     local menu = Menu:new{
         title = title,
         item_table = items,
@@ -91,9 +95,19 @@ local function fullscreenMenu(title, items)
         width = Screen:getWidth(),
         height = Screen:getHeight(),
         name = "paperknight_studies",
-        title_bar_left_icon = "appbar.menu",
+        title_bar_left_icon = actions and "appbar.menu" or nil,
     }
-    menu.onLeftButtonTap = function() PkNav.showQuick("studies") end
+    if actions then
+        menu.onLeftButtonTap = function()
+            local dialog
+            local function close() UIManager:close(dialog); menu.menu_dialog = nil end
+            local rows = actions(close)
+            rows[#rows + 1] = PkNav.moreRow(close, "studies")
+            dialog = ButtonDialog:new{ buttons = rows }
+            menu.menu_dialog = dialog -- tests
+            UIManager:show(dialog)
+        end
+    end
     PkNav.tapTitle(menu, function() return menu.title_bar end, "studies")
     -- no close_callback: picking an item leaves the list open underneath,
     -- so closing a chapter or study returns to it
@@ -142,7 +156,14 @@ function PkStudies.openStudy(path)
             ERRORS[err] or tostring(err)) })
         return nil
     end
-    local menu = fullscreenMenu(util.fixUtf8(study.name, "?"), PkStudies.chapterItems(study))
+    local file = PkDone.fileOf(study.path)
+    local menu = fullscreenMenu(util.fixUtf8(study.name, "?"), PkStudies.chapterItems(study), file and function(close)
+        local done = withProgress(function(progress) return progress and PkDone.isDone(progress, file) end)
+        return { { { text = done and _("Mark study as not done") or _("Mark study as done ✓"), callback = function()
+            close()
+            PkStudies.toggleDone(file) -- the list is rebuilt when painted (marks changed)
+        end } } }
+    end)
     -- the marks and "Continue" change while a chapter is open: rebuild the
     -- list when coming back to it
     local function version() return PkDone.version .. "/" .. PkDone.chapter_version end
@@ -196,9 +217,17 @@ end
 
 -- Items of a studies list: sub-folders (with "done/total" on the right),
 -- study files (✓ when done), and at the top level "Open a PGN file…".
+-- Whether done studies are hidden from the lists (☰, remembered).
+local function hideDone()
+    return withProgress(function(progress)
+        return progress and progress:getSetting("studies.hide_done") == "1"
+    end) == true
+end
+
 local function listItems(dir, files, folders, is_root)
     local items = {}
     local done = withProgress(PkDone.doneSet) or {}
+    local hide, hidden = hideDone(), 0
     for _i, folder in ipairs(folders) do
         local all = studiesUnder(dir .. "/" .. folder, 3)
         local n_done = 0
@@ -210,12 +239,20 @@ local function listItems(dir, files, folders, is_root)
         }
     end
     for _i, file in ipairs(files) do
+        if hide and done[file] then
+            hidden = hidden + 1
+            goto continue
+        end
         items[#items + 1] = {
             text = util.fixUtf8((file:gsub("%.[Pp][Gg][Nn]$", "")), "?"),
             mandatory = done[file] and PkDone.MARK or nil, -- ✓ on the far right
             _pk_file = file,
             callback = function() PkStudies.openStudy(dir .. "/" .. file) end,
         }
+        ::continue::
+    end
+    if hidden > 0 then
+        items[#items + 1] = { text = T(_("(%1 done hidden: ☰ to show them)"), hidden), callback = function() end }
     end
     if not is_root then
         if #items == 0 then items[1] = { text = _("(empty folder)"), callback = function() end } end
@@ -278,13 +315,24 @@ function PkStudies.show(dir, title)
     dir = dir or PkStudies.dir()
     if is_root then applyRenames(dir) end
     local files, folders = PkStudies.listEntries(dir)
-    local menu = fullscreenMenu(title and util.fixUtf8(title, "?") or _("Studies"),
-        listItems(dir, files, folders, is_root))
-    menu._pk_files = entriesKey(files, folders)
+    local menu
     local function rebuild(m, now_files, now_folders)
         local first = ((m.page or 1) - 1) * (m.perpage or 1) + 1 -- stay on the current page
         m:switchItemTable(nil, listItems(dir, now_files, now_folders, is_root), first)
     end
+    menu = fullscreenMenu(title and util.fixUtf8(title, "?") or _("Studies"),
+        listItems(dir, files, folders, is_root), function(close)
+            local hide = hideDone()
+            return { { { text = hide and _("Show done studies") or _("Hide done studies"), callback = function()
+                close()
+                withProgress(function(progress)
+                    if progress then progress:setSetting("studies.hide_done", (not hide) and "1" or nil) end
+                end)
+                local now_files, now_folders = PkStudies.listEntries(dir)
+                rebuild(menu, now_files, now_folders)
+            end } } }
+        end)
+    menu._pk_files = entriesKey(files, folders)
     menu.onMenuHold = function(m, item)
         if item and item._pk_file and PkStudies.toggleDone(item._pk_file) ~= nil then
             -- rebuild now (one refresh), on the same page

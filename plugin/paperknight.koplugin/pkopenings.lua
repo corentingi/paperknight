@@ -378,9 +378,8 @@ function PkOpenings.show(dir)
         width = Screen:getWidth(),
         height = Screen:getHeight(),
         name = "paperknight_openings",
-        title_bar_left_icon = "appbar.menu",
     }
-    menu.onLeftButtonTap = function() PkNav.showQuick("openings") end
+    -- no ☰: nothing to do on the list as a whole (title tap: quick settings)
     PkNav.tapTitle(menu, function() return menu.title_bar end, "openings")
     menu._pk_dir = dir
     menu._pk_key = folderKey(dir)

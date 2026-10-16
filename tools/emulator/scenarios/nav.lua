@@ -76,11 +76,16 @@ return function(h)
     h.check(names() == "paperknight_studies,paperknight_home", "switched to studies: " .. names())
     h.check(PkNav.quick_dialog == nil, "the closed quick settings are not kept in memory")
 
-    -- 4. Night mode from the ☰ menu of a list, and back.
+    -- 4. The ☰ menu of a list: its own actions, then a way to the quick
+    -- settings; night mode from there, and back.
     local studies = top()
     h.tapWidget(studies.title_bar.left_button)
     h.settle()
-    h.check(top() == PkNav.quick_dialog, "☰ opens the quick settings")
+    h.check(studies.menu_dialog and dialogButton(top(), "Hide done studies")
+        and not dialogButton(top(), "Night mode: off"), "☰ of the studies list: list actions only")
+    h.tapWidget(dialogButton(top(), "Settings & modes"))
+    h.settle()
+    h.check(top() == PkNav.quick_dialog, "Settings & modes… opens the quick settings")
     h.tapWidget(dialogButton(top(), "Night mode: off"))
     h.settle()
     h.check(Screen.night_mode, "night mode on")
@@ -90,18 +95,23 @@ return function(h)
     h.settle()
     h.check(not Screen.night_mode, "night mode off")
 
-    -- 5. The puzzle ☰ menu: theme first, then the quick settings.
+    -- 5. The puzzle ☰ menu: the screen's actions, no quick settings in it;
+    -- home has no ☰ (it is the general menu itself).
     tapTitle(studies)
     h.tapWidget(dialogButton(top(), "Puzzles"))
     h.settle()
     view = top()
     h.tapWidget(view.title_bar.left_button)
     h.settle()
-    h.check(view.menu_dialog and dialogButton(view.menu_dialog, "Theme") and dialogButton(view.menu_dialog, "Openings"),
-        "puzzle menu: theme and modes")
-    h.tapWidget(dialogButton(view.menu_dialog, "Home"))
+    h.check(view.menu_dialog and dialogButton(view.menu_dialog, "Theme")
+        and not dialogButton(view.menu_dialog, "Openings") and not dialogButton(view.menu_dialog, "Home"),
+        "puzzle menu: its actions, no modes")
+    h.tapWidget(dialogButton(view.menu_dialog, "Settings & modes"))
+    h.settle()
+    h.tapWidget(dialogButton(top(), "Home"))
     h.settle()
     h.check(names() == "paperknight_home", "back home: " .. names())
+    h.check(not top().title_bar.left_button, "no ☰ on the home screen")
 
     -- 6. Frontlight: KOReader's own dialog (the desktop build has no
     -- frontlight: check the wiring with a stub).
