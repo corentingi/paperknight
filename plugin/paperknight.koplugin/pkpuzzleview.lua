@@ -29,6 +29,7 @@ local ChessBoard = require("pkboard")
 local PkPromotion = require("pkpromotion")
 local PkButton = require("pkbutton")
 local PkRefresh = require("pkrefresh")
+local PkLinks = require("pklinks")
 local PkNav = require("pknav")
 local PkSide = require("pkside")
 local PkPuzzle = require("pkpuzzle")
@@ -553,6 +554,21 @@ function PkPuzzleView:showMenu()
             end },
         },
     }
+    -- the puzzle and its source game on Lichess, as QR codes (scan with a phone)
+    local puzzle = self.puzzle
+    if puzzle and puzzle.id then
+        local row = {{ text = T(_("Puzzle %1 on Lichess…"), puzzle.id), callback = function()
+            close()
+            PkLinks.showQR({ url = "https://lichess.org/training/" .. puzzle.id })
+        end }}
+        if puzzle.game_url and puzzle.game_url ~= "" then
+            row[2] = { text = _("Source game…"), callback = function()
+                close()
+                PkLinks.showQR({ url = puzzle.game_url })
+            end }
+        end
+        buttons[#buttons + 1] = row
+    end
     buttons[#buttons + 1] = PkNav.moreRow(close, "puzzles")
     dialog = ButtonDialog:new{ buttons = buttons }
     self.menu_dialog = dialog

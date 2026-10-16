@@ -206,6 +206,26 @@ return function(h)
     h.check(status():find("d1"), "hint names the next square: " .. status())
     view.reply_delay = 0.6
 
+    -- 3b. ☰ → the puzzle on Lichess: a QR code of its address
+    h.tapWidget(view.title_bar.left_button)
+    h.settle()
+    local link_btn, game_btn
+    for _, row in ipairs(view.menu_dialog.buttontable.buttons_layout) do
+        for _, btn in ipairs(row) do
+            if btn.text == "Puzzle " .. view.puzzle.id .. " on Lichess…" then link_btn = btn end
+            if btn.text == "Source game…" then game_btn = btn end
+        end
+    end
+    h.check(link_btn and game_btn, "menu: the puzzle and its game on Lichess")
+    h.tapWidget(link_btn)
+    h.settle()
+    local UIM = require("ui/uimanager")
+    local qr = UIM._window_stack[#UIM._window_stack].widget
+    h.check(qr.text == "https://lichess.org/training/" .. view.puzzle.id, "QR code of the puzzle: " .. tostring(qr.text))
+    h.shot("puzzle-qr")
+    UIM:close(qr)
+    h.settle()
+
     -- 4. Theme filter: pick "Mate in 1" in the menu by tapping it.
     h.tapWidget(view.title_bar.left_button)
     h.settle()

@@ -51,7 +51,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 
 | File | Role |
 |---|---|
-| `pkpuzzleview.lua` | Puzzle screen: Retry / Hint / Solution / Next while solving, Retry / ‹ / › / Next to step through the line once finished; themes once finished; ☰ Theme…, Stats…, Analyse position |
+| `pkpuzzleview.lua` | Puzzle screen: Retry / Hint / Solution / Next while solving, Retry / ‹ / › / Next to step through the line once finished; themes once finished; ☰ Theme…, Stats…, Analyse position, the puzzle and its game on Lichess (QR codes) |
 | `pkpuzzle.lua` | Puzzle session state machine (pure logic) |
 | `pkpuzzlepack.lua` | Read-only access to `puzzles.sqlite` (paged random picks within ±50 of the rating first) |
 | `pkglicko.lua` | Glicko-2 rating math (ADR-0010) |
