@@ -22,6 +22,8 @@ Stockfish, PGN load/save) that grows into a training tool:
   Studies, the openings drill and the analysis board name the opening
   ("C50 Italian Game", from Lichess's CC0 list).
   Also opens the current puzzle or study position (☰ → *Analyse position*).
+  ☰ → *Save line as a study…* writes the line as a PGN in Studies →
+  *Analyses*, to open again later.
 - **Play** — against Stockfish, or two players on one board without it.
 - **Master games** — curated notable games, replayed in "guess the move" mode.
 

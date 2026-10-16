@@ -550,6 +550,8 @@ function PkAnalysis:showMenu()
                 UIManager:show(InfoMessage:new{ text = self.game.fen() })
             end },
         },
+        {{ text = _("Save line as a study…"), enabled = #self.line > 0,
+           callback = function() close(); self:askSave() end }},
     }
     buttons[#buttons + 1] = PkNav.moreRow(close, "analysis")
     dialog = ButtonDialog:new{ buttons = buttons }
@@ -603,6 +605,97 @@ function PkAnalysis:askFen()
             end },
         }},
     }
+    UIManager:show(dialog)
+    dialog:onShowKeyboard()
+end
+
+---------------------------------------------------------------------------
+-- Saving the line as a study (Studies → Analyses)
+
+local function pgnTag(name, value)
+    return ('[%s "%s"]'):format(name, (value:gsub("\\", "\\\\"):gsub('"', '\\"')))
+end
+
+--- The whole line as a PGN game named `name` (from the position set, with
+-- its FEN when it is not the initial position).
+function PkAnalysis:pgnText(name)
+    local tags = {
+        pgnTag("Event", name),
+        pgnTag("Site", "Paperknight analysis board"),
+        pgnTag("Date", os.date("%Y.%m.%d")),
+        pgnTag("Result", "*"),
+    }
+    if self.start_fen ~= START_FEN then
+        tags[#tags + 1] = pgnTag("SetUp", "1")
+        tags[#tags + 1] = pgnTag("FEN", self.start_fen)
+    end
+    if self.flipped then tags[#tags + 1] = pgnTag("Orientation", "black") end
+    local fields = {}
+    for f in self.start_fen:gmatch("%S+") do fields[#fields + 1] = f end
+    local number, white = tonumber(fields[6]) or 1, fields[2] ~= "b"
+    local moves = {}
+    for i, m in ipairs(self.line) do
+        if white then
+            moves[#moves + 1] = number .. ". " .. m.san
+        else
+            moves[#moves + 1] = (i == 1) and (number .. "... " .. m.san) or m.san
+            number = number + 1
+        end
+        white = not white
+    end
+    moves[#moves + 1] = "*"
+    return table.concat(tags, "\n") .. "\n\n" .. table.concat(moves, " ") .. "\n"
+end
+
+--- Writes the line to <studies folder>/Analyses/<name>.pgn (" (2)"… when
+-- the name is taken). Returns the path, or nil and an error.
+function PkAnalysis:saveLine(name, dir)
+    local lfs = require("libs/libkoreader-lfs")
+    dir = dir or (require("pkstudies").dir() .. "/Analyses")
+    if lfs.attributes(dir, "mode") ~= "directory" then
+        local ok, err = lfs.mkdir(dir)
+        if not ok then return nil, err end
+    end
+    -- no path separators or characters other systems refuse in a file name
+    local base = name:gsub('[/\\:*?"<>|%c]', "-"):match("^%s*(.-)%s*$")
+    if base == "" then base = "Analysis" end
+    local path, n = dir .. "/" .. base .. ".pgn", 1
+    while lfs.attributes(path, "mode") do
+        n = n + 1
+        path = ("%s/%s (%d).pgn"):format(dir, base, n)
+    end
+    local f, err = io.open(path, "wb")
+    if not f then return nil, err end
+    f:write(self:pgnText(name))
+    f:close()
+    return path
+end
+
+--- Asks a name, then saves the line (☰ → Save line as a study…).
+function PkAnalysis:askSave()
+    local dialog
+    dialog = InputDialog:new{
+        title = _("Save line as a study"),
+        input = os.date("Analysis %Y-%m-%d %H.%M"),
+        buttons = {{
+            { text = _("Cancel"), id = "close", callback = function() UIManager:close(dialog) end },
+            { text = _("Save"), is_enter_default = true, callback = function()
+                local name = dialog:getInputText()
+                UIManager:close(dialog)
+                local path, err = self:saveLine(name)
+                if path then
+                    UIManager:show(InfoMessage:new{
+                        text = T(_("Saved in Studies → Analyses:\n%1"), path:match("([^/]+)$")),
+                        timeout = 3,
+                    })
+                else
+                    logger.warn("Paperknight: cannot save the line:", err)
+                    UIManager:show(InfoMessage:new{ text = T(_("Cannot save the line: %1"), tostring(err)) })
+                end
+            end },
+        }},
+    }
+    self.save_dialog = dialog -- tests
     UIManager:show(dialog)
     dialog:onShowKeyboard()
 end

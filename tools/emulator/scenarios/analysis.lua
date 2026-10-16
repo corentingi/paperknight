@@ -111,6 +111,28 @@ esac; done
     h.check(view.board.flipped and view.pos == 1, "flipped, line kept")
     h.check(iconAt("d8"):find("wR%.svg$") and iconAt("g8"):find("bK%.svg$"), "the flipped board shows the pieces")
     h.shot("analysis")
+    -- saved as a study (☰ → Save line as a study…): a PGN the studies read
+    -- back, from the position set and from Black's side; a taken name gets " (2)"
+    local tmp = os.getenv("HOME") .. "/analyses"
+    local path = view:saveLine("Back rank: mate", tmp)
+    h.check(path and path:find("/Back rank%- mate%.pgn$"), "saved: " .. tostring(path))
+    local saved = require("pkstudy").open(path)
+    local ch = saved and saved.chapters[1]
+    h.check(ch and #saved.chapters == 1 and ch.title:find("Back rank: mate", 1, true), "read back as a study")
+    local tree = saved:tree(1)
+    h.check(tree.fen == fen and tree.children[1] and tree.children[1].san == "Rd8#", "from the FEN, the line kept")
+    h.check(saved:cursor(1, require("pkchess"):new()) and ch.tags.Orientation == "black", "oriented as shown")
+    local again = view:saveLine("Back rank: mate", tmp)
+    h.check(again and again:find("%(2%)%.pgn$"), "a taken name: " .. tostring(again))
+    view:showMenu()
+    h.settle()
+    local save_btn
+    for _, row in ipairs(view.menu_dialog.buttontable.buttons_layout) do
+        for _, btn in ipairs(row) do if btn.text == "Save line as a study…" then save_btn = btn end end
+    end
+    h.check(save_btn and save_btn.enabled, "menu: save the line")
+    UIManager:close(view.menu_dialog)
+    h.settle()
 
     -- 5. The move list: a line longer than the list scrolls (KOReader's
     -- scrolling, kept on the current move); a tap on a move goes there; the
