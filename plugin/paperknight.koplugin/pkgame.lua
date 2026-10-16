@@ -222,7 +222,7 @@ function PkGame:initializeEngine()
 
     -- Setup event listeners for UCI engine communication
     self.engine:on("uciok", function()
-        Logger.info("PkGame: UCI engine signaled uciok (engine ready)")
+        Logger.info("PkGame: engine ready, memory:", require("pkutils").memoryLine(self.engine.pid, "engine"))
         dbg("UCI: uciok received (engine is ready)", "ENGINE")
 
         if self.saved_elo then -- the strength chosen last time

@@ -27,7 +27,11 @@ It downloads `stockfish.gz` (~80 MB), checks its sha256, unpacks it into
 - ARMv7 + NEON (Cortex-A9), static, against musl: no system library, runs on
   the PW2's kernel 3.0.
 - ~100 MB on disk; it needs about 110 MB of RAM plus its hash table (16 MB
-  by default).
+  by default). The PW2 has 512 MB, of which about 100 MB are free with the
+  Kindle framework running; the analysis board and Play log the free and
+  available memory and the engine's resident size when it is ready
+  (`crash.log`, "engine ready, memory:"), after a freeze was seen on the
+  device with the engine on.
 
 ## Build
 

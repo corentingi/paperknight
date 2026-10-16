@@ -32,6 +32,30 @@ pcall(ffi.cdef, "int kill(int, int);") -- may already be declared (ffi/posix_h)
 
 local Utils = {}
 
+--- Memory figures for the log, in MB: "free 108, available 250, <label> 120"
+-- (from /proc; `pid`: a process whose resident size is added). nil off Linux.
+function Utils.memoryLine(pid, label)
+    local f = io.open("/proc/meminfo")
+    if not f then return nil end
+    local kb = {}
+    for line in f:lines() do
+        local k, v = line:match("^(%w+):%s+(%d+)")
+        if k then kb[k] = tonumber(v) end
+    end
+    f:close()
+    local avail = kb.MemAvailable or ((kb.MemFree or 0) + (kb.Buffers or 0) + (kb.Cached or 0))
+    local out = ("free %d, available %d"):format((kb.MemFree or 0) / 1024, avail / 1024)
+    local s = pid and io.open("/proc/" .. pid .. "/status")
+    if s then
+        for line in s:lines() do
+            local rss = line:match("^VmRSS:%s+(%d+)")
+            if rss then out = out .. (", %s %d"):format(label or "process", tonumber(rss) / 1024) end
+        end
+        s:close()
+    end
+    return out .. " (MB)"
+end
+
 --- Closes a child process's file descriptors and reaps it: it is given about
 -- a second to exit on its own (e.g. after "quit"), then SIGTERM, then SIGKILL.
 -- Never blocks the UI: the checks are scheduled.
@@ -118,11 +142,10 @@ end
 -- closed the pipe (the process exited).
 function Utils.reader(fd, action, dbg, on_eof)
     local pending, ended = "", false
+    -- debug log only: an engine prints many lines a second while it
+    -- searches, which would all be written to the log file on flash
     local function log(line)
         Logger.dbg((dbg or "") .. "< " .. line)
-        if dbg and dbg:find("Paperknight DBG UCI") then
-            Logger.info((dbg or "") .. " < " .. line)
-        end
     end
     local _reader = function()
         if ended then return 0 end
@@ -161,9 +184,6 @@ function Utils.writer(fd, eol, dbg)
     local _writer = function (cmd)
         local line = cmd .. (eol and "\n" or "")
         Logger.dbg((dbg or "") .. " > " .. line)
-        if dbg and dbg:find("Paperknight DBG UCI") then
-            Logger.info((dbg or "") .. " > " .. line)
-        end
         local n = C.write(fd, line, #line)
         if n ~= #line then
             local err = ffi.errno()

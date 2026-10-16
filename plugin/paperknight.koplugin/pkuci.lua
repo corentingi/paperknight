@@ -94,8 +94,7 @@ local function parse_uci_line(line, state)
     state.readyok = true
     eng:_trigger("readyok")
   elseif line:find("^info") then
-    table.insert(state.infos, line)
-    eng:_trigger("info", line)
+    eng:_trigger("info", line) -- (not kept: a search prints thousands)
   elseif line:find("^bestmove") then
     local mv, p = line:match("^bestmove%s+(%S+)%s*ponder%s*(%S*)$")
     if not p then mv = line:match("^bestmove%s+(%S+)") end
@@ -121,7 +120,6 @@ function UCIEngine.spawn(cmd, args)
     id_author = nil,
     options = {}, -- This will store detailed info about options, including min/max
     readyok = false,
-    infos = {},
     bestmove = nil,
     ponder = nil,
     _engine = self,
@@ -164,7 +162,6 @@ function UCIEngine:uci()
   -- Reset relevant state for a new UCI session
   for k in pairs(self.state) do self.state[k] = nil end
   self.state.options = {}
-  self.state.infos = {}
   self.state.uciok = false
   self.state.to_uciok = 10
   self.state.readyok = false

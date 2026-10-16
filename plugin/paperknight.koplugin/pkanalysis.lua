@@ -403,6 +403,9 @@ function PkAnalysis:_startEngine()
     end
     self.engine = engine
     engine:on("uciok", function()
+        -- memory once the engine has loaded its network (a freeze was seen
+        -- on the PW2, memory suspected)
+        logger.info("Paperknight: engine ready, memory:", require("pkutils").memoryLine(engine.pid, "engine"))
         self.engine_ready = true
         self:_analyse()
     end)
@@ -541,6 +544,8 @@ function PkAnalysis:flip()
 end
 
 function PkAnalysis:toggleEngine()
+    logger.info("Paperknight: engine", self.engine_on and "off" or "on", "memory:",
+        require("pkutils").memoryLine(self.engine and self.engine.pid, "engine"))
     if self.engine_missing then
         UIManager:show(InfoMessage:new{
             text = _("Stockfish is not installed (bin/stockfish in the plugin folder). See the Paperknight docs: stockfish.md."),

@@ -9,6 +9,13 @@ local Utils = require("pkutils")
 local C = ffi.C
 
 return {
+    { "memoryLine: free and available memory, a process's resident size", function(t)
+        local ffi_ok, pid = pcall(function() return ffi.C.getpid() end)
+        if not ffi_ok then pcall(ffi.cdef, "int getpid(void);"); pid = ffi.C.getpid() end
+        local line = Utils.memoryLine(pid, "self")
+        t.ok(line and line:match("^free %d+, available %d+, self %d+ %(MB%)$"), "line: " .. tostring(line))
+        t.ok(Utils.memoryLine(nil):match("^free %d+, available %d+ %(MB%)$"), "without a process")
+    end },
     { "reader: a line split across reads arrives whole; end of file reported once", function(t)
         local fds = ffi.new("int[2]")
         t.eq(C.pipe(fds), 0, "pipe")
