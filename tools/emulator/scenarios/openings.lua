@@ -63,6 +63,10 @@ return function(h)
     h.shot("openings-intro")
     play("e2e4"); waitReply()
     h.check(drill.cursor.node.move.san == "e5", "opponent replied 1... e5")
+    -- the move list: the moves played only (the answer is not shown)
+    h.check(view.movelist and table.concat(view.movelist.moves, " ") == "e4 e5" and view.movelist.current == 2,
+        "move list: the moves played: " .. table.concat(view.movelist and view.movelist.moves or {}, " "))
+    h.check(panel():find("C20 King's Pawn Game", 1, true), "opening named: " .. panel())
     play("g1f3"); waitReply()
     play("f1b5")
     h.check(panel():find("Not in your repertoire", 1, true) and panel():find("Not our line", 1, true),
@@ -89,6 +93,22 @@ return function(h)
     local key = drill.line.cards[1]
     h.check(drill.stored[key].reps == 0, "e4 failed: relearn today")
     h.shot("openings-test")
+    -- ☰ → Hide move list (remembered), then shown again
+    h.tapWidget(view.title_bar.left_button)
+    h.settle()
+    local function menuButton(text)
+        for _, row in ipairs(view.menu_dialog.buttontable.buttons_layout) do
+            for _, btn in ipairs(row) do if btn.text and btn.text:find(text, 1, true) then return btn end end
+        end
+    end
+    h.tapWidget(menuButton("Hide move list"))
+    h.settle()
+    h.check(view.movelist == nil and require("pkprogress").readSetting("drill.movelist") == "0", "list hidden, remembered")
+    h.tapWidget(view.title_bar.left_button)
+    h.settle()
+    h.tapWidget(menuButton("Show move list"))
+    h.settle()
+    h.check(view.movelist ~= nil, "shown again")
 
     view:onClose()
     h.settle()

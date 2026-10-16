@@ -18,6 +18,7 @@ local PkRefresh = require("pkrefresh")
 local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
 local PkOpeningNames = require("pkopeningnames")
+local PkProgress = require("pkprogress")
 local PkNav = require("pknav")
 local PkSide = require("pkside")
 
@@ -43,6 +44,9 @@ function PkDrillView:init()
         self.key_events = { Close = { { Device.input.group.Back } } }
     end
     self.game = self.drill.game
+    -- the move list beside the board (☰ Hide/Show move list, remembered):
+    -- the moves played only, which give nothing away
+    self.list_shown = PkProgress.readSetting("drill.movelist") ~= "0"
     self.title_bar = TitleBar:new{
         fullscreen = true,
         title = util.fixUtf8(self.title or _("Openings"), "?"),
@@ -136,6 +140,7 @@ function PkDrillView:refresh(prefix, full)
         parts[#parts + 1] = drill:expected().comment -- why this move
     end
     self:_setText(table.concat(parts, "\n\n"))
+    self:_updateList(node)
     local playing = state == "play"
     self.buttons:getButtonById("hint"):enableDisable(playing and drill:mode() ~= "intro")
     self.buttons:getButtonById("solution"):enableDisable(playing)
@@ -189,6 +194,26 @@ function PkDrillView:solution()
     if verdict then self:_afterVerdict(verdict, node) end
 end
 
+-- The move list: the moves of the line up to the position shown.
+function PkDrillView:_updateList(node)
+    if not self.movelist then return end
+    local nodes = {}
+    local n = node
+    while n and n.parent do table.insert(nodes, 1, n); n = n.parent end
+    local sans = {}
+    for i, nd in ipairs(nodes) do sans[i] = nd.move and nd.move.san or nd.san end
+    local ply = (n and n.ply) or 0 -- the root's
+    self:_setListMoves(sans, #nodes, math.floor(ply / 2) + 1, ply % 2 == 1)
+end
+
+--- Shows or hides the move list (remembered).
+function PkDrillView:toggleList()
+    self.list_shown = not self.list_shown
+    PkProgress.writeSetting("drill.movelist", self.list_shown and "1" or "0")
+    self:_build(self.board and self.board.flipped or false)
+    self:refresh(nil, true)
+end
+
 --- Title-bar menu: switch the side played in the current line's chapter
 -- (e.g. a PGN saved from the Lichess website without [Orientation]).
 function PkDrillView:showMenu()
@@ -206,6 +231,8 @@ function PkDrillView:showMenu()
                on_flip(chapter)
            end }},
     }
+    buttons[#buttons + 1] = {{ text = self.list_shown and _("Hide move list") or _("Show move list"),
+        callback = function() close(); self:toggleList() end }}
     buttons[#buttons + 1] = PkLinks.menuRow(self.links, close)
     buttons[#buttons + 1] = PkNav.moreRow(close, "openings")
     dialog = ButtonDialog:new{ buttons = buttons }

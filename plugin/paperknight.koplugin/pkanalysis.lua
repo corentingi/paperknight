@@ -107,26 +107,9 @@ function PkAnalysis:init()
     if not self.engine_missing and PkAnalysis._setting("analysis.engine") == "1" then self:toggleEngine(true) end
 end
 
--- A remembered choice (progress.sqlite); nil if unset or unreadable.
-function PkAnalysis._setting(key)
-    local ok, value = pcall(function()
-        local progress = PkProgress.open(PkProgress.defaultPath())
-        local v = progress:getSetting(key)
-        progress:close()
-        return v
-    end)
-    if not ok then logger.warn("Paperknight: cannot read", key, value) end
-    return ok and value or nil
-end
-
-function PkAnalysis._saveSetting(key, value)
-    local ok, err = pcall(function()
-        local progress = PkProgress.open(PkProgress.defaultPath())
-        progress:setSetting(key, value)
-        progress:close()
-    end)
-    if not ok then logger.warn("Paperknight: cannot save", key, err) end
-end
+-- Remembered choices (progress.sqlite)
+PkAnalysis._setting = PkProgress.readSetting
+PkAnalysis._saveSetting = PkProgress.writeSetting
 
 -- The engine button: its icon says whether the engine is on; greyed
 -- without Stockfish (a tap then says how to install it).

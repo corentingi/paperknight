@@ -19,6 +19,10 @@ easiest way is a Lichess study:
 Copy the `.pgn` to the folder (USB, or `wget`/`curl` from kterm), then open
 *Paperknight → Openings*.
 
+In the drill, a move list beside the board shows the moves of the line so
+far (never the move to find; ≡ → *Hide move list*, remembered), and the
+panel names the opening ("C20 King's Pawn Game").
+
 ## The list
 
 Each repertoire shows `N due · M new`: moves to review today and new moves

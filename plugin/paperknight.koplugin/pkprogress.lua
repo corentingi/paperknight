@@ -176,6 +176,29 @@ function PkProgress:rating()
     return round(tonumber(v) or PkGlicko.START.rating)
 end
 
+--- A setting read from the default progress file, opened and closed for
+-- it (screens that keep no progress handle); nil if unset or unreadable.
+function PkProgress.readSetting(key)
+    local ok, value = pcall(function()
+        local progress = PkProgress.open(PkProgress.defaultPath())
+        local v = progress:getSetting(key)
+        progress:close()
+        return v
+    end)
+    if not ok then require("logger").warn("Paperknight: cannot read", key, value) end
+    return ok and value or nil
+end
+
+--- Saves a setting the same way (nil removes it); errors are logged.
+function PkProgress.writeSetting(key, value)
+    local ok, err = pcall(function()
+        local progress = PkProgress.open(PkProgress.defaultPath())
+        progress:setSetting(key, value)
+        progress:close()
+    end)
+    if not ok then require("logger").warn("Paperknight: cannot save", key, err) end
+end
+
 --- Small settings stored next to the progress (e.g. the chosen puzzle theme).
 function PkProgress:getSetting(key)
     local stmt = self.conn:prepare("SELECT value FROM kv WHERE key = ?")
