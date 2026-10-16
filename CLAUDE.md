@@ -70,6 +70,9 @@
   in one rectangle (`Board.square_refresh`, each REAGL refresh waits for the
   previous one), the text below as its own refresh (`PkRefresh.below`/
   `step`); never one region over both (seen on the PW2).
+- Closing a full-screen view: `PkRefresh.close` (UIManager:close without a
+  mode repaints what is below but refreshes nothing; KOReader's menus
+  refresh themselves, our board screens don't).
 - Measure, don't guess: `h.recordRefreshes()` in an e2e scenario gives the
   refreshes sent to the screen (after merges and promotions).
 

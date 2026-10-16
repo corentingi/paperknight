@@ -1043,7 +1043,7 @@ end
 
 --- Closes the game screen (also used by PkNav when switching mode).
 function PkGame:pk_close()
-    UIManager:close(self)
+    PkRefresh.close(self)
 end
 
 -- Runs however the screen is closed (X, Back, PkNav.closeScreens): stops the

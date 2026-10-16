@@ -64,6 +64,15 @@ function PkRefresh.region(view, first, last)
     return Geometry:new{ x = 0, y = a.y, w = view.dimen.w, h = bottom - a.y }
 end
 
+--- Closes a full-screen view and refreshes the screen below it, like a
+-- page. UIManager:close without a refresh mode repaints what is below but
+-- refreshes nothing (KOReader's menus refresh themselves on close; our
+-- board screens don't): the old screen would stay on the e-ink, or be
+-- replaced only where a dialog was.
+function PkRefresh.close(view)
+    UIManager:close(view, "partial")
+end
+
 --- Refreshes the whole view (a new chapter, line or puzzle).
 function PkRefresh.page(view)
     UIManager:setDirty(view, "partial")

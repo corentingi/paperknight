@@ -791,7 +791,7 @@ function PkPuzzleView:onRetry()
 end
 
 function PkPuzzleView:onClose()
-    UIManager:close(self)
+    PkRefresh.close(self)
     return true
 end
 

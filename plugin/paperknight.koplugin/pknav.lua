@@ -14,6 +14,7 @@ local UIManager = require("ui/uimanager")
 local logger = require("logger")
 local _ = require("gettext")
 local T = require("ffi/util").template
+local PkRefresh = require("pkrefresh")
 
 local Screen = Device.screen
 
@@ -49,7 +50,7 @@ end
 function PkNav.closeScreens(with_home)
     for _, w in ipairs(PkNav.screens()) do
         if w.name ~= HOME or with_home then
-            if w.pk_close then w:pk_close() else UIManager:close(w) end
+            if w.pk_close then w:pk_close() else PkRefresh.close(w) end
         end
     end
 end
@@ -89,7 +90,7 @@ end
 
 --- Back to the home screen.
 function PkNav.home()
-    PkNav.closeScreens(false)
+    PkNav.closeScreens(false) -- (each close refreshes the screen: PkRefresh.close)
     if not PkNav.homeShown() then PkNav.showHome() end
 end
 

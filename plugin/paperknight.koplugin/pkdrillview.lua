@@ -241,7 +241,7 @@ function PkDrillView:showMenu()
 end
 
 function PkDrillView:onClose()
-    UIManager:close(self)
+    PkRefresh.close(self)
     return true
 end
 

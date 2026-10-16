@@ -244,7 +244,7 @@ function PkStatsView:onForward() self:turn(1); return true end
 function PkStatsView:onBackward() self:turn(-1); return true end
 
 function PkStatsView:onClose()
-    UIManager:close(self)
+    PkRefresh.close(self)
     return true
 end
 

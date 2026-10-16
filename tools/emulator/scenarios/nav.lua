@@ -108,9 +108,28 @@ return function(h)
         "puzzle menu: its actions, no modes")
     h.tapWidget(dialogButton(view.menu_dialog, "Settings & modes"))
     h.settle()
+    local stop = h.recordRefreshes()
     h.tapWidget(dialogButton(top(), "Home"))
     h.settle()
+    local sent = stop()
     h.check(names() == "paperknight_home", "back home: " .. names())
+    -- the whole home screen is refreshed, not only where the menu was
+    local whole = false
+    for _, r in ipairs(sent) do
+        if r.w >= Screen:getWidth() and r.h >= Screen:getHeight() then whole = true end
+    end
+    h.check(whole, "home from a board screen: the whole screen refreshed (" .. #sent .. " refreshes)")
+    -- the same when a board screen is closed with its X (analysis board)
+    local analysis = PkNav.open("analysis")
+    h.settle()
+    stop = h.recordRefreshes()
+    analysis:onClose()
+    h.settle()
+    sent, whole = stop(), false
+    for _, r in ipairs(sent) do
+        if r.w >= Screen:getWidth() and r.h >= Screen:getHeight() then whole = true end
+    end
+    h.check(names() == "paperknight_home" and whole, "closing the analysis board: home refreshed")
     h.check(not top().title_bar.left_button, "no ☰ on the home screen")
 
     -- 6. Frontlight: KOReader's own dialog (the desktop build has no

@@ -709,7 +709,7 @@ function PkAnalysis:onForward() self:step(1); return true end
 function PkAnalysis:onBackward() self:step(-1); return true end
 
 function PkAnalysis:onClose()
-    UIManager:close(self)
+    PkRefresh.close(self)
     return true
 end
 

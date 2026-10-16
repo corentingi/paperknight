@@ -527,7 +527,7 @@ function PkStudyView:showChapterMenu()
 end
 
 function PkStudyView:onClose()
-    UIManager:close(self)
+    PkRefresh.close(self)
     return true
 end
 
