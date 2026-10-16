@@ -8,7 +8,7 @@ import urllib.error
 from datetime import date
 from pathlib import Path
 
-from . import puzzles, sources, studies
+from . import openings, puzzles, sources, studies
 
 REPO = Path(__file__).resolve().parents[2]
 DOWNLOADS = REPO / "build" / "downloads"
@@ -71,6 +71,21 @@ def cmd_study(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_openings(args: argparse.Namespace) -> int:
+    if args.input:
+        texts = [Path(p).read_text(encoding="utf-8") for p in args.input]
+    else:
+        print(f"downloading {openings.BASE_URL}{{a..e}}.tsv ...", file=sys.stderr)
+        try:
+            texts = openings.download()
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            print(f"download failed: {getattr(e, 'reason', e)}", file=sys.stderr)
+            return 1
+    n = openings.build(texts, Path(args.output))
+    print(f"{args.output}: {n} positions")
+    return 0
+
+
 def positive_int(text: str) -> int:
     value = int(text)
     if value < 1:
@@ -102,6 +117,11 @@ def main(argv: list[str] | None = None) -> int:
                    help="environment variable holding a Lichess token (needed for private studies)")
     p.add_argument("--input", help="validate a local PGN instead of downloading (tests)")
     p.set_defaults(func=cmd_study)
+
+    p = sub.add_parser("openings", help="opening names by position for the plugin (Lichess chess-openings)")
+    p.add_argument("--input", nargs="+", help="local TSV files instead of downloading (tests)")
+    p.add_argument("--output", default=str(REPO / "plugin" / "paperknight.koplugin" / "data" / "openings.tsv"))
+    p.set_defaults(func=cmd_openings)
 
     args = parser.parse_args(argv)
     return args.func(args)

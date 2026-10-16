@@ -19,6 +19,8 @@ Stockfish, PGN load/save) that grows into a training tool:
 - **Analysis board** — move freely for both sides, step through the line, set a
   position from FEN; with Stockfish installed, its evaluation and best line
   (the knight button turns it on and off, remembered; the move list too).
+  Studies, the openings drill and the analysis board name the opening
+  ("C50 Italian Game", from Lichess's CC0 list).
   Also opens the current puzzle or study position (☰ → *Analyse position*).
 - **Play** — against Stockfish, or two players on one board without it.
 - **Master games** — curated notable games, replayed in "guess the move" mode.

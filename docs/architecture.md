@@ -76,6 +76,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 | `pkdrill.lua` | Drill session over a repertoire, spaced repetition (pure logic) |
 | `pkdrillview.lua` | Drill screen |
 | `pksrs.lua` | SM-2 scheduling and the day boundary (4 am) |
+| `pkopeningnames.lua` | Opening names by position (`data/openings.tsv`, Lichess chess-openings) |
 | `pkrescache.lua` | On-device cache of resolved repertoire moves (ADR-0013) |
 
 ### Play and analysis

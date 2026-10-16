@@ -31,6 +31,7 @@ local ChessBoard = require("pkboard")
 local PkButton = require("pkbutton")
 local PkIcons = require("pkicons")
 local PkMoveList = require("pkmovelist")
+local PkOpeningNames = require("pkopeningnames")
 local PkNav = require("pknav")
 local PkProgress = require("pkprogress")
 local PkPromotion = require("pkpromotion")
@@ -273,7 +274,8 @@ end
 -- of the line.
 function PkAnalysis:onBoardMove(move)
     for i = #self.line, self.pos + 1, -1 do self.line[i] = nil end
-    self.line[#self.line + 1] = { from = move.from, to = move.to, promotion = move.promotion, san = move.san }
+    self.line[#self.line + 1] = { from = move.from, to = move.to, promotion = move.promotion, san = move.san,
+                                  fen = self.game.fen() }
     self.pos = #self.line
     self:_update()
 end
@@ -377,8 +379,17 @@ function PkAnalysis:_statusText()
     return T(_("%1 to move."), PkSide.name(side))
 end
 
+-- "C50 Italian Game": the opening of the line up to the position shown.
+function PkAnalysis:_openingText()
+    local fens = { self.start_fen }
+    for i = 1, self.pos do fens[#fens + 1] = self.line[i].fen end
+    return PkOpeningNames.latest(fens)
+end
+
 function PkAnalysis:_setText()
     local parts = { self:_statusText() }
+    local opening = self:_openingText()
+    if opening then parts[#parts + 1] = opening end
     local engine = self:_engineText()
     if engine then parts[#parts + 1] = engine end
     local line = not self.movelist and self:_lineText() -- the list shows it otherwise

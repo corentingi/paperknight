@@ -461,6 +461,7 @@ return function(h)
     h.settle()
     local function listed() return table.concat(lview.movelist.moves, " ") .. "@" .. lview.movelist.current end
     h.check(listed() == "e4 e5 Nf3 Nc6 Bb5 a6@2", "list: path and continuation: " .. listed())
+    h.check(lview.panel_text:find("C20 King's Pawn Game", 1, true), "opening named in the panel: " .. lview.panel_text)
     local ml = lview.movelist
     local stop = h.recordRefreshes()
     h.tap(ml.dimen.x + ml.num_w + 10, ml.dimen.y + 2 * ml.row_h + math.floor(ml.row_h / 2)) -- 3. Bb5

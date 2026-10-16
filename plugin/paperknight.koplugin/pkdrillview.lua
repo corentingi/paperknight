@@ -17,6 +17,7 @@ local PkLinks = require("pklinks")
 local PkRefresh = require("pkrefresh")
 local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
+local PkOpeningNames = require("pkopeningnames")
 local PkNav = require("pknav")
 local PkSide = require("pkside")
 
@@ -128,6 +129,7 @@ function PkDrillView:refresh(prefix, full)
     if node and node.parent then
         parts[#parts + 1] = PkStudy.moveLabel(node, "move")
         parts[#parts + 1] = PkPgn.positionWords(node.glyphs)
+        parts[#parts + 1] = PkOpeningNames.forNode(node) -- "C50 Italian Game", if known
         if node.comment then parts[#parts + 1] = node.comment end
     end
     if state == "play" and drill:mode() == "intro" and drill:expected().comment then

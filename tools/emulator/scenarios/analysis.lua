@@ -85,6 +85,7 @@ esac; done
     -- 3. Both sides move; stepping back and forth
     tapSquare("e7"); tapSquare("e5")
     h.check(view.pos == 2 and listed() == "e4 e5@2", "black move: " .. listed())
+    h.check(view.panel_text:find("C20 King's Pawn Game", 1, true), "opening named: " .. view.panel_text)
     h.tapWidget(view.buttons:getButtonById("back"))
     h.check(view.pos == 1 and iconAt("e5"):find("empty%.svg$"), "back: e5 empty again")
     h.check(listed() == "e4 e5@1", "the line stays: " .. listed())

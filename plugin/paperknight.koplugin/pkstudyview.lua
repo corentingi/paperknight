@@ -19,6 +19,7 @@ local T = require("ffi/util").template
 local Chess = require("pkchess")
 local PkDone = require("pkdone")
 local PkLesson = require("pklesson")
+local PkOpeningNames = require("pkopeningnames")
 local PkLinks = require("pklinks")
 local PkProgress = require("pkprogress")
 local PkButton = require("pkbutton")
@@ -278,6 +279,7 @@ function PkStudyView:_panelText()
         parts[#parts + 1] = PkStudy.moveLabel(node, "move")
         parts[#parts + 1] = PkPgn.positionWords(node.glyphs)
     end
+    parts[#parts + 1] = PkOpeningNames.forNode(node) -- "C50 Italian Game", if known
     local children = node.children
     if #children == 0 then
         local text = (node == self.cursor.root) and _("(no moves)") or _("— End of line —")
@@ -623,6 +625,7 @@ function PkStudyView:_lessonRefresh(prefix)
         parts[#parts + 1] = PkStudy.moveLabel(node, "move")
         parts[#parts + 1] = PkPgn.positionWords(node.glyphs)
     end
+    parts[#parts + 1] = PkOpeningNames.forNode(node) -- "C50 Italian Game", if known
     if node.comment then parts[#parts + 1] = node.comment end
     self:_setText(table.concat(parts, "\n\n"))
     local playing = lesson.state == "play"

@@ -20,7 +20,7 @@ an "only move").
 
 | Source | Content | License | Use |
 |---|---|---|---|
-| [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) | 3,864 named lines (`eco, name, pgn, uci, epd`) in `a–e.tsv` | CC0 | Names, ECO codes, position lookup |
+| [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) | 3,864 named lines (`eco, name, pgn, uci, epd`) in `a–e.tsv` | CC0 | Names and ECO codes by position: `python -m paperknight_pipeline openings` writes `plugin/paperknight.koplugin/data/openings.tsv` (shown in studies, the drill and the analysis board) |
 | [Lichess opening explorer](https://github.com/lichess-org/lila-openingexplorer) (masters) | Move frequencies/scores from master games | API, personal token required since 2026 | Pipeline-side only, to pick repertoire replies |
 | [Wikibooks Chess Opening Theory](https://en.wikibooks.org/wiki/Chess_Opening_Theory) | Prose on each line's ideas | CC BY-SA 4.0 (attribution + share-alike) | Optional explanations, kept in a separately licensed table |
 

@@ -17,13 +17,15 @@ local function pluginDir()
     return dir
 end
 
-local DIR = pluginDir() .. "/icons/chess/"
+local PLUGIN_DIR = pluginDir()
+local DIR = PLUGIN_DIR .. "/icons/chess/"
 
 local function path(name)
     return DIR .. name .. ".svg"
 end
 
 local PkIcons = {
+    plugin_dir = PLUGIN_DIR, -- absolute (data files: pkopeningnames.lua)
     empty = DIR .. "empty.svg",
     pieces = {},
 }

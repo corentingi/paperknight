@@ -25,8 +25,9 @@
 - [x] Pipeline `study` download command
 
 ## Milestone 3 — Openings
-- [ ] Pipeline: lichess chess-openings → `openings.sqlite`
-- [ ] Opening name shown during play
+- [x] Pipeline: lichess chess-openings → `data/openings.tsv` (a 425 KB table
+      shipped with the plugin, not a pack)
+- [x] Opening name shown in studies, the drill and the analysis board
 - [x] Repertoire drill with spaced repetition (repertoire PGNs, ADR-0012)
 
 ## Milestone 4 — Master games
