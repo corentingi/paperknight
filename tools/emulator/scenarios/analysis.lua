@@ -47,8 +47,12 @@ esac; done
         local b = view.board
         return b.table:getButtonById(b.toId(sq:byte(1) - 97, tonumber(sq:sub(2, 2)) - 1)).icon
     end
+    -- the move list beside the board: its moves, @ the current one
+    local function listed()
+        return table.concat(view.movelist.moves, " ") .. "@" .. view.movelist.current
+    end
     tapSquare("e2"); tapSquare("e4")
-    h.check(view.pos == 1 and view.panel_text:find("1. [e4]", 1, true), "move played: " .. view.panel_text)
+    h.check(view.pos == 1 and listed() == "e4@1", "move played: " .. listed())
     h.check(view.panel_text:find("Black to move", 1, true), "side to move shown")
     h.wait(1.5) -- the engine answers; the last line is shown when the search ends
     h.check(view.panel_text:find("Engine: #-3 (depth 6)", 1, true), "evaluation from White's side: " .. view.panel_text)
@@ -56,16 +60,16 @@ esac; done
 
     -- 3. Both sides move; stepping back and forth
     tapSquare("e7"); tapSquare("e5")
-    h.check(view.pos == 2 and view.panel_text:find("1. e4 [e5]", 1, true), "black move: " .. view.panel_text)
+    h.check(view.pos == 2 and listed() == "e4 e5@2", "black move: " .. listed())
     h.tapWidget(view.buttons:getButtonById("back"))
     h.check(view.pos == 1 and iconAt("e5"):find("empty%.svg$"), "back: e5 empty again")
-    h.check(view.panel_text:find("1. [e4] e5", 1, true), "the line stays: " .. view.panel_text)
+    h.check(listed() == "e4 e5@1", "the line stays: " .. listed())
     h.swipe(view.dimen.w / 2, view.dimen.h / 2, "west")
     h.check(view.pos == 2 and iconAt("e5"):find("bP%.svg$"), "swipe forward: e5 again")
     h.tapWidget(view.buttons:getButtonById("start"))
     h.check(view.pos == 0 and not view.buttons:getButtonById("back").enabled, "start: nothing to go back to")
     tapSquare("d2"); tapSquare("d4") -- another move: replaces the line
-    h.check(#view.line == 1 and view.panel_text:find("1. [d4]", 1, true), "line replaced: " .. view.panel_text)
+    h.check(#view.line == 1 and listed() == "d4@1", "line replaced: " .. listed())
     h.wait(1.5)
 
     -- 4. Position from FEN, flip
@@ -83,7 +87,49 @@ esac; done
     h.check(iconAt("d8"):find("wR%.svg$") and iconAt("g8"):find("bK%.svg$"), "the flipped board shows the pieces")
     h.shot("analysis")
 
-    -- 5. Closing stops the engine process
+    -- 5. The move list: a line longer than the list scrolls (KOReader's
+    -- scrolling, kept on the current move); a tap on a move goes there; the
+    -- list can be hidden (the line is then in the panel)
+    view:setPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    h.settle()
+    local sans = { "e4", "e5", "Nf3", "Nc6" } -- then knights back and forth (python-chess checked)
+    for _ = 1, 20 do
+        for _, san in ipairs({ "Ng1", "Nb8", "Nf3", "Nc6" }) do sans[#sans + 1] = san end
+    end
+    for _, san in ipairs(sans) do
+        local m = view.game.move(san)
+        view.board:updateBoard()
+        view:onBoardMove(m)
+    end
+    h.settle()
+    local ml = view.movelist
+    local offset = function() return ml.scroll:getScrolledOffset().y end
+    h.check(ml.scroll._is_scrollable and offset() > 0, "a long line scrolls, shown at its end: " .. offset())
+    h.check(ml.scroll.dimen.h % ml.row_h == 0, "whole rows only")
+    local before = offset()
+    h.swipe(ml.dimen.x + math.floor(ml.dimen.w / 2), ml.dimen.y + 100, "south")
+    h.check(offset() < before and offset() % ml.row_h == 0, "swipe down: back a page, on a row: " .. offset())
+    h.check(view.pos == #sans, "a vertical swipe on the list does not step")
+    local stop = h.recordRefreshes()
+    -- the first row shown, Black's move
+    local row = math.floor(offset() / ml.row_h) + 1
+    h.tap(ml.dimen.x + ml.num_w + ml.move_w + 10, ml.dimen.y + math.floor(ml.row_h / 2))
+    local sent = stop()
+    h.check(view.pos == 2 * row and view.game.history()[view.pos] == sans[view.pos],
+        "tap on a move: its position (" .. view.pos .. ", row " .. row .. ")")
+    for _, r in ipairs(sent) do
+        h.check(r.mode == "[partial]", ("list tap refresh: %s %dx%d"):format(r.mode, r.w, r.h))
+    end
+    h.shot("analysis-list")
+    h.tapWidget(view.buttons:getButtonById("list"))
+    h.settle()
+    h.check(view.movelist == nil and view.panel_text:find("[" .. sans[view.pos] .. "]", 1, true),
+        "list hidden: the line in the panel")
+    h.tapWidget(view.buttons:getButtonById("list"))
+    h.settle()
+    h.check(view.movelist and listed():find("@" .. view.pos .. "$"), "shown again on the current move")
+
+    -- 6. Closing stops the engine process
     local pid = view.engine.pid
     view:onClose()
     h.wait(1.5)

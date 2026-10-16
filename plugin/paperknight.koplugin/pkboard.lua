@@ -144,9 +144,13 @@ function Board:init()
         margin = 0,
         self.table,
     }
+    local content = self.coordinates and self:_withCoordinates(framed) or framed
+    -- something on the right (the analysis move list): the board is as wide
+    -- as what it draws, not the width it was given
+    if self.centre_squares == false then self.width = content:getSize().w end
     self[1] = CenterContainer:new{
         dimen = self:getSize(),
-        self.coordinates and self:_withCoordinates(framed) or framed,
+        content,
     }
 
     logger.dbg("Chess board initialized")
@@ -182,7 +186,9 @@ function Board:_withCoordinates(framed)
         align = "top",
         ranks,
         VerticalGroup:new{ align = "left", framed, files },
-        label("", label_w, label_w), -- keeps the squares centred
+        -- keeps the squares centred; not when something sits on the right
+        -- (the analysis move list)
+        self.centre_squares ~= false and label("", label_w, label_w) or nil,
     }
 end
 

@@ -19,6 +19,8 @@ local ScrollTextWidget = require("ui/widget/scrolltextwidget")
 local Size = require("ui/size")
 local TitleBar = require("ui/widget/titlebar")
 local UIManager = require("ui/uimanager")
+local HorizontalGroup = require("ui/widget/horizontalgroup")
+local HorizontalSpan = require("ui/widget/horizontalspan")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local logger = require("logger")
 local _ = require("gettext")
@@ -27,6 +29,7 @@ local Screen = Device.screen
 local Chess = require("pkchess")
 local ChessBoard = require("pkboard")
 local PkButton = require("pkbutton")
+local PkMoveList = require("pkmovelist")
 local PkNav = require("pknav")
 local PkPromotion = require("pkpromotion")
 local PkRefresh = require("pkrefresh")
@@ -43,6 +46,8 @@ local PkAnalysis = InputContainer:extend{
     flipped = false,
     engine_path = nil,  -- default: bin/stockfish (pkgame.lua)
     movetime = 4000,    -- milliseconds of analysis per position
+    list_shown = true,  -- the move list beside the board (the two-column button toggles it)
+    list_layout = "full", -- "full" (the whole height) or "beside" (as tall as the board)
 }
 
 --- Opens the analysis board. `opts`: { fen, flipped, engine_path }.
@@ -78,14 +83,13 @@ function PkAnalysis:init()
             { id = "back", icon = "chevron.left", callback = function() self:step(-1) end },
             { id = "forward", icon = "chevron.right", callback = function() self:step(1) end },
             { id = "end", icon = "chevron.last", callback = function() self:toEnd() end },
+            { id = "list", icon = "column.two", callback = function() self:toggleList() end },
         }},
         zero_sep = true,
     }
     -- stepping: the board changing is the feedback (no flashing highlight)
     PkButton.noFeedback(self.buttons, { "start", "back", "forward", "end" })
-    local free_h = self.dimen.h - self.title_bar:getHeight() - self.buttons:getSize().h
-    self.board_size = math.min(self.dimen.w, math.floor(free_h * 0.7))
-    self.text_h = free_h - self.board_size - 3 * Size.padding.default
+    self.free_h = self.dimen.h - self.title_bar:getHeight() - self.buttons:getSize().h
     self.game = Chess:new()
     self.engine_on = true
     self:setPosition(self.fen or START_FEN)
@@ -107,13 +111,38 @@ function PkAnalysis:setPosition(fen)
     return true
 end
 
+-- Sizes of the board, the list and the panel for the current layout.
+function PkAnalysis:_sizes()
+    local pad, free_h = Size.padding.default, self.free_h
+    if not self.list_shown then
+        self.board_size = math.min(self.dimen.w, math.floor(free_h * 0.7))
+        self.text_w = self.dimen.w - 2 * Size.padding.large
+    else
+        -- the board on the left, the move list on its right
+        self.board_size = math.min(math.floor(self.dimen.w * 0.78), math.floor(free_h * 0.7))
+        self.list_w = self.dimen.w - self.board_size - 3 * pad
+        self.list_h = self.list_layout == "full" and free_h - pad or self.board_size
+        self.text_w = self.list_layout == "full" and self.board_size or self.dimen.w - 2 * Size.padding.large
+    end
+    self.text_h = free_h - self.board_size - 3 * pad
+end
+
+--- Shows or hides the move list.
+function PkAnalysis:toggleList()
+    self.list_shown = not self.list_shown
+    self:_build()
+    self:_update(true)
+end
+
 function PkAnalysis:_build()
+    self:_sizes()
     if self.board then self.board:free() end
     self.board = ChessBoard:new{
         game = self.game,
         width = self.board_size,
         height = self.board_size,
         flipped = self.flipped,
+        centre_squares = not self.list_shown, -- the list takes the room on the right
         show_parent = self,
         moveCallback = function(move) self:onBoardMove(move) end,
         onPromotionNeeded = function(from, to, color)
@@ -128,16 +157,54 @@ function PkAnalysis:_build()
     }
     self.board:updateBoard() -- a new board starts empty: draw the position
     self.text = self:_textWidget("")
-    self.vgroup = VerticalGroup:new{
-        align = "center",
-        self.title_bar,
-        CenterContainer:new{
-            dimen = Geometry:new{ w = self.dimen.w, h = self.board_size + Size.padding.default },
-            self.board,
-        },
-        self.text,
-        self.buttons,
+    local pad = Size.padding.default
+    if self.list_shown then
+        -- the list gets everything the board does not use
+        self.list_w = self.dimen.w - self.board:getSize().w - 2 * pad
+        if self.list_layout == "full" then self.text_w = self.board:getSize().w end
+    end
+    self.movelist = self.list_shown and PkMoveList:new{
+        width = self.list_w,
+        height = self.list_h,
+        show_parent = self,
+        onSelect = function(ply) self:_goTo(ply) end,
+    } or nil
+    local board_row = CenterContainer:new{
+        dimen = Geometry:new{ w = self.dimen.w, h = self.board_size + pad },
+        self.movelist and HorizontalGroup:new{
+            align = "top", self.board, HorizontalSpan:new{ width = pad }, self.movelist,
+        } or self.board,
     }
+    if self.movelist and self.list_layout == "full" then
+        -- the list from the title to the buttons; the panel under the board
+        self.vgroup = VerticalGroup:new{
+            align = "center",
+            self.title_bar,
+            HorizontalGroup:new{
+                align = "top",
+                HorizontalSpan:new{ width = pad },
+                VerticalGroup:new{
+                    align = "left",
+                    CenterContainer:new{
+                        dimen = Geometry:new{ w = self.board:getSize().w, h = self.board_size + pad }, self.board },
+                    self.text,
+                },
+                HorizontalSpan:new{ width = pad },
+                self.movelist,
+            },
+            self.buttons,
+        }
+        self.text_parent = self.vgroup[2][2]
+    else
+        self.vgroup = VerticalGroup:new{
+            align = "center",
+            self.title_bar,
+            board_row,
+            self.text,
+            self.buttons,
+        }
+        self.text_parent = self.vgroup
+    end
     self[1] = FrameContainer:new{
         background = Blitbuffer.COLOR_WHITE,
         bordersize = 0,
@@ -152,7 +219,7 @@ function PkAnalysis:_textWidget(text)
     return ScrollTextWidget:new{
         text = text,
         face = Font:getFace("cfont", 18),
-        width = self.dimen.w - 2 * Size.padding.large,
+        width = self.text_w,
         height = self.text_h,
         dialog = self,
     }
@@ -207,6 +274,7 @@ function PkAnalysis:_update(page)
     self.buttons:getButtonById("forward"):enableDisable(self.pos < #self.line)
     self.buttons:getButtonById("end"):enableDisable(self.pos < #self.line)
     self.info = nil
+    self:_updateList()
     self:_setText()
     if page then PkRefresh.page(self) end
     self:_analyse()
@@ -214,6 +282,19 @@ end
 
 ---------------------------------------------------------------------------
 -- Panel
+
+-- The move list beside the board: the line, the current move shaded.
+function PkAnalysis:_updateList()
+    if not self.movelist then return end
+    local fields = {}
+    for f in self.start_fen:gmatch("%S+") do fields[#fields + 1] = f end
+    local sans = {}
+    for i, m in ipairs(self.line) do sans[i] = m.san end
+    self.movelist.first_number = tonumber(fields[6]) or 1
+    self.movelist.black_first = fields[2] == "b"
+    self.movelist:setMoves(sans, self.pos)
+    self.movelist:refresh()
+end
 
 -- "1. e4 e5 2. Nf3 [Nc6] 3. Bb5": the line, the current move in brackets.
 function PkAnalysis:_lineText()
@@ -259,19 +340,26 @@ function PkAnalysis:_setText()
     local parts = { self:_statusText() }
     local engine = self:_engineText()
     if engine then parts[#parts + 1] = engine end
-    local line = self:_lineText()
+    local line = not self.movelist and self:_lineText() -- the list shows it otherwise
     if line then parts[#parts + 1] = "\n" .. line end
     local text = table.concat(parts, "\n")
     self.panel_text = text
     local old = self.text
+    local old_dimen = old.dimen and old.dimen.x and old.dimen:copy()
     self.text = self:_textWidget(text)
-    for i, w in ipairs(self.vgroup) do
-        if w == old then self.vgroup[i] = self.text end
+    for i, w in ipairs(self.text_parent) do
+        if w == old then self.text_parent[i] = self.text end
     end
     old:free()
+    self.text_parent:resetLayout()
     self.vgroup:resetLayout()
-    -- the board refreshes its own squares; the panel and buttons apart
-    PkRefresh.below(self, self.board, self.buttons)
+    -- the board refreshes its own squares; the panel and buttons apart (only
+    -- the panel when the list runs beside it)
+    if self.movelist and self.list_layout == "full" then
+        UIManager:setDirty(self, PkRefresh.STEP, old_dimen)
+    else
+        PkRefresh.below(self, self.board, self.buttons)
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -444,6 +532,7 @@ function PkAnalysis:toggleEngine()
     self.engine_on = not self.engine_on
     if not self.engine_on and self.searching and self.engine then self.engine.send("stop") end
     self.info = nil
+    self:_updateList()
     self:_setText()
     self:_analyse()
 end

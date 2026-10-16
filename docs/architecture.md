@@ -40,6 +40,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 | `pkboardscreen.lua` | Board + text panel + buttons shared by the study view and the openings drill (layout, panel text with links, refreshes, reply timer) |
 | `pkbutton.lua` | KOReader's Button for icon buttons given as absolute paths; `no_feedback` (no tap flash) |
 | `pkrefresh.lua` | E-ink refresh policy: steps are `[partial]` (never promoted to a flash), pages a counted `partial`; see [eink-refresh.md](eink-refresh.md) |
+| `pkmovelist.lua` | Move list beside the board (#, White, Black): tap a move to go there; KOReader's scrolling |
 | `pkpromotion.lua` | Promotion piece chooser |
 | `pkicons.lua` | Absolute paths of the piece icons inside the plugin folder |
 | `pkside.lua` | Side names with a disc marker ("○ White", "● Black"), swapped in night mode |
@@ -81,7 +82,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 
 | File | Role |
 |---|---|
-| `pkanalysis.lua` | Analysis board: moves for both sides, line stepping, FEN, flip; Stockfish evaluation and best line (one search at a time, stopped on close) |
+| `pkanalysis.lua` | Analysis board: moves for both sides, line stepping, move list (full height, can be hidden), FEN, flip; Stockfish evaluation and best line (one search at a time, stopped on close) |
 | `pkgame.lua` | Game screen (from Kochess): against Stockfish when installed, else two players; settings saved; clock and engine stopped on close |
 | `pkuci.lua` | UCI engine in a subprocess: one polling task, stopped and reaped on close |
 | `pktimer.lua` | Chess clocks |
