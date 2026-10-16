@@ -32,6 +32,7 @@ local PkButton = require("pkbutton")
 local PkIcons = require("pkicons")
 local PkMoveList = require("pkmovelist")
 local PkNav = require("pknav")
+local PkProgress = require("pkprogress")
 local PkPromotion = require("pkpromotion")
 local PkRefresh = require("pkrefresh")
 local PkSide = require("pkside")
@@ -47,7 +48,7 @@ local PkAnalysis = InputContainer:extend{
     flipped = false,
     engine_path = nil,  -- default: bin/stockfish (pkgame.lua)
     movetime = 4000,    -- milliseconds of analysis per position
-    list_shown = true,  -- the move list beside the board (the two-column button toggles it)
+    list_shown = true,  -- the move list beside the board (the two-column button toggles it, remembered)
     list_layout = "full", -- "full" (the whole height) or "beside" (as tall as the board)
 }
 
@@ -94,12 +95,36 @@ function PkAnalysis:init()
     PkButton.noFeedback(self.buttons, { "engine", "start", "back", "forward", "end" })
     self.free_h = self.dimen.h - self.title_bar:getHeight() - self.buttons:getSize().h
     self.game = Chess:new()
-    -- the engine is off at first; Stockfish starts when it is first turned on
+    -- the move list and the engine as they were last left (the engine off
+    -- the first time); Stockfish starts when the engine is on
+    self.list_shown = PkAnalysis._setting("analysis.movelist") ~= "0"
     self.engine_on = false
     local lfs = require("libs/libkoreader-lfs")
     self.engine_missing = lfs.attributes(self:_enginePath(), "mode") ~= "file"
     self:_updateEngineButton()
     self:setPosition(self.fen or START_FEN)
+    if not self.engine_missing and PkAnalysis._setting("analysis.engine") == "1" then self:toggleEngine(true) end
+end
+
+-- A remembered choice (progress.sqlite); nil if unset or unreadable.
+function PkAnalysis._setting(key)
+    local ok, value = pcall(function()
+        local progress = PkProgress.open(PkProgress.defaultPath())
+        local v = progress:getSetting(key)
+        progress:close()
+        return v
+    end)
+    if not ok then logger.warn("Paperknight: cannot read", key, value) end
+    return ok and value or nil
+end
+
+function PkAnalysis._saveSetting(key, value)
+    local ok, err = pcall(function()
+        local progress = PkProgress.open(PkProgress.defaultPath())
+        progress:setSetting(key, value)
+        progress:close()
+    end)
+    if not ok then logger.warn("Paperknight: cannot save", key, err) end
 end
 
 -- The engine button: its icon says whether the engine is on; greyed
@@ -148,6 +173,7 @@ end
 --- Shows or hides the move list.
 function PkAnalysis:toggleList()
     self.list_shown = not self.list_shown
+    PkAnalysis._saveSetting("analysis.movelist", self.list_shown and "1" or "0")
     self:_build()
     self:_update(true)
 end
@@ -543,7 +569,9 @@ function PkAnalysis:flip()
     self:_update(true)
 end
 
-function PkAnalysis:toggleEngine()
+--- Turns the engine on or off (remembered; `restoring`: on at opening, as
+-- it was left).
+function PkAnalysis:toggleEngine(restoring)
     logger.info("Paperknight: engine", self.engine_on and "off" or "on", "memory:",
         require("pkutils").memoryLine(self.engine and self.engine.pid, "engine"))
     if self.engine_missing then
@@ -553,6 +581,7 @@ function PkAnalysis:toggleEngine()
         return
     end
     self.engine_on = not self.engine_on
+    if not restoring then PkAnalysis._saveSetting("analysis.engine", self.engine_on and "1" or "0") end
     -- started the first time; afterwards kept (idle) until the board closes,
     -- so that turning it on again is immediate
     if self.engine_on and not self.engine then self:_startEngine() end

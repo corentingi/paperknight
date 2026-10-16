@@ -18,7 +18,7 @@ Stockfish, PGN load/save) that grows into a training tool:
   repetition. See [`docs/openings.md`](docs/openings.md).
 - **Analysis board** — move freely for both sides, step through the line, set a
   position from FEN; with Stockfish installed, its evaluation and best line
-  (the knight button turns it on and off; off by default).
+  (the knight button turns it on and off, remembered; the move list too).
   Also opens the current puzzle or study position (☰ → *Analyse position*).
 - **Play** — against Stockfish, or two players on one board without it.
 - **Master games** — curated notable games, replayed in "guess the move" mode.

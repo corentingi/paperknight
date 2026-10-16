@@ -160,6 +160,24 @@ esac; done
     local ffi = require("ffi")
     pcall(ffi.cdef, "int kill(int, int);")
     h.check(ffi.C.kill(pid, 0) ~= 0, "engine stopped and reaped on close")
+
+    -- 7. The engine and the move list come back as they were left
+    view = PkAnalysis.show{ engine_path = script }
+    h.settle()
+    h.check(view.engine_on and view.engine and view.movelist, "reopened: engine on (left on), list shown")
+    h.tapWidget(view.buttons:getButtonById("engine")) -- off
+    h.tapWidget(view.buttons:getButtonById("list")) -- hidden
+    h.settle()
+    view:onClose()
+    h.settle()
+    view = PkAnalysis.show{ engine_path = script }
+    h.settle()
+    h.check(not view.engine_on and view.engine == nil and view.movelist == nil,
+        "reopened: engine off and list hidden, as left (no engine process)")
+    h.tapWidget(view.buttons:getButtonById("list")) -- shown again for the next runs
+    h.settle()
+    view:onClose()
+    h.settle()
     PkNav.closeScreens(true)
     h.settle()
     UIManager:nextTick(function() end)
