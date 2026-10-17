@@ -41,6 +41,15 @@ KOReader's SDL frontend runs on a desktop. We run the official Linux release:
 
 See [ADR-0007](adr/0007-headless-koreader-emulator.md).
 
+### README screenshots
+
+`docs/screenshots/` holds the README's screenshots, all from the emulator:
+`puzzle.png`, `study.png`, `openings.png`, `night.png` and `stats.png` are
+`build/e2e/puzzle-2-solved.png`, `study-badge.png`, `openings-test.png`,
+`night-board.png` and `puzzle-stats.png` after `make e2e`; `analysis.png` is
+`build/e2e/readme-analysis.png` from
+`make e2e E2E_SCENARIOS=tools/emulator/shots/readme.lua`.
+
 ### Writing an e2e scenario
 
 A scenario is a Lua file in `tools/emulator/scenarios/` returning
