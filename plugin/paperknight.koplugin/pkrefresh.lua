@@ -21,6 +21,67 @@ local PkRefresh = {}
 
 PkRefresh.STEP = "[partial]"
 
+---------------------------------------------------------------------------
+-- Experiment (branch exp/du4-board, docs/eink-refresh.md §7): the board is
+-- painted with the four DU4 grey levels only (0x00, 0x55, 0xAA, 0xFF) and
+-- its squares are refreshed with DU4 in partial update mode: no flash, no
+-- redraw of unchanged squares. KOReader has no refresh mode for DU4, so the
+-- framebuffer is asked directly, from a setDirty function (after painting).
+
+PkRefresh.DU4 = 7 -- WAVEFORM_MODE_DU4 (KOReader ffi/mxcfb_kindle_h.lua)
+
+-- A refresh UIManager discards (1 px: "bogus region" in mxc_update), so that
+-- it does not add its own whole-screen refresh when none is queued; the
+-- weakest mode, so a merge with another refresh changes nothing.
+local NO_REFRESH = Geometry:new{ x = 0, y = 0, w = 1, h = 1 }
+
+-- Nearest of the four DU4 levels, for each 8-bit grey.
+local LEVELS
+local function levels()
+    if LEVELS then return LEVELS end
+    local ffi = require("ffi")
+    LEVELS = ffi.new("uint8_t[256]")
+    for v = 0, 255 do LEVELS[v] = math.floor((v * 3 + 127) / 255) * 0x55 end
+    return LEVELS
+end
+
+--- Rounds the pixels of `rect` (screen coordinates) in an 8-bit blitbuffer
+-- to the four DU4 levels (the pieces' anti-aliased edges). Other buffer
+-- types are left alone (the desktop emulator's).
+function PkRefresh.quantize4(bb, rect)
+    local Blitbuffer = require("ffi/blitbuffer")
+    if bb:getType() ~= Blitbuffer.TYPE_BB8 then return false end
+    local ffi = require("ffi")
+    local x, y, w, h = bb:getBoundedRect(rect.x, rect.y, rect.w, rect.h)
+    x, y, w, h = bb:getPhysicalRect(x, y, w, h)
+    local lut = levels()
+    local data = ffi.cast("uint8_t*", bb.data)
+    local stride = tonumber(bb.stride)
+    for row = y, y + h - 1 do
+        local p = data + row * stride + x
+        for i = 0, w - 1 do p[i] = lut[p[i]] end
+    end
+    return true
+end
+
+--- Whether DU4 can be sent: an mxcfb Kindle (the PW2's driver).
+function PkRefresh.du4Available()
+    local Device = require("device")
+    local screen = Device.screen
+    return Device:isKindle() and screen.mech_refresh ~= nil
+end
+
+--- For a setDirty function, after painting: refreshes `region` of the board
+-- with DU4 (quantized first) and returns what UIManager should do (nothing).
+-- Without DU4 (emulator, other devices), returns `mode`, `region`.
+function PkRefresh.boardRegion(mode, region)
+    if not region or not PkRefresh.du4Available() then return mode, region end
+    local screen = PkRefresh.screen or require("device").screen -- (a stub in tests)
+    PkRefresh.quantize4(screen.full_bb or screen.bb, region)
+    screen:mech_refresh(false, PkRefresh.DU4, region.x, region.y, region.w, region.h)
+    return "fast", NO_REFRESH
+end
+
 --- Refreshes the part of `view` from widget `first` to widget `last`
 -- (e.g. the board to the buttons) after a step: down to the bottom of the
 -- view when `last` was just rebuilt (no position yet), the whole view when

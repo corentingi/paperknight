@@ -18,36 +18,32 @@ local Screen = Device.screen
 
 local BOARD_SIZE = 8
 local SELECTED_BORDER = 5
--- Paperknight: square colours. E-ink shows 16 grey levels (steps of 0x11);
--- light squares are white and dark squares a light grey so pieces stay crisp.
--- The last-move tint is the darkest square, three levels below the dark
--- squares, so it stands out from both (a border would be partly painted over by
--- neighbouring squares in the ButtonTable).
--- Night mode (KOReader inverts the whole screen) gets its own palette: the
--- squares are mid-dark greys, light enough for the black pieces, one level
--- apart; the last-move tint is the lightest (0xAA). Values are
--- what the panel shows: the board is painted with their inverse, and the piece
--- sets are swapped (an inverted black piece shows as a white one; inverted
--- white pieces give black ones a light outline that reads on dark squares).
+-- Paperknight: square colours, as the panel shows them (the board is
+-- painted with their inverse in night mode, where the piece sets are also
+-- swapped). Experiment exp/du4-board: only the four DU4 grey levels (0x00,
+-- 0x55, 0xAA, 0xFF), so that squares can be refreshed with DU4 (no flash,
+-- pkrefresh.lua). The last move is not a tint any more but small triangles
+-- in the four corners of its squares (`mark`), in black by day and white at
+-- night, which read on both square colours.
 local PALETTES = {
     day = {
         light = Blitbuffer.COLOR_WHITE,        -- 0xFF
-        dark = Blitbuffer.COLOR_GRAY_D,        -- 0xDD
-        highlight = Blitbuffer.Color8(0xAA),
+        dark = Blitbuffer.Color8(0xAA),
+        mark = Blitbuffer.COLOR_BLACK,         -- last-move corners
         -- study shapes ([%csl] circles, [%cal] arrows). Brush colours can't be
         -- told apart on e-ink, so all shapes share one style (docs/studies.md).
-        shape = Blitbuffer.COLOR_GRAY_4,
+        shape = Blitbuffer.Color8(0x55),
     },
     night = {
-        light = Blitbuffer.Color8(0x66),
-        dark = Blitbuffer.Color8(0x55),
-        highlight = Blitbuffer.Color8(0xAA),
-        shape = Blitbuffer.Color8(0xCC),
+        light = Blitbuffer.Color8(0x55),
+        dark = Blitbuffer.COLOR_BLACK,
+        mark = Blitbuffer.COLOR_WHITE,
+        shape = Blitbuffer.Color8(0xAA),
     },
 }
--- Thin frame around the squares, a bit darker than the dark squares, so the
+-- Thin frame around the squares, darker than the light squares, so the
 -- white edge squares don't blend into the page.
-local BOARD_BORDER_COLOR = Blitbuffer.COLOR_DARK_GRAY -- 0x88
+local BOARD_BORDER_COLOR = Blitbuffer.Color8(0x55)
 local BOARD_BORDER_SIZE = 2 -- scaled by screen DPI
 
 local PkIcons = require("pkicons")
@@ -386,6 +382,7 @@ function Board:paintTo(bb, x, y)
     end
     FrameContainer.paintTo(self, bb, x, y)
     self._shape_color = Board.paintColor(Board.palette().shape)
+    if self.highlighted and next(self.highlighted) then self:_paintHighlights(bb) end
     if self.shapes then self:_paintShapes(bb) end
     if self.badge then self:_paintBadge(bb) end
     if self.selected_mark and not self.locked then self:_paintSelection(bb) end
@@ -401,7 +398,9 @@ function Board:setTurnMarker(color)
     if color == self.turn_marker then return end
     self.turn_marker = color
     local r = self:_markerRect()
-    if r then UIManager:setDirty(self.show_parent or self, self.square_refresh, r) end
+    if r then
+        UIManager:setDirty(self.show_parent or self, function() return PkRefresh.boardRegion(self.square_refresh, r) end)
+    end
 end
 
 -- The marker's square on screen (after a paint), or nil.
@@ -566,7 +565,8 @@ function Board:_paintSegment(bb, x1, y1, x2, y2, thick, color)
     bb:paintRect(math.floor(x2) - half, math.floor(y2) - half, thick, thick, color)
 end
 
-function Board:_fillTriangle(bb, ax, ay, bx, by, cx, cy)
+function Board:_fillTriangle(bb, ax, ay, bx, by, cx, cy, color)
+    color = color or self._shape_color
     local pts = { { ax, ay }, { bx, by }, { cx, cy } }
     local ymin = math.floor(math.min(ay, by, cy))
     local ymax = math.ceil(math.max(ay, by, cy))
@@ -581,7 +581,7 @@ function Board:_fillTriangle(bb, ax, ay, bx, by, cx, cy)
         end
         if #xs == 2 then
             local x0, x1 = math.floor(math.min(xs[1], xs[2])), math.ceil(math.max(xs[1], xs[2]))
-            bb:paintRect(x0, y, x1 - x0 + 1, 1, self._shape_color)
+            bb:paintRect(x0, y, x1 - x0 + 1, 1, color)
         end
     end
 end
@@ -601,10 +601,25 @@ end
 
 --- Board:squareColor(square): background to paint for a square, highlight included.
 function Board:squareColor(square)
-    if self.highlighted and self.highlighted[square] then
-        return Board.paintColor(Board.palette().highlight)
-    end
+    -- (highlighted squares keep their colour: corner triangles, paintTo)
     return Board.paintColor(Board.positionToColor(square))
+end
+
+-- The last move's squares: a small triangle in each corner (no tint: the
+-- squares keep their DU4 grey).
+function Board:_paintHighlights(bb)
+    local color = Board.paintColor(Board.palette().mark)
+    local t = math.max(4, math.floor(self.button_size * 0.24)) -- the triangles' legs
+    for sq in pairs(self.highlighted) do
+        local r = self:_squareRect(sq)
+        if r and r.w then
+            local x0, y0, x1, y1 = r.x, r.y, r.x + r.w, r.y + r.h
+            self:_fillTriangle(bb, x0, y0, x0 + t, y0, x0, y0 + t, color)
+            self:_fillTriangle(bb, x1, y0, x1 - t, y0, x1, y0 + t, color)
+            self:_fillTriangle(bb, x0, y1, x0 + t, y1, x0, y1 - t, color)
+            self:_fillTriangle(bb, x1, y1, x1 - t, y1, x1, y1 - t, color)
+        end
+    end
 end
 
 function Board:_applyBackground(square)
@@ -641,7 +656,7 @@ function Board:_refreshButton(button, rect)
     UIManager:setDirty(self.show_parent or self, function()
         local region = self._batch
         self._batch = nil
-        return self.square_refresh, region
+        return PkRefresh.boardRegion(self.square_refresh, region)
     end)
 end
 

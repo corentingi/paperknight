@@ -132,7 +132,8 @@ return function(h)
     local function badgePixel(sq)
         local r = view.board.table:getButtonById(view.board.chessToId(sq)).dimen
         local d = math.floor(view.board.button_size * 0.32)
-        return Screen.bb:getPixel(r.x + r.w - math.floor(d / 2), r.y + math.floor(d / 5)):getColor8().a
+        -- in the disc, off the tick's strokes and the last-move corner triangle
+        return Screen.bb:getPixel(r.x + r.w - d + math.floor(d * 0.3), r.y + math.floor(d * 0.75)):getColor8().a
     end
     h.settle()
     -- all themes: the puzzle's themes once it is over (length and "mate" left out)

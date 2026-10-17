@@ -48,10 +48,16 @@ return function(h)
     h.settle()
 
     local day = { light = background(light_sq), dark = background(dark_sq), ring = ring() }
-    h.check(day.light == 0xFF and day.dark == 0xDD, ("day colours %x %x"):format(day.light, day.dark))
+    -- DU4 levels only (experiment exp/du4-board): 0x00, 0x55, 0xAA, 0xFF
+    h.check(day.light == 0xFF and day.dark == 0xAA, ("day colours %x %x"):format(day.light, day.dark))
     local last_move = next(board.highlighted) -- the setup move's squares
-    h.check(last_move and background(last_move) == 0xAA, ("day last move %x"):format(background(last_move)))
-    h.check(day.ring == 0x44, ("day shape %x"):format(day.ring))
+    -- the last move: corner triangles, the square keeps its colour
+    local function corner(sq) local r = rect(sq); return shown(r.x + 1, r.y + 1) end
+    local function edge(sq) local r = rect(sq); return shown(r.x + math.floor(r.w / 2), r.y + 2) end -- top middle
+    local function plainColour(sq) return (sq:byte(1) - 97 + tonumber(sq:sub(2))) % 2 == 0 and day.light or day.dark end
+    h.check(last_move and edge(last_move) == plainColour(last_move) and corner(last_move) == 0x00,
+        ("day last move: plain square %x, black corner %x"):format(edge(last_move), corner(last_move)))
+    h.check(day.ring == 0x55, ("day shape %x"):format(day.ring))
     -- a white piece's middle pixel: white whatever the mode
     local function pieceMiddle(sq)
         local r = rect(sq)
@@ -73,10 +79,10 @@ return function(h)
     h.settle()
     h.shot("night-board")
     local ok, err = pcall(function()
-        h.check(background(light_sq) == 0x66, ("night light square shown %x"):format(background(light_sq)))
-        h.check(background(dark_sq) == 0x55, ("night dark square shown %x"):format(background(dark_sq)))
-        h.check(background(last_move) == 0xAA, ("night last move shown %x"):format(background(last_move)))
-        h.check(ring() == 0xCC, ("night shape shown %x"):format(ring()))
+        h.check(background(light_sq) == 0x55, ("night light square shown %x"):format(background(light_sq)))
+        h.check(background(dark_sq) == 0x00, ("night dark square shown %x"):format(background(dark_sq)))
+        h.check(corner(last_move) == 0xFF, ("night last move: white corner %x"):format(corner(last_move)))
+        h.check(ring() == 0xAA, ("night shape shown %x"):format(ring()))
         h.check(iconOn(white_piece) == PkIcons.pieces.r.b, "night: black rook icon, shown inverted")
         h.check(pieceMiddle(white_piece) == 0xFF, ("white piece shown white: %x"):format(pieceMiddle(white_piece)))
         h.check(status():find("● White to move", 1, true), "night marker swapped on toggle: " .. status())
@@ -85,13 +91,13 @@ return function(h)
         -- a single-square repaint (Button:refresh paints the frame directly)
         board:markSelected(light_sq); board:unmarkSelected(light_sq)
         h.settle()
-        h.check(background(light_sq) == 0x66, "night square after refresh")
+        h.check(background(light_sq) == 0x55, "night square after refresh")
     end)
     Screen:toggleNightMode() -- leave the emulator home in day mode
     UIManager:setDirty("all", "full")
     if not ok then error(err, 0) end
     h.settle()
-    h.check(background(light_sq) == 0xFF and background(dark_sq) == 0xDD, "day palette back")
+    h.check(background(light_sq) == 0xFF and background(dark_sq) == 0xAA, "day palette back")
     h.check(iconOn(white_piece) == PkIcons.pieces.r.w, "day piece set back")
     h.check(status():find("○ White to move", 1, true), "day marker back: " .. status())
     h.log("night mode keeps the board's day colours")
