@@ -17,6 +17,11 @@ PY        := $(VENV)/bin/python
 PIPELINE  := $(PY) -m paperknight_pipeline
 FIXTURE_PACKS := $(BUILD)/packs/fixture
 
+# Local settings, not committed: PAPERKNIGHT_DIST_URL, the base URL the device
+# files are served from (baked into the installers by `make pka` / `make pkc`).
+-include local.mk
+export PAPERKNIGHT_DIST_URL
+
 .PHONY: help koreader clean
 
 help: ## List targets

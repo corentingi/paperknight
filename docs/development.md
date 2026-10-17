@@ -62,6 +62,10 @@ timeout, or a non-zero exit.
 
 ## Deploying to a Kindle
 
+The installers download from the server they are served from: set its base
+URL in `PAPERKNIGHT_DIST_URL` (environment, or a `local.mk` file next to the
+Makefile, not committed: `PAPERKNIGHT_DIST_URL = https://example.org/files`).
+
 Over Wi-Fi: `make pka` builds `build/dist/pka.tar.gz` (the plugin with the
 assets staged in `build/dist/all`) and `pka.sh` (with the archive's
 checksum); put both on a web server, then on the Kindle run

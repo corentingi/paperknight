@@ -1,5 +1,8 @@
 # Paperknight — notes for Claude
 
+Machine-, deploy- and workflow-specific notes are in `CLAUDE.local.md` (not
+committed; read it too when present).
+
 ## Commands (run from repo root)
 - `make check` — everything (Lua unit + pytest + emulator e2e). Run before committing.
 - `make test-lua` — Lua specs (`plugin/tests/*_spec.lua`), run with KOReader's luajit.
@@ -16,14 +19,16 @@
 - `make pka` — device archive `build/dist/pka.tar.gz` + installer
   `build/dist/pka.sh` (`tools/dist/`). Repacks the current plugin with the
   assets staged in `build/dist/all` (studies, repertoires, puzzle pack: not
-  rebuilt). Deploy: upload both (remote-file skill); on the Kindle
-  `curl -fkL <url>/pka.sh | sh` (it checks the archive's sha256, baked in
-  by build-pka.sh: upload both files together).
+  rebuilt). Needs `PAPERKNIGHT_DIST_URL`, the base URL the files are served
+  from, baked into the installer (`local.mk`, not committed, or the
+  environment). On the Kindle `curl -fkL <url>/pka.sh | sh` (it checks the
+  archive's sha256, baked in by build-pka.sh: serve both files together).
 - `make pkc` — code-only archive `build/dist/pkc.tar.gz` + `pkc.sh` (~140 KB,
   no puzzle pack/studies/fonts; the device keeps its assets). Use it when
   only the plugin code changed; `make pka` when assets changed.
-- Stockfish for the Kindle: `tools/dist/build-stockfish.sh` (docs/stockfish.md);
-  upload `stockfish.gz`, `stockfish.sh` and the source tarball.
+- Stockfish for the Kindle: `tools/dist/build-stockfish.sh` (docs/stockfish.md,
+  also needs `PAPERKNIGHT_DIST_URL`); serve `stockfish.gz`, `stockfish.sh`,
+  the source tarball and the patch.
 
 ## Token hygiene
 - Don't read `main.lua`, `pkboard.lua`, `pkstudyview.lua` in full: grep for the
@@ -32,9 +37,6 @@
 - Never cat `build/`, puzzle CSVs, `.sqlite` packs or emulator logs; use
   head/grep/sqlite3 queries.
 - Only look at e2e screenshots when a visual change is being checked.
-- `.pm/JOURNAL.md` is append-only: read only the last iteration block.
-- `grep` on this machine is ugrep: long `.{0,N}` patterns fail ("exceeds
-  complexity limits"); use `LC_ALL=C grep` or a simpler pattern.
 
 ## KOReader pitfalls (each cost an iteration)
 - `ScrollTextWidget` has no `setText`: rebuild the widget.
@@ -95,11 +97,7 @@
   (`plugin/tests/fixtures/`).
 - Record decisions as ADRs in `docs/adr/` (template `0000-template.md`);
   update `docs/` with behaviour changes.
-- Routine for a change: implement, quick review of the diff (no review
-  subagents), `make check` green, commit, push to `main`, then report.
-  No `Co-Authored-By` lines.
-- Device builds only when the user asks: then `make pkc` (code only) or
-  `make pka` (assets changed), upload the archive with its installer
-  (remote-file skill) and check the served sha256.
+- Routine for a change: implement, quick review of the diff, `make check`
+  green, commit.
 - A new e2e check must fail without the fix: revert the fix once and run it
   (mutation check).

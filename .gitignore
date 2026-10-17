@@ -8,3 +8,7 @@ pipeline/.venv/
 plugin/paperknight.koplugin/bin/
 # packs are build outputs
 plugin/paperknight.koplugin/packs/*.sqlite
+# local, not shared: the autonomous loop's notes, machine notes, build settings
+.pm/
+CLAUDE.local.md
+local.mk
