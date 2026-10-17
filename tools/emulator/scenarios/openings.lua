@@ -66,7 +66,11 @@ return function(h)
     -- the move list: the moves played only (the answer is not shown)
     h.check(view.movelist and table.concat(view.movelist.moves, " ") == "e4 e5" and view.movelist.current == 2,
         "move list: the moves played: " .. table.concat(view.movelist and view.movelist.moves or {}, " "))
-    h.check(panel():find("C20 King's Pawn Game", 1, true), "opening named: " .. panel())
+    local sub = view.title_bar.subtitle_widget.text
+    h.check(sub:find("C20 King's Pawn Game", 1, true) and not panel():find("King's Pawn", 1, true),
+        "opening named in the subtitle, not the panel: " .. sub)
+    h.check(view.board.turn_marker == "w" and not panel():find("Your move", 1, true),
+        "your turn: the corner marker, no line for it")
     play("g1f3"); waitReply()
     play("f1b5")
     h.check(panel():find("Not in your repertoire", 1, true) and panel():find("Not our line", 1, true),
@@ -232,4 +236,64 @@ return function(h)
     h.settle()
     h.check(not PkOpenings.holdsRepertoire(), "released when the Openings list closes")
     os.remove(tmp .. "/noside.pgn")
+
+    -- A quiet, paced drill (python-chess checked PGN): a right move gets a ✓
+    -- and no text; a commented move waits for Continue; known moves that are
+    -- not due are played for the user, and the line ends after the last
+    -- move asked.
+    local PkDrill = require("pkdrill")
+    local PkDrillView = require("pkdrillview")
+    local PkRepertoire = require("pkrepertoire")
+    local PkSrs = require("pksrs")
+    local PkStudy = require("pkstudy")
+    local Chess = require("pkchess")
+    local ChessBoard = require("pkboard")
+    local text = '[Event "t"]\n[Orientation "white"]\n\n1. e4 { Best by test. } e5 2. Nf3 Nc6 3. Bc4 *\n'
+    local today = PkSrs.today()
+    local function drillWith(due) -- due: the line's cards due today (others known, not due)
+        local game = Chess:new()
+        local rep = PkRepertoire.fromStudy(PkStudy.fromText(text, "paced"), game)
+        local cards = {}
+        for i, key in ipairs(rep.lines[1].cards) do
+            cards[key] = { move = rep.cards[key].uci, reps = 2, interval = 3, ease = 2.5, lapses = 0,
+                           due = due[i] and today or today + 9, last = os.time() - 86400, introduced = today - 5 }
+        end
+        local d = PkDrill.new{ rep = rep, game = game, cards = cards }
+        local v = PkDrillView:new{ drill = d, title = "Paced" }
+        v.reply_delay = 0.1
+        UIManager:show(v)
+        h.settle()
+        return v, d
+    end
+    local v, d = drillWith({ true, true, false })
+    local function playOn(uci)
+        local b = v.board
+        for _, sq in ipairs({ uci:sub(1, 2), uci:sub(3, 4) }) do
+            h.tapWidget(b.table:getButtonById(b.toId(sq:byte(1) - 97, tonumber(sq:sub(2, 2)) - 1)))
+        end
+    end
+    h.check(d.state == "play" and d:mode() == "test" and v.board.turn_marker == "w", "e4 asked, your turn shown")
+    playOn("e2e4")
+    h.wait(0.5) -- longer than the reply delay
+    h.check(v.waiting and d.cursor.node.san == "e4" and v.panel_text:find("Best by test", 1, true),
+        "a commented move: the opponent waits, the comment stays: " .. v.panel_text)
+    h.check(not v.panel_text:find("Correct", 1, true) and v.board.badge and v.board.badge.text == ChessBoard.TICK
+        and v.board.badge.square == "e4", "a right move: ✓ on its piece, no text")
+    local next_btn = v.buttons:getButtonById("next")
+    h.check(next_btn.text == "Continue" and next_btn.enabled and v.board.turn_marker == nil, "Continue offered")
+    h.shot("openings-continue")
+    h.tapWidget(next_btn)
+    h.settle()
+    h.check(not v.waiting and d.cursor.node.san == "e5" and d:expected().move.san == "Nf3", "Continue: the reply")
+    playOn("g1f3")
+    h.check(d.state == "end", "Bc4 is known and not due: the line ends after Nf3")
+    h.check(v.buttons:getButtonById("next").text == "Next line", "then Next line")
+    v:onClose()
+    h.settle()
+    v, d = drillWith({ false, true, false })
+    h.waitFor(function() return d.state == "play" end)
+    h.check(d.cursor.node.san == "e5" and d:expected().move.san == "Nf3",
+        "1. e4 known, not due: played for you, then asked Nf3")
+    v:onClose()
+    h.settle()
 end

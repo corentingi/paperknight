@@ -71,7 +71,7 @@ esac; done
     end
     tapSquare("e2"); tapSquare("e4")
     h.check(view.pos == 1 and listed() == "e4@1", "move played: " .. listed())
-    h.check(view.panel_text:find("Black to move", 1, true), "side to move shown")
+    h.check(view.board.turn_marker == "b" and not view.panel_text:find("to move", 1, true), "side to move: the corner marker, not a line")
     h.wait(1.5) -- the engine answers; the last line is shown when the search ends
     h.check(view.panel_text:find("Engine: #-3 (depth 6)", 1, true), "evaluation from White's side: " .. view.panel_text)
     h.check(view.panel_text:find("1… e5 2. Nf3 Nc6", 1, true), "engine line in SAN: " .. view.panel_text)

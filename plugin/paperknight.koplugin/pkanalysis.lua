@@ -36,7 +36,6 @@ local PkNav = require("pknav")
 local PkProgress = require("pkprogress")
 local PkPromotion = require("pkpromotion")
 local PkRefresh = require("pkrefresh")
-local PkSide = require("pkside")
 
 local START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 local PV_PLIES = 8           -- moves of the engine's line shown
@@ -298,6 +297,7 @@ end
 function PkAnalysis:_update(page)
     local last = self.line[self.pos]
     self.board:setHighlights(last and { last.from, last.to } or {})
+    self.board:setTurnMarker(not self.game.game_over() and (self.game.turn() == Chess.WHITE and "w" or "b") or nil)
     self.buttons:getButtonById("start"):enableDisable(self.pos > 0)
     self.buttons:getButtonById("back"):enableDisable(self.pos > 0)
     self.buttons:getButtonById("forward"):enableDisable(self.pos < #self.line)
@@ -354,12 +354,12 @@ function PkAnalysis:_engineText()
     return T(_("Engine: %1 (depth %2)"), info.score, info.depth) .. (info.pv and ("\n" .. info.pv) or "")
 end
 
+-- The end of the game, if over (whose move it is: the board's corner marker).
 function PkAnalysis:_statusText()
     if self.game.in_checkmate() then return _("Checkmate.") end
     if self.game.in_stalemate() then return _("Stalemate.") end
     if self.game.in_draw() then return _("Draw.") end
-    local side = self.game.turn() == Chess.WHITE and "w" or "b"
-    return T(_("%1 to move."), PkSide.name(side))
+    return nil
 end
 
 -- "C50 Italian Game": the opening of the line up to the position shown.
@@ -370,7 +370,8 @@ function PkAnalysis:_openingText()
 end
 
 function PkAnalysis:_setText()
-    local parts = { self:_statusText() }
+    local parts = {}
+    parts[#parts + 1] = self:_statusText()
     local opening = self:_openingText()
     if opening then parts[#parts + 1] = opening end
     local engine = self:_engineText()

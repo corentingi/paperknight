@@ -164,6 +164,7 @@ function Board:_withCoordinates(framed)
     local face = Font:getFace("infont", 14) -- size is DPI-scaled by KOReader
     -- at least one text line high, so small boards don't overlap the labels
     local label_w = math.max(math.floor(self.button_size * 0.35), face.size + Screen:scaleBySize(2))
+    self._label_w, self._border = label_w, border -- the corner cell (turn marker)
     local function label(text, w, h)
         return CenterContainer:new{
             dimen = Geom:new{ w = w, h = h },
@@ -389,6 +390,45 @@ function Board:paintTo(bb, x, y)
     if self.badge then self:_paintBadge(bb) end
     if self.selected_mark and not self.locked then self:_paintSelection(bb) end
     self:_cacheRects()
+    if self.turn_marker then self:_paintTurnMarker(bb) end
+end
+
+--- Board:setTurnMarker(color): a disc in the empty corner cell left of the
+-- file letters ("w": hollow, "b": filled, swapped in night mode like the
+-- side markers of pkside.lua), saying whose move it is; nil hides it.
+-- Only that cell is refreshed.
+function Board:setTurnMarker(color)
+    if color == self.turn_marker then return end
+    self.turn_marker = color
+    local r = self:_markerRect()
+    if r then UIManager:setDirty(self.show_parent or self, self.square_refresh, r) end
+end
+
+-- The marker's square on screen (after a paint), or nil.
+function Board:_markerRect()
+    if not self._label_w then return nil end -- no coordinates: no corner cell
+    local s = self:_screenRect(self.flipped and "h8" or "a1") -- the bottom-left square
+    if not s then return nil end
+    local lw = self._label_w
+    local d = math.max(6, math.floor(lw * 0.8))
+    local cx = s.x - self._border - math.floor(lw / 2)
+    local cy = s.y + s.h + self._border + math.floor(lw / 2)
+    return Geom:new{ x = cx - math.floor(d / 2), y = cy - math.floor(d / 2), w = d, h = d }
+end
+
+function Board:_paintTurnMarker(bb)
+    local r = self:_markerRect()
+    if not r then return end
+    -- drawn in the framebuffer's own black (not Board.paintColor): night
+    -- mode inverts it, so that the filled disc stays the light side's there
+    local filled = (self.turn_marker == "b") ~= (Screen.night_mode == true)
+    local radius = math.floor(r.w / 2)
+    if filled then
+        bb:paintRoundedRect(r.x, r.y, r.w, r.h, Blitbuffer.COLOR_BLACK, radius)
+    else
+        bb:paintRoundedRect(r.x, r.y, r.w, r.h, Blitbuffer.COLOR_WHITE, radius)
+        bb:paintBorder(r.x, r.y, r.w, r.h, math.max(2, math.floor(r.w / 7)), Blitbuffer.COLOR_BLACK, radius)
+    end
 end
 
 -- Screen rectangles of the squares, as just painted (see _refreshButton).

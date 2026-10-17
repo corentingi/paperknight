@@ -83,3 +83,16 @@ overkill on a Kindle with a few hundred cards.
 - Opening names (Milestone 3 item) need the chess-openings TSV later; not
   required by the drill.
 - Revisit with FSRS if users have thousands of cards.
+
+## Amendment (2026-10-17): known moves played for the user, pauses on comments
+Replaying every known move from the start made deep cards slow to reach,
+and a comment on the user's move was replaced by the opponent's reply
+0.8 s later. Now, by default, the user's known moves that are not due are
+played automatically like the opponent's (no grade), the session stops at
+each new or due move, and a line ends after its last move to ask
+(`PkDrill.play_known` false; ≡ → *Play my known moves too* restores the
+former behaviour, where a wrong answer on a non-due move still counts).
+After a right move that has a comment (except a new move, whose comment
+was shown before), the opponent waits for *Continue*. Cost: no extra
+practice of known moves between reviews (Chessable's review works the
+same way).

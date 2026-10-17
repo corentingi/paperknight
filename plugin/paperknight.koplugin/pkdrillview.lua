@@ -17,6 +17,7 @@ local PkLinks = require("pklinks")
 local PkRefresh = require("pkrefresh")
 local PkPgn = require("pkpgn")
 local PkStudy = require("pkstudy")
+local ChessBoard = require("pkboard")
 local PkOpeningNames = require("pkopeningnames")
 local PkProgress = require("pkprogress")
 local PkNav = require("pknav")
@@ -41,12 +42,18 @@ function PkDrillView:init()
     PkSide.followNight(self, function(v) if v.raw_text then v:_setText(PkSide.swap(v.raw_text)) end end)
     self.dimen = Geometry:new{ x = 0, y = 0, w = Screen:getWidth(), h = Screen:getHeight() }
     if Device:hasKeys() then
-        self.key_events = { Close = { { Device.input.group.Back } } }
+        self.key_events = {
+            Close = { { Device.input.group.Back } },
+            Forward = { { Device.input.group.PgFwd } }, -- Continue / Next line
+        }
     end
     self.game = self.drill.game
     -- the move list beside the board (☰ Hide/Show move list, remembered):
     -- the moves played only, which give nothing away
     self.list_shown = PkProgress.readSetting("drill.movelist") ~= "0"
+    -- the user's known moves that are not due: played for them unless
+    -- ☰ → Play my known moves (remembered)
+    self.drill.play_known = PkProgress.readSetting("drill.play_known") == "1"
     self.title_bar = TitleBar:new{
         fullscreen = true,
         title = util.fixUtf8(self.title or _("Openings"), "?"),
@@ -62,7 +69,8 @@ function PkDrillView:init()
         buttons = {{
             { id = "hint", text = _("Hint"), callback = function() self:hint() end },
             { id = "solution", text = _("Solution"), callback = function() self:solution() end },
-            { id = "next", text = _("Next line"), callback = function() self:nextLine() end },
+            -- Continue (after a commented move) or Next line (line over)
+            { id = "next", text = _("Next line"), callback = function() self:onForward() end },
         }},
         zero_sep = true,
     }
@@ -79,6 +87,7 @@ end
 --- Starts the next line of the session, or shows the summary when done.
 function PkDrillView:nextLine()
     self:_cancelReply()
+    self.waiting = false
     self._last_line = self.drill.line or self._last_line
     local line = self.drill:nextLine()
     if not line then
@@ -92,7 +101,10 @@ function PkDrillView:nextLine()
     self:_paceOpponent()
 end
 
---- Redraws board and panel from the drill state. `prefix`: feedback line.
+--- Redraws board and panel from the drill state. `prefix`: an instruction
+-- or feedback line. The panel stays quiet: one short line, then the
+-- annotator's words; the opening name is in the subtitle, whose move it is
+-- in the board's corner, the current move in the move list.
 function PkDrillView:refresh(prefix, full)
     local drill, board = self.drill, self.board
     if board.selected then
@@ -105,52 +117,72 @@ function PkDrillView:refresh(prefix, full)
     board:setShapes(nil)
     board:setBadge(node and node.move and node.move.to, PkStudy.moveMark(node))
     local counts = drill:counts()
-    PkRefresh.setSubTitle(self, T(_("Due: %1 · New today: %2"), counts.due, counts.new_today))
+    local opening = node and PkOpeningNames.forNode(node)
+    local due = T(_("%1 due · %2 new"), counts.due, counts.new_today)
+    PkRefresh.setSubTitle(self, opening and (opening .. " · " .. due) or due)
 
-    local parts = {}
-    if prefix then parts[#parts + 1] = prefix end
+    local lines = {}
+    if prefix then lines[#lines + 1] = prefix end
     local state = drill.state
-    board.locked = state ~= "play"
+    local playing = state == "play" and not self.waiting
+    board.locked = not playing
+    board:setTurnMarker(playing and drill.line.student or nil)
     if state == "done" then
-        parts[#parts + 1] = _("All done for today.")
-        parts[#parts + 1] = T(_("Reviewed: %1 · Mistakes: %2"), drill.reviewed, drill.failed)
+        lines[#lines + 1] = _("All done for today.")
+        lines[#lines + 1] = T(_("Reviewed: %1 · Mistakes: %2"), drill.reviewed, drill.failed)
         if counts.new > 0 then
-            parts[#parts + 1] = T(_("%1 new moves are waiting for the next days."), counts.new)
+            lines[#lines + 1] = T(_("%1 new moves are waiting for the next days."), counts.new)
         end
     elseif state == "end" then
-        parts[#parts + 1] = _("Line complete. Tap Next line.")
-    elseif state == "play" then
+        lines[#lines + 1] = _("Line complete.")
+    elseif playing and drill:mode() == "intro" then
         local expected = drill:expected()
-        local mode = drill:mode()
-        if mode == "intro" then
-            parts[#parts + 1] = T(_("New move: play %1."), expected.move.san)
-            -- the move to learn, as an arrow
-            board:setShapes({ circles = {}, arrows = { { from = expected.move.from, to = expected.move.to } } })
-        else
-            parts[#parts + 1] = T(_("Your move (%1)."), PkSide.name(drill.line.student))
-        end
+        lines[#lines + 1] = T(_("New move: play %1."), expected.move.san)
+        -- the move to learn, as an arrow
+        board:setShapes({ circles = {}, arrows = { { from = expected.move.from, to = expected.move.to } } })
     end
     if node and node.parent then
-        parts[#parts + 1] = PkStudy.moveLabel(node, "move")
-        parts[#parts + 1] = PkPgn.positionWords(node.glyphs)
-        parts[#parts + 1] = PkOpeningNames.forNode(node) -- "C50 Italian Game", if known
-        if node.comment then parts[#parts + 1] = node.comment end
+        -- the move shown is framed in the move list; written out without it
+        if not self.movelist then lines[#lines + 1] = PkStudy.moveLabel(node, "move") end
+        lines[#lines + 1] = PkPgn.positionWords(node.glyphs)
+        if node.comment then lines[#lines + 1] = node.comment end
     end
-    if state == "play" and drill:mode() == "intro" and drill:expected().comment then
-        parts[#parts + 1] = drill:expected().comment -- why this move
+    if playing and drill:mode() == "intro" and drill:expected().comment then
+        lines[#lines + 1] = drill:expected().comment -- why this move
     end
-    self:_setText(table.concat(parts, "\n\n"))
+    self:_setText(table.concat(lines, "\n"))
     self:_updateList(node)
-    local playing = state == "play"
     self.buttons:getButtonById("hint"):enableDisable(playing and drill:mode() ~= "intro")
     self.buttons:getButtonById("solution"):enableDisable(playing)
-    self.buttons:getButtonById("next"):enableDisable(state == "end")
+    self:_setNextButton(self.waiting and _("Continue") or _("Next line"), self.waiting or state == "end")
     self:_redraw(full)
+end
+
+-- The third button: Continue (after a commented move) or Next line.
+function PkDrillView:_setNextButton(text, enabled)
+    local button = self.buttons:getButtonById("next")
+    if button.text ~= text then button:setText(text, button.width) end
+    button:enableDisable(enabled)
+end
+
+--- Continue after a commented move, or the next line once one is over
+-- (the third button, or the page-turn key).
+function PkDrillView:onForward()
+    if self.waiting then
+        self.waiting = false
+        self:_cancelReply()
+        self.drill:opponentReply()
+        self:refresh()
+        self:_paceOpponent()
+    elseif self.drill.state == "end" or self.drill.state == "done" then
+        self:nextLine()
+    end
+    return true
 end
 
 -- Opponent moves are played automatically after a short delay.
 function PkDrillView:_paceOpponent()
-    if self.drill.state ~= "reply" then return end
+    if self.drill.state ~= "reply" or self.waiting then return end
     self._reply_task = function()
         self._reply_task = nil
         if self.drill.state ~= "reply" then return end
@@ -163,16 +195,22 @@ end
 
 function PkDrillView:onBoardMove(move)
     self:_takeBackMove() -- the drill decides what the position is
-    if self.drill.state ~= "play" then return self:refresh() end
-    self:_afterVerdict(self.drill:onUserMove(move.from, move.to, move.promotion))
+    if self.drill.state ~= "play" or self.waiting then return self:refresh() end
+    local mode = self.drill:mode()
+    self:_afterVerdict(mode, self.drill:onUserMove(move.from, move.to, move.promotion))
 end
 
-function PkDrillView:_afterVerdict(verdict, node)
-    if verdict == "good" then
-        self:refresh(_("Correct!"))
-        self:_paceOpponent()
-    elseif verdict == "end" then
-        self:refresh(_("Correct!"))
+-- After a move at the user's turn (`mode`: of the move asked). A right move
+-- gets a ✓ on its piece (no text); if it has a comment, the opponent waits
+-- for Continue, so that it can be read (except a new move, whose comment
+-- was shown before it).
+function PkDrillView:_afterVerdict(mode, verdict, node)
+    if verdict == "good" or verdict == "end" then
+        self.waiting = verdict == "good" and node.comment ~= nil and mode ~= "intro"
+            and self.drill.state == "reply"
+        self:refresh()
+        self.board:setBadge(node.move.to, ChessBoard.TICK)
+        if verdict == "good" and not self.waiting then self:_paceOpponent() end
     elseif verdict == "bad" then
         self:refresh(_("Not in your repertoire.") .. (node.comment and ("\n" .. node.comment) or "")
             .. "\n" .. _("Try again."))
@@ -190,8 +228,9 @@ function PkDrillView:hint()
 end
 
 function PkDrillView:solution()
+    local mode = self.drill:mode()
     local verdict, node = self.drill:solution()
-    if verdict then self:_afterVerdict(verdict, node) end
+    if verdict then self:_afterVerdict(mode, verdict, node) end
 end
 
 -- The move list: the moves of the line up to the position shown.
@@ -233,6 +272,13 @@ function PkDrillView:showMenu()
     }
     buttons[#buttons + 1] = {{ text = self.list_shown and _("Hide move list") or _("Show move list"),
         callback = function() close(); self:toggleList() end }}
+    -- the user's known moves that are not due: played for them, or by them
+    buttons[#buttons + 1] = {{ text = _("Play my known moves too"), checked_func = function() return self.drill.play_known end,
+        callback = function()
+            close()
+            self.drill.play_known = not self.drill.play_known
+            PkProgress.writeSetting("drill.play_known", self.drill.play_known and "1" or nil)
+        end }}
     buttons[#buttons + 1] = PkLinks.menuRow(self.links, close)
     buttons[#buttons + 1] = PkNav.moreRow(close, "openings")
     dialog = ButtonDialog:new{ buttons = buttons }

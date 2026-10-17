@@ -16,7 +16,7 @@ local function setup(opts)
     local saved = {}
     local now = opts.now or NOON
     local d = PkDrill.new{
-        rep = rep, game = game, cards = opts.cards,
+        rep = rep, game = game, cards = opts.cards, play_known = opts.play_known,
         new_per_day = opts.new_per_day, introduced_today = opts.introduced_today,
         clock = function() now = now + 1; return now end, -- every call is a second later
         save = function(key, move, card) saved[key] = { move = move, card = card } end,
@@ -28,7 +28,40 @@ local function play(d, uci)
     return d:onUserMove(uci:sub(1, 2), uci:sub(3, 4), uci:sub(5, 5) ~= "" and uci:sub(5, 5) or nil)
 end
 
+-- A stored card for `key` of `rep`: known (reviewed), due on `due`.
+local function knownCard(rep, key, due)
+    return { move = rep.cards[key].uci, reps = 2, interval = 3, ease = 2.5, lapses = 0, due = due,
+             last = NOON - 86400, introduced = PkSrs.today(NOON) - 5 }
+end
+
 return {
+    { "known moves that are not due are played for the user; the line ends after the last asked", function(t)
+        local today = PkSrs.today(NOON)
+        local game = Chess:new()
+        local rep = PkRepertoire.fromStudy(assert(PkStudy.open(FIXTURE)), game)
+        -- chapter 1 main line: e4 (known, not due), Nf3 (due), Bc4 (known, not due), c3 (known, not due)
+        local line = rep.lines[1]
+        local function cardsNow()
+            local cards = {}
+            for i, key in ipairs(line.cards) do cards[key] = knownCard(rep, key, i == 2 and today or today + 9) end
+            -- every other card of the file known and not due either
+            for _, key in ipairs(rep.order) do cards[key] = cards[key] or knownCard(rep, key, today + 9) end
+            return cards
+        end
+        local d = setup{ rep = rep, cards = cardsNow(), play_known = false }
+        t.ok(d:nextLine(), "a line with a due move")
+        t.eq(d.state, "reply", "1. e4 (known, not due): played for the user")
+        t.eq(d:opponentReply().move.san, "e4", "auto: e4")
+        t.eq(d:opponentReply().move.san, "e5", "the reply")
+        t.eq(d.state, "play", "asked: Nf3 is due"); t.eq(d:expected().move.san, "Nf3", "Nf3")
+        t.eq(play(d, "g1f3"), "end", "nothing else to ask: the line ends after it")
+        t.eq(d.reviewed, 1, "only the due move reviewed")
+
+        local d2 = setup{ rep = rep, cards = cardsNow(), play_known = true }
+        d2:nextLine()
+        t.eq(d2.state, "play", "play_known: 1. e4 is the user's to play")
+        t.eq(d2:mode(), "free", "free move")
+    end },
     { "session: introduce under the cap, test, fail, relearn, done", function(t)
         local d, saved, rep = setup{ new_per_day = 2 }
         local e4_key = rep.order[1]

@@ -40,21 +40,28 @@ at any time.
 ## A session
 
 The trainer plays lines from the chapter's start (the initial position, or
-its `[FEN]`). The opponent's moves are
-played automatically; you play yours on the board.
+its `[FEN]`). The opponent's moves are played automatically, and so are
+your moves that you know and that are not due yet; it stops at each move
+it asks (new or due), and the line ends after the last one. ≡ → *Play my
+known moves too* (remembered) makes you play every move of the line again.
 
 - **New move**: shown as an arrow ("New move: play Nf3"), with the PGN's
   comment. Play it to learn it; it is tested again later in the same session.
 - **Review**: find the move. Right first time → it comes back in 1 day, then
   3, then longer and longer. Wrong move, *Hint* or *Solution* → it comes back
   in the same session and the interval starts over.
-- A move you already know that isn't due is still played on the way; a wrong
-  answer there counts as a failure too.
+- A right move gets a ✓ on its piece. If it has a comment, the opponent
+  waits: read it, then *Continue* (or the page-turn key).
+- With *Play my known moves too*, a known move that isn't due is yours to
+  play as well; a wrong answer there counts as a failure too.
 - *Next line* after a finished line; when nothing is due and today's new moves
   are learned, the session ends with a summary.
 
-The panel and board work as in studies: move-mark badges, position
-assessments in words, short links with a QR code (≡ → *Links…*).
+The panel stays short: the instruction (a new move, a wrong one), then the
+annotator's words. The opening's name and the counts are in the title bar,
+the moves in the move list, and a disc in the board's bottom-left corner
+(○ White, ● Black) shows when it is your move. Badges, assessments in words
+and links (≡ → *Links…*) work as in studies.
 
 Positions reached by different move orders share their review (one card per
 position). If two lines of a file play different moves in the same position,

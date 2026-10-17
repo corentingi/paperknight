@@ -7,7 +7,8 @@
 --                  -- or returns nil when nothing is due and the cap is reached
 --   while d.state == "reply" do d:opponentReply() end   -- the view paces these
 --   d:mode()       -- "intro" (new move: shown, then played), "test" (due card),
---                  -- "free" (known, not due: wrong answers still count)
+--                  -- "free" (known, not due: wrong answers still count; only
+--                  -- with play_known, else such moves are played for the user)
 --   local verdict, node = d:onUserMove(from, to, promotion)
 --     "good"  right move, played;  "end" right move and the line is over
 --     "wrong" not the move (retry);  "bad" a known mistake in the PGN (node =
@@ -38,6 +39,11 @@ function PkDrill.new(o)
     self.today = PkSrs.today(self.clock())
     self.order_index = {}
     for i, key in ipairs(self.rep.order) do self.order_index[key] = i end
+    -- false: the user's known moves that are not due are played for them
+    -- (state "reply", like the opponent's), and a line ends after its last
+    -- move to ask (ADR-0012, amended); true: every move of the line is
+    -- played by the user
+    self.play_known = o.play_known ~= false
     self.state = "idle"
     self.reviewed, self.failed = 0, 0
     return self
@@ -143,16 +149,38 @@ function PkDrill:_keyOf(node)
     return PkRepertoire.normalizeFen(node.parent.fen)
 end
 
+-- Whether the user is asked the move of line node `j` (a user node): a due
+-- card, or a new one allowed today (past today's cap, a new card after the
+-- target is not: one before it is introduced anyway, or the target would
+-- never be asked).
+function PkDrill:_asks(j, node)
+    local c = self:card(self:_keyOf(node))
+    if PkSrs.isNew(c) then return self.introduced_today < self.new_per_day or j <= self.target_index end
+    return PkSrs.isDue(c, self.today)
+end
+
+-- A move to ask from line node `from` on.
+function PkDrill:_asksFrom(from)
+    for j = from, #self.line.nodes do
+        local node = self.line.nodes[j]
+        if isUserNode(self.line, node) and self:_asks(j, node) then return true end
+    end
+    return false
+end
+
 function PkDrill:_updateState()
     local node = self:_next()
+    local j = self.index + 1
     if not node then
         self.state = "end"
+    elseif not self.play_known and not self:_asksFrom(j) then
+        self.state = "end" -- nothing left to ask: the rest of the line is known
     elseif isUserNode(self.line, node) then
-        -- past today's cap, a new card after the target ends the line (one
-        -- before it is introduced anyway, or the target would never be asked)
-        if PkSrs.isNew(self:card(self:_keyOf(node))) and self.introduced_today >= self.new_per_day
-            and self.index + 1 > self.target_index then
+        local new = PkSrs.isNew(self:card(self:_keyOf(node)))
+        if new and not self:_asks(j, node) then
             self.state = "end"
+        elseif not self.play_known and not self:_asks(j, node) then
+            self.state = "reply" -- known, not due: played for the user
         else
             self.state = "play"
             self.missed, self.used_help = false, false
@@ -226,7 +254,8 @@ function PkDrill:onUserMove(from, to, promotion)
     return "wrong"
 end
 
---- Plays the opponent's move of the line. Returns the node, or nil.
+--- Plays the next move that the user is not asked (the opponent's, or a
+-- known move of the user's that is not due). Returns the node, or nil.
 function PkDrill:opponentReply()
     if self.state ~= "reply" then return nil end
     local node = self:_advance()
