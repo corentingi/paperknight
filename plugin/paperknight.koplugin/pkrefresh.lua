@@ -22,7 +22,7 @@ local PkRefresh = {}
 PkRefresh.STEP = "[partial]"
 
 ---------------------------------------------------------------------------
--- Experiment (branch exp/du4-board, docs/eink-refresh.md §7): the board is
+-- The board (ADR-0018, docs/eink-refresh.md §7) is
 -- painted with the four DU4 grey levels only (0x00, 0x55, 0xAA, 0xFF) and
 -- its squares are refreshed with DU4 in partial update mode: no flash, no
 -- redraw of unchanged squares. KOReader has no refresh mode for DU4, so the

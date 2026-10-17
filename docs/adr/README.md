@@ -23,3 +23,4 @@ Template: [`0000-template.md`](0000-template.md).
 | [0013](0013-fast-san-resolver.md) | Dedicated SAN resolver for PGN moves; chess.lua for play | accepted |
 | [0014](0014-missed-puzzle-reviews.md) | Missed puzzles come back as reviews on a fixed ladder | accepted |
 | [0015](0015-navigation-and-quick-settings.md) | Home screen and quick settings for navigation and screen settings | accepted |
+| [0018](0018-du4-board-refresh.md) | The board is drawn in four greys and refreshed with DU4 | accepted |

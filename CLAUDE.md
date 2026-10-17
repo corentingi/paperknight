@@ -58,6 +58,11 @@
 - PW2 is a REAGL Kindle: `partial`/`[partial]` = REAGL (no flash), `ui` =
   GC16_FAST (flickers changed pixels), `fast` = DU (black and white, crushes
   greys). Night: partial becomes GL16_INV.
+- The board is drawn in the four DU4 greys only (0x00, 0x55, 0xAA, 0xFF)
+  and its squares are refreshed with DU4 partial updates
+  (`PkRefresh.boardRegion`, ADR-0018): confirmed on the PW2, keep it. No
+  grey tints on the board: marks are black/white shapes (last move: corner
+  triangles) or the 0x55/0xAA greys.
 - Steps (move, selection, status, replay/study step) use `PkRefresh.STEP`
   (`[partial]`): not counted by KOReader, never promoted to a flash. Pages
   (new puzzle/chapter/line) use a counted whole-screen `partial`

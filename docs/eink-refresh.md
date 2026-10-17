@@ -241,9 +241,10 @@ beck-elektronik.de); epaper-components.dev, *How e-paper partial refresh
 works*; FBInk CLI documentation; E Ink's Carta announcement (2013);
 KOReader `ffi/framebuffer_mxcfb.lua`, `ffi/mxcfb_kindle_h.lua`.
 
-### Experiment: DU4 board (branch `exp/du4-board`)
+### Adopted: DU4 board (ADR-0018)
 
-Lever 2 above, implemented on a branch to be judged on the PW2:
+Lever 2 above, tried on branch `exp/du4-board` and confirmed on the PW2
+(2026-10-17): moves no longer redraw the board.
 
 - The board uses the four DU4 levels only. Day: light squares 0xFF, dark
   0xAA, shapes 0x55. Night (shown values): light 0x55, dark 0x00, shapes
@@ -258,9 +259,7 @@ Lever 2 above, implemented on a branch to be judged on the PW2:
   1-pixel refresh it discards, so it adds none of its own. Elsewhere (the
   emulator, non-Kindle devices) the usual `[partial]` is used.
 - The text below the board and the page refreshes are unchanged (REAGL).
-- To check on the device: whether DU4 exists in the PW2's waveform (if not,
-  the driver may fall back or show nothing), the flash, the speed, the
-  ghosting after a long line, and how the four-level pieces look.
+- Anything new drawn on the board must stay within the four levels.
 
 ## 8. Measuring
 

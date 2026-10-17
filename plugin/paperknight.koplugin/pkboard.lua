@@ -20,7 +20,7 @@ local BOARD_SIZE = 8
 local SELECTED_BORDER = 5
 -- Paperknight: square colours, as the panel shows them (the board is
 -- painted with their inverse in night mode, where the piece sets are also
--- swapped). Experiment exp/du4-board: only the four DU4 grey levels (0x00,
+-- swapped). Only the four DU4 grey levels (ADR-0018: 0x00,
 -- 0x55, 0xAA, 0xFF), so that squares can be refreshed with DU4 (no flash,
 -- pkrefresh.lua). The last move is not a tint any more but small triangles
 -- in the four corners of its squares (`mark`), in black by day and white at
