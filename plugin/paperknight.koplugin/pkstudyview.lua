@@ -223,7 +223,7 @@ function PkStudyView:_showOpenError()
     self.board:setHighlights({})
     self.board:setShapes(nil)
     self.board:setBadge(nil)
-    self.board.locked = true
+    self.board:setLocked(true)
     self:_setText(T(_("Cannot open this chapter: %1"), self._open_error or "?"))
 end
 
@@ -321,7 +321,7 @@ function PkStudyView:refresh(prefix, full)
     local hide_shapes = self.lesson and not self.lesson.variations_are_mistakes and self.lesson.state == "play"
     self.board:setShapes(not hide_shapes and node.shapes or nil)
     self.board:setBadge(node.move and node.move.to, PkStudy.moveMark(node))
-    self.board.locked = false
+    self.board:setLocked(false)
     PkRefresh.setSubTitle(self, T(_("%1 · Chapter %2/%3"), self.study.name, self.chapter_index, #self.study.chapters))
     if self.lesson then
         self:_lessonRefresh(prefix)
@@ -610,15 +610,15 @@ function PkStudyView:_lessonRefresh(prefix)
         end
         parts[#parts + 1] = summary
         if has_next_chapter then parts[#parts + 1] = _("Tap Next for the next chapter.") end
-        self.board.locked = true
+        self.board:setLocked(true)
     elseif lesson.state == "error" then
         parts[#parts + 1] = T(_("This study has an illegal move here (%1). Use Browse to read on."),
             tostring(lesson.error))
-        self.board.locked = true
-    elseif lesson.state == "play" then
-        parts[#parts + 1] = T(_("Your move (%1)."), PkSide.name(lesson.student))
+        self.board:setLocked(true)
+    elseif lesson.state == "play" then -- luacheck: ignore 542
+        -- the student's move: the board's corner disc says so
     else
-        self.board.locked = true -- opponent to move
+        self.board:setLocked(true) -- opponent to move
         if self.waiting_next then parts[#parts + 1] = _("Tap Next to continue.") end
     end
     if node ~= self.cursor.root then

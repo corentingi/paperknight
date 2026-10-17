@@ -62,7 +62,11 @@
   and its squares are refreshed with DU4 partial updates
   (`PkRefresh.boardRegion`, ADR-0018): confirmed on the PW2, keep it. No
   grey tints on the board: marks are black/white shapes (last move: corner
-  triangles) or the 0x55/0xAA greys.
+  triangles) or the 0x55/0xAA greys. A DU4 partial update drives only the
+  changed pixels, so the board's single batched region may be large.
+- Turn marker: the board shows the side to move in its corner cell by
+  itself while it takes moves (`Board:_syncTurnMarker`); views lock and
+  unlock it with `board:setLocked(...)`, never `board.locked =`.
 - Steps (move, selection, status, replay/study step) use `PkRefresh.STEP`
   (`[partial]`): not counted by KOReader, never promoted to a flash. Pages
   (new puzzle/chapter/line) use a counted whole-screen `partial`

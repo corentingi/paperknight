@@ -38,7 +38,8 @@ return function(h)
     h.check(view.board.flipped, "board shows Black's side")
     local r, f = labels(view.board)
     h.check(r == "18" and f == "ha", "flipped labels top-down 1..8, h..a: " .. r .. " " .. f)
-    h.check(status():find("Black to move"), "prompt: " .. status())
+    h.check(status():find("Find the best move", 1, true) and not status():find("to move", 1, true)
+        and view.board.turn_marker == "b", "prompt, the side to move as the corner disc: " .. status())
     h.shot("puzzle-1-start")
     tapSquare("d8"); tapSquare("d1")
     h.check(status():find("Not the move"), "wrong move feedback: " .. status())
@@ -110,8 +111,10 @@ return function(h)
         local top, bottom = r.y, r.y + r.h
         if top < bd.y + bd.h then -- touches the board: stays inside it, and smaller
             on_board = on_board + 1
+            -- (its size no longer matters: on the Kindle it is a DU4 partial
+            -- update, which drives only the changed pixels, ADR-0018; it can
+            -- span from the moved squares to the turn disc's corner)
             h.check(bottom <= bd.y + bd.h, "a board refresh stops at the board: " .. desc)
-            h.check(r.w * r.h < bd.w * bd.h / 2, "only the changed squares: " .. desc)
         end
     end
     h.check(on_board == 2, "one board refresh per update (move, reply): " .. on_board)

@@ -297,7 +297,7 @@ end
 function PkAnalysis:_update(page)
     local last = self.line[self.pos]
     self.board:setHighlights(last and { last.from, last.to } or {})
-    self.board:setTurnMarker(not self.game.game_over() and (self.game.turn() == Chess.WHITE and "w" or "b") or nil)
+    self.board:_syncTurnMarker() -- (the position changed: the side to move)
     self.buttons:getButtonById("start"):enableDisable(self.pos > 0)
     self.buttons:getButtonById("back"):enableDisable(self.pos > 0)
     self.buttons:getButtonById("forward"):enableDisable(self.pos < #self.line)

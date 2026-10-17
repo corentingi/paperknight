@@ -33,7 +33,8 @@ return function(h)
     while n.parent do depth, n = depth + 1, n.parent end
     h.check(view.movelist and #view.movelist.moves == depth, "move list: only the moves played (no answer given away)")
     h.check(view.title_bar.subtitle_widget.text:find("Chapter 2/5", 1, true), "subtitle in lesson mode")
-    h.check(panel():find("Your move %(○ White%)") and panel():find("mate in two"), "intro + prompt: " .. panel())
+    h.check(view.board.turn_marker == "w" and not panel():find("Your move", 1, true) and panel():find("mate in two"),
+        "intro, and the turn as the corner disc: " .. panel())
     h.check(not panel():find("Qxd8"), "solution not revealed")
     h.shot("lesson-start")
 
@@ -77,7 +78,7 @@ return function(h)
     h.settle()
     h.check(view.buttons == view.browse_buttons, "ordinary chapter opens in browse mode")
     tapButton("train"); h.settle()
-    h.check(view.lesson and panel():find("Welcome!") and panel():find("^Your move %(○ White%)"), "training, status first: " .. panel())
+    h.check(view.lesson and panel():find("Welcome!") and view.board.turn_marker == "w", "training: the student's turn: " .. panel())
     h.check(view.board.shapes == nil, "annotator shapes hidden while the student is to move")
     tapSquare("e2")
     local setText, builds = view._setText, 0
@@ -118,7 +119,7 @@ return function(h)
     h.check(view.cursor.node == view.cursor.root and view.waiting_next, "intro shown, waiting for Next")
     h.check(panel():find("Black to defend"), "intro: " .. panel())
     tapButton("next")
-    h.check(view.cursor.node.san == "e4" and panel():find("Your move %(● Black%)"), "then White's first move: " .. panel())
+    h.check(view.cursor.node.san == "e4" and view.board.turn_marker == "b", "then White's first move, Black's turn: " .. panel())
     view.reply_delay = 1 -- the waits below outlast it: a cancelled reply would have fired
     tapSquare("e7"); tapSquare("e5")
     h.check(view._reply_task, "reply pending")

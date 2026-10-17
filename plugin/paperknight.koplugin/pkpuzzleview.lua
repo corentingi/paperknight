@@ -226,7 +226,8 @@ function PkPuzzleView:_setStatus(text)
 end
 
 function PkPuzzleView:_toMoveText()
-    local text = T(_("%1 to move. Find the best move."), PkSide.name(self.session:solverColor()))
+    -- (whose move it is: the board's corner disc)
+    local text = _("Find the best move.")
     if self.review then
         text = T(_("Review: you missed this puzzle on %1."), os.date("%d %b %Y", self.review.missed)) .. "\n" .. text
     elseif self.stale then
@@ -253,7 +254,7 @@ function PkPuzzleView:loadPuzzle(puzzle, review, stale)
     self.board:updateBoard()
     self.board:setHighlights({ setup.from, setup.to })
     self.board:setBadge(nil)
-    self.board.locked = false
+    self.board:setLocked(false)
     self:_updateTitle()
     self:_setStatus(self:_toMoveText())
     logger.info("Paperknight: puzzle", puzzle.id, "rating", puzzle.rating)
@@ -367,7 +368,7 @@ function PkPuzzleView:nextPuzzle()
         end
         if not puzzle then
             -- no puzzle left on screen (a load failed): nothing to move
-            if not self.session and self.board then self.board.locked = true end
+            if not self.session and self.board then self.board:setLocked(true) end
             self:_updateTitle()
             if self.puzzle then
                 self:_setStatus(self.theme and _("No other puzzle with this theme in the pack.")
@@ -387,7 +388,7 @@ function PkPuzzleView:nextPuzzle()
         self.session, self.puzzle = nil, nil
     end
     logger.warn("Paperknight: cannot load a puzzle:", err)
-    if self.board then self.board.locked = true end
+    if self.board then self.board:setLocked(true) end
     self:_updateTitle()
     self:_setStatus(_("Cannot load a puzzle from the pack.") .. "\n" .. tostring(err))
     return false
@@ -401,7 +402,7 @@ function PkPuzzleView:_broken(err)
     self.replaying = false
     self:_setButtons(self.solve_buttons)
     self.board:setBadge(nil)
-    self.board.locked = true
+    self.board:setLocked(true)
     self.board:updateBoard()
     self:_setStatus(_("This puzzle contains an invalid move. Tap Next."))
 end
@@ -476,7 +477,7 @@ function PkPuzzleView:onUserMove(move)
     end
     self.board:setHighlights({ move.from, move.to })
     if verdict == "solved" then
-        self.board.locked = true
+        self.board:setLocked(true)
         local before, after, note = self:_finishAttempt("solved")
         local result = (self.session:isCleanSolve() and _("Solved!"))
             or (self.session.used_help and _("Solved, with help."))
@@ -495,7 +496,7 @@ function PkPuzzleView:onUserMove(move)
     end
     -- correct, more to come: show the opponent's reply (already played in the
     -- game) after a short pause, unless the user moves on first.
-    self.board.locked = true
+    self.board:setLocked(true)
     self:_setStatus(_("Correct! Keep going."))
     self._pending_reply = reply
     self._reply_task = function()
@@ -511,7 +512,7 @@ function PkPuzzleView:_showReply()
     self._pending_reply = nil
     self.board:showMove(reply)
     self.board:setHighlights({ reply.from, reply.to })
-    self.board.locked = false
+    self.board:setLocked(false)
     self:_setStatus(_("Correct! Keep going.") .. "\n" .. self:_toMoveText())
 end
 
@@ -718,7 +719,7 @@ end
 -- Switches to the replay bar at the current position; `result`: first line
 -- of the status while stepping. Returns false if the puzzle is broken.
 function PkPuzzleView:_startReplay(result)
-    self.board.locked = true
+    self.board:setLocked(true)
     local ok, err = pcall(self.session.startReplay, self.session)
     if not ok then self:_broken(err); return false end
     self.replaying = true

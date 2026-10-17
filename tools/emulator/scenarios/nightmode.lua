@@ -70,9 +70,15 @@ return function(h)
         return board.table:getButtonById(board.chessToId(sq)).icon
     end
     h.check(iconOn(white_piece) == PkIcons.pieces.r.w, "day: white rook icon")
-    -- the side-to-move marker: a white disc, stored swapped in night mode
-    local function status() return view.status.text end
-    h.check(status():find("○ White to move", 1, true), "day marker: " .. status())
+    -- the side to move: the board's corner disc, hollow for White by day,
+    -- a light filled disc at night (as the side markers of pkside.lua)
+    local function disc()
+        local r = board:_markerRect()
+        return shown(r.x + 1, r.y + math.floor(r.h / 2)), shown(r.x + math.floor(r.w / 2), r.y + math.floor(r.h / 2))
+    end
+    local edge, middle = disc()
+    h.check(board.turn_marker == "w" and edge == 0x00 and middle == 0xFF,
+        ("day: hollow disc for White (edge %x, middle %x)"):format(edge, middle))
 
     Screen:toggleNightMode()
     UIManager:setDirty("all", "full")
@@ -85,9 +91,8 @@ return function(h)
         h.check(ring() == 0xAA, ("night shape shown %x"):format(ring()))
         h.check(iconOn(white_piece) == PkIcons.pieces.r.b, "night: black rook icon, shown inverted")
         h.check(pieceMiddle(white_piece) == 0xFF, ("white piece shown white: %x"):format(pieceMiddle(white_piece)))
-        h.check(status():find("● White to move", 1, true), "night marker swapped on toggle: " .. status())
-        view:loadPuzzle(view.pack:get("0042j"))
-        h.check(status():find("● White to move", 1, true), "night marker on a new text: " .. status())
+        local n_edge, n_middle = disc()
+        h.check(n_edge == 0xFF and n_middle == 0xFF, ("night: light filled disc (edge %x, middle %x)"):format(n_edge, n_middle))
         -- a single-square repaint (Button:refresh paints the frame directly)
         board:markSelected(light_sq); board:unmarkSelected(light_sq)
         h.settle()
@@ -99,6 +104,7 @@ return function(h)
     h.settle()
     h.check(background(light_sq) == 0xFF and background(dark_sq) == 0xAA, "day palette back")
     h.check(iconOn(white_piece) == PkIcons.pieces.r.w, "day piece set back")
-    h.check(status():find("○ White to move", 1, true), "day marker back: " .. status())
+    edge, middle = disc()
+    h.check(edge == 0x00 and middle == 0xFF, "day disc back")
     h.log("night mode keeps the board's day colours")
 end

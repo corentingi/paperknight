@@ -36,7 +36,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 
 | File | Role |
 |---|---|
-| `pkboard.lua` | Board widget: squares, pieces, last move, selection, badges, arrows and circles; refreshes only the squares an update changes |
+| `pkboard.lua` | Board widget, shared by every mode: squares, pieces, last move (corner triangles), selection, badges, arrows and circles, the side to move (corner disc, shown while the board takes moves); DU4 refreshes of the squares an update changes (ADR-0018) |
 | `pkboardscreen.lua` | Board + text panel + buttons shared by the study view and the openings drill (layout, optional move list beside the board, panel text with links, refreshes, reply timer) |
 | `pkbutton.lua` | KOReader's Button for icon buttons given as absolute paths; `no_feedback` (no tap flash) |
 | `pkrefresh.lua` | E-ink refresh policy: steps are `[partial]` (never promoted to a flash), pages a counted `partial`; see [eink-refresh.md](eink-refresh.md) |

@@ -125,8 +125,7 @@ function PkDrillView:refresh(prefix, full)
     if prefix then lines[#lines + 1] = prefix end
     local state = drill.state
     local playing = state == "play" and not self.waiting
-    board.locked = not playing
-    board:setTurnMarker(playing and drill.line.student or nil)
+    board:setLocked(not playing)
     if state == "done" then
         lines[#lines + 1] = _("All done for today.")
         lines[#lines + 1] = T(_("Reviewed: %1 · Mistakes: %2"), drill.reviewed, drill.failed)

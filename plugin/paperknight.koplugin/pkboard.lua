@@ -63,7 +63,8 @@ local Board = FrameContainer:extend{
     holdCallback = nil,
     onPromotionNeeded = nil, -- function(from, to, color): a pawn reaches the last rank (the view asks the piece)
     flipped = false, -- Paperknight: true shows the board from Black's side
-    locked = false,  -- Paperknight: true ignores taps (e.g. puzzle finished, opponent thinking)
+    locked = false,  -- Paperknight: true ignores taps (e.g. puzzle finished, opponent thinking); set with setLocked
+    show_turn = true, -- Paperknight: the corner disc shows the side to move while the board takes moves
     coordinates = true, -- Paperknight: draw a–h / 1–8 around the board
     padding = 0,
     bordersize = 0,  -- Paperknight: the grey frame is drawn around the squares only
@@ -330,6 +331,7 @@ function Board:handleGameMove(move)
     if self.moveCallback then
         self.moveCallback(move) -- Notify Paperknight.lua that the move has completed
     end
+    self:_syncTurnMarker() -- (the view may have locked the board, or taken the move back)
 end
 
 --- Board:showMove(move)
@@ -340,6 +342,7 @@ function Board:showMove(move)
     self:updateSquare(move.to)
     -- Special moves (en passant, castling) affect other squares
     self:handleMoveFlags(move, move.to)
+    self:_syncTurnMarker()
 end
 
 --- Board:setShapes(shapes)
@@ -390,17 +393,33 @@ function Board:paintTo(bb, x, y)
     if self.turn_marker then self:_paintTurnMarker(bb) end
 end
 
+--- Board:setLocked(locked): taps ignored or not; the turn marker follows.
+function Board:setLocked(locked)
+    self.locked = locked and true or false
+    self:_syncTurnMarker()
+end
+
+-- The turn marker follows the board itself: the side to move while the
+-- board takes moves (unlocked, game not over); hidden otherwise (the
+-- opponent or the engine to move, a finished puzzle, a replay). Every mode
+-- gets it this way: the views only lock and unlock the board.
+function Board:_syncTurnMarker()
+    local game = self.game
+    local color = self.show_turn and not self.locked and game and not game.game_over() and game.turn() or nil
+    self:setTurnMarker(color)
+end
+
 --- Board:setTurnMarker(color): a disc in the empty corner cell left of the
 -- file letters ("w": hollow, "b": filled, swapped in night mode like the
 -- side markers of pkside.lua), saying whose move it is; nil hides it.
--- Only that cell is refreshed.
+-- Its cell joins the board's refresh.
 function Board:setTurnMarker(color)
     if color == self.turn_marker then return end
     self.turn_marker = color
+    -- in the update's single board refresh (a DU4 partial update drives
+    -- only the pixels that changed: a larger rectangle costs nothing)
     local r = self:_markerRect()
-    if r then
-        UIManager:setDirty(self.show_parent or self, function() return PkRefresh.boardRegion(self.square_refresh, r) end)
-    end
+    if r then self:_refreshButton(nil, r) end
 end
 
 -- The marker's square on screen (after a paint), or nil.
@@ -798,6 +817,7 @@ function Board:updateBoard(no_refresh)
             end
         end
     end
+    if not no_refresh then self:_syncTurnMarker() end
 end
 
 -- Utility functions for square conversions
