@@ -226,8 +226,9 @@ function PkPuzzleView:_setStatus(text)
 end
 
 function PkPuzzleView:_toMoveText()
-    -- (whose move it is: the board's corner disc)
-    local text = _("Find the best move.")
+    -- the side in words too (and as the board's corner disc): a puzzle
+    -- starts from a position the solver has never seen
+    local text = T(_("%1 to move. Find the best move."), PkSide.name(self.session:solverColor()))
     if self.review then
         text = T(_("Review: you missed this puzzle on %1."), os.date("%d %b %Y", self.review.missed)) .. "\n" .. text
     elseif self.stale then
