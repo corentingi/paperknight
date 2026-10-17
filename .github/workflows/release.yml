@@ -1,0 +1,68 @@
+# Releases the plugin: on a version tag (vX.Y.Z), tests, builds the puzzle
+# pack from the Lichess database, then the full archive (pka) and the
+# code-only one (pkc) with their installers, and publishes them as a GitHub
+# release. Run by hand (workflow_dispatch), it builds the same files as an
+# artifact without releasing (a dry run). docs/releasing.md.
+name: Release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      # what the installers download: this release's assets
+      PAPERKNIGHT_DIST_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
+      PAPERKNIGHT_VERSION: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cache the desktop KOReader
+        uses: actions/cache@v4
+        with:
+          path: build/koreader
+          key: koreader-${{ hashFiles('Makefile') }}
+      - name: Test
+        run: make check
+      - name: Cache the Lichess puzzle database (monthly)
+        id: month
+        run: echo "month=$(date +%Y-%m)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: build/downloads
+          key: lichess-puzzles-${{ steps.month.outputs.month }}
+      - name: Build the puzzle pack
+        run: make packs
+      - name: Build the archives
+        run: |
+          tools/dist/stage-release.sh
+          PKA_STAGE=build/dist/release sh tools/dist/build-pka.sh
+          sh tools/dist/build-pka.sh --code
+          cd build/dist && sha256sum pka.tar.gz pka.sh pkc.tar.gz pkc.sh > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paperknight-${{ github.ref_name }}
+          path: |
+            build/dist/pka.tar.gz
+            build/dist/pka.sh
+            build/dist/pkc.tar.gz
+            build/dist/pkc.sh
+            build/dist/SHA256SUMS
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --title "Paperknight $GITHUB_REF_NAME" \
+            --generate-notes --latest \
+            build/dist/pka.tar.gz build/dist/pka.sh build/dist/pkc.tar.gz build/dist/pkc.sh build/dist/SHA256SUMS

@@ -38,11 +38,11 @@
 Order matters: the updater reads what the releases publish.
 - [ ] Make the repository public (check licences: GPL code from Kochess and
       chess.lua, CC0 data, no Lichess study text committed; README for users)
-- [ ] GitHub releases: a tag per version, built by CI, with `pka.tar.gz`,
+- [x] GitHub releases: a tag per version, built by CI (docs/releasing.md), with `pka.tar.gz`,
       `pkc.tar.gz`, their installers and `stockfish.gz` as release assets,
       and a small version file (version, commit, date, sha256 of each asset)
-- [ ] Version shown in the plugin (a version file written into the package
-      by the build; on the home screen)
+- [ ] Version shown in the plugin (`version.txt` is written into the
+      package by the build; show it on the home screen)
 - [ ] **In-app updater**: *Update Paperknight* in the title-tap menu
   1. Turn Wi-Fi on if needed (KOReader's NetworkMgr), read the latest
      release's version file, compare with the installed version; say "up

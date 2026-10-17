@@ -15,7 +15,7 @@
 main() {
     set -e
     KOREADER_DIR="${KOREADER_DIR:-/mnt/us/koreader}"
-    SF_URL="${SF_URL:-@DIST_URL@/stockfish.gz}"
+    SF_URL="${SF_URL:-@DIST_URL@/@SF_ASSET@}" # (filled in by build-stockfish.sh)
     SF_SHA256="@SF_SHA256@"
     BIN="$KOREADER_DIR/plugins/paperknight.koplugin/bin"
 

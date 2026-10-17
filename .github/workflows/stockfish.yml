@@ -1,0 +1,73 @@
+# Builds Stockfish for the devices (docs/stockfish.md), one job per platform
+# (only the Kindle Paperwhite 2 so far), checks each binary under qemu, and
+# on a stockfish-* tag (e.g. stockfish-sf_18) publishes them as a release of
+# their own (not marked latest: the plugin's releases are). Run by hand, it
+# builds them as an artifact (a dry run).
+name: Stockfish
+on:
+  push:
+    tags: ["stockfish-*"]
+  workflow_dispatch:
+    inputs:
+      sf_tag:
+        description: Stockfish release tag to build
+        default: sf_18
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        include:
+          - platform: pw2
+            qemu: qemu-arm-static -cpu cortex-a9
+    env:
+      SF_PLATFORM: ${{ matrix.platform }}
+      PAPERKNIGHT_DIST_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stockfish tag
+        id: tag
+        run: |
+          tag="${{ inputs.sf_tag }}"
+          case "$GITHUB_REF_NAME" in stockfish-*) tag="${GITHUB_REF_NAME#stockfish-}" ;; esac
+          echo "sf_tag=${tag:-sf_18}" >> "$GITHUB_OUTPUT"
+      - name: Build
+        run: tools/dist/build-stockfish.sh "${{ steps.tag.outputs.sf_tag }}"
+      - name: Check the binary under qemu
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq qemu-user-static
+          printf 'uci\nisready\nposition startpos\ngo depth 8\n' | timeout 120 ${{ matrix.qemu }} \
+            "build/dist/stockfish-$SF_PLATFORM" | tee qemu.log
+          grep -q uciok qemu.log && grep -q '^bestmove' qemu.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stockfish-${{ matrix.platform }}
+          path: |
+            build/dist/stockfish-${{ matrix.platform }}.gz
+            build/dist/stockfish-${{ matrix.platform }}.sh
+            build/dist/stockfish-*-src.tar.gz
+            build/dist/stockfish-*.patch
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/stockfish-')
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist && sha256sum * > SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --latest=false \
+            --title "Stockfish ${GITHUB_REF_NAME#stockfish-} for e-readers" \
+            --notes "Stockfish built for the devices Paperknight supports (GPLv3: the source and our patch are attached). Install on a Kindle Paperwhite 2: curl -fkL https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/stockfish-pw2.sh | sh" \
+            *

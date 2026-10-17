@@ -1,0 +1,31 @@
+# Tests on every push and pull request: Lua specs, pipeline pytest and the
+# headless end-to-end scenarios (make check).
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cache the desktop KOReader
+        uses: actions/cache@v4
+        with:
+          path: build/koreader
+          key: koreader-${{ hashFiles('Makefile') }}
+      - name: Test
+        run: make check
+      - name: Keep the logs and screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e
+          path: build/e2e/

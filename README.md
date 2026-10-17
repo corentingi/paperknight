@@ -44,22 +44,24 @@ once installed.
 You need a jailbroken Kindle with [KOReader](https://koreader.rocks)
 installed (tested on a Kindle Paperwhite 2 with KOReader 2026.07).
 
-> No release has been published yet: the first one will come with a
-> download page. Until then, build the archive from source (below).
+In a terminal on the Kindle (kterm or SSH):
 
-1. Get `pka.tar.gz` and its installer `pka.sh` (built by `make pka`, see
-   [Development](#development)) and serve both from a web server.
-2. On the Kindle, in a terminal (kterm or SSH):
-   `curl -fkL <server>/pka.sh | sh`. The installer checks the archive and
-   installs the plugin, the puzzle pack and an emoji font. Your own studies
-   and repertoires are kept on updates.
-3. Restart KOReader. **Paperknight** is in the **Tools** menu; KOReader's
-   gesture settings can also open it with one tap (*Paperknight* action).
+    curl -fkL https://github.com/corentingi/paperknight/releases/latest/download/pka.sh | sh
+
+The installer checks the archive it downloads and installs the plugin, the
+puzzle pack and an emoji font. Run it again to update; your own studies and
+repertoires are kept. Then restart KOReader: **Paperknight** is in the
+**Tools** menu (KOReader's gesture settings can also open it with one tap,
+*Paperknight* action).
+
+> The first release is not published yet. Until then, build the archive
+> yourself (`make pka`, see [Development](#development)) and serve it.
 
 **Stockfish** (optional, for the analysis board and playing against the
-engine) is installed apart: run its installer `stockfish.sh` the same way.
-It is Stockfish 18 built for the Paperwhite 2, about 3 MB
-([details](docs/stockfish.md)).
+engine) is installed apart, Stockfish 18 built for the Paperwhite 2, about
+3 MB ([details](docs/stockfish.md)):
+
+    curl -fkL https://github.com/corentingi/paperknight/releases/download/stockfish-sf_18/stockfish-pw2.sh | sh
 
 **Your own studies and repertoires**: copy PGN files (for example a Lichess
 study exported as PGN) to `koreader/paperknight/studies/` or
@@ -101,7 +103,8 @@ will be served from (set it in the environment or in a `local.mk` file).
 | [`pipeline/`](pipeline/) | Python tools that download public datasets and build the data packs |
 | [`tools/emulator/`](tools/emulator/) | The desktop KOReader that runs the end-to-end tests |
 | [`tools/dist/`](tools/dist/) | Device archives, installers and the Stockfish build |
-| [`docs/`](docs/) | [Architecture](docs/architecture.md), [development guide](docs/development.md), [e-ink refreshes](docs/eink-refresh.md), [decision records](docs/adr/), [roadmap](docs/roadmap.md) |
+| [`docs/`](docs/) | [Architecture](docs/architecture.md), [development guide](docs/development.md), [releasing](docs/releasing.md), [e-ink refreshes](docs/eink-refresh.md), [decision records](docs/adr/), [roadmap](docs/roadmap.md) |
+| [`site/`](site/) | The project's web page (GitHub Pages) |
 
 ## Credits and license
 

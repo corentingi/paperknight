@@ -8,11 +8,16 @@
 # --code: the plugin's code only (build/dist/pkc.tar.gz + pkc.sh, a few
 # hundred KB): the installer keeps the puzzle pack, studies, repertoires
 # and fonts already on the device.
+# PKA_STAGE: the folder of staged assets (default build/dist/all, your local
+# stage; stage-release.sh fills build/dist/release for public releases).
+# PAPERKNIGHT_VERSION: written to the plugin's version.txt (default: git
+# describe).
 set -e
 # where the files are served from, baked into the installers
 DIST_URL="${PAPERKNIGHT_DIST_URL:?set PAPERKNIGHT_DIST_URL to the base URL of the served files}"
 cd "$(dirname "$0")/../.."
 SHA_OF() { sha256sum "$1" | cut -d' ' -f1; }
+VERSION="${PAPERKNIGHT_VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo dev)}"
 EXCLUDES="--exclude pkchesslib/spec/ --exclude pkchesslib/perft.lua --exclude pkchesslib/example.lua
     --exclude .travis.yml --exclude .gitignore --exclude .gitkeep --exclude /bin/"
 
@@ -22,6 +27,7 @@ if [ "$1" = "--code" ]; then
     # shellcheck disable=SC2086
     rsync -a --delete --delete-excluded $EXCLUDES --exclude '/packs/' \
         plugin/paperknight.koplugin/ "$STAGE/plugins/paperknight.koplugin/"
+    echo "$VERSION" > "$STAGE/plugins/paperknight.koplugin/version.txt"
     tar czf build/dist/pkc.tar.gz --owner=0 --group=0 -C "$STAGE" plugins
     sed -e "s/@PKA_SHA256@/$(SHA_OF build/dist/pkc.tar.gz)/" -e "s#@DIST_URL@#$DIST_URL#" -e "s#/pka.tar.gz#/pkc.tar.gz#" \
         tools/dist/pka.sh > build/dist/pkc.sh
@@ -29,7 +35,7 @@ if [ "$1" = "--code" ]; then
     exit 0
 fi
 
-STAGE=build/dist/all
+STAGE="${PKA_STAGE:-build/dist/all}"
 [ -d "$STAGE/paperknight" ] || { echo "missing $STAGE/paperknight (staged studies and repertoires)" >&2; exit 1; }
 
 # not shipped: the chess library's development files, a local bin/ (Stockfish
@@ -37,6 +43,7 @@ STAGE=build/dist/all
 # shellcheck disable=SC2086
 rsync -a --delete --delete-excluded --filter='P packs/puzzles.sqlite' $EXCLUDES \
     plugin/paperknight.koplugin/ "$STAGE/plugins/paperknight.koplugin/"
+echo "$VERSION" > "$STAGE/plugins/paperknight.koplugin/version.txt"
 (cd "$STAGE" && find fonts paperknight -type f ! -name .pka-files | LC_ALL=C sort > paperknight/.pka-files)
 tar czf build/dist/pka.tar.gz --owner=0 --group=0 -C "$STAGE" fonts paperknight plugins
 # the installer checks the archive it downloads

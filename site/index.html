@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paperknight</title>
+<meta name="description" content="Offline chess training for e-ink readers: puzzles, studies, an openings trainer, an analysis board and Stockfish, as a KOReader plugin for the Kindle Paperwhite.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <p class="kicker">KOReader plugin · Kindle Paperwhite</p>
+    <h1>Paperknight</h1>
+    <p class="lede">Offline chess training for e-ink readers: rated puzzles, Lichess studies, your own opening repertoire with spaced repetition, an analysis board and Stockfish, on the e-ink screen and without a network connection.</p>
+    <p class="actions">
+      <a class="button primary" href="#install">Install</a>
+      <a class="button" href="https://github.com/corentingi/paperknight">Source on GitHub</a>
+    </p>
+  </div>
+</header>
+
+<main>
+  <section class="wrap">
+    <div class="shots">
+      <figure><img src="screenshots/puzzle.png" alt="A solved puzzle: the board with a tick on the last piece moved, its themes and the rating change" loading="lazy"><figcaption>Puzzles</figcaption></figure>
+      <figure><img src="screenshots/study.png" alt="A study chapter with the move list beside the board and the annotator's comment" loading="lazy"><figcaption>Studies</figcaption></figure>
+      <figure><img src="screenshots/openings.png" alt="The openings drill: the opening's name in the title bar and the moves played" loading="lazy"><figcaption>Openings</figcaption></figure>
+      <figure><img src="screenshots/analysis.png" alt="The analysis board with an Italian Game and its name" loading="lazy"><figcaption>Analysis board</figcaption></figure>
+      <figure><img src="screenshots/stats.png" alt="Puzzle results per theme as bars" loading="lazy"><figcaption>Puzzle stats</figcaption></figure>
+      <figure><img src="screenshots/night.png" alt="A puzzle in night mode" loading="lazy"><figcaption>Night mode</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="wrap features">
+    <h2>What it does</h2>
+    <ul>
+      <li><strong>Puzzles</strong> from the Lichess puzzle database, fully offline: a Glicko-2 rating, puzzles around your level, themes, hints and solutions, missed puzzles back after 3, 7 and 21 days, and stats per theme.</li>
+      <li><strong>Studies</strong>: any PGN or Lichess study, with variations, comments, arrows, interactive lessons, and a move list you can tap.</li>
+      <li><strong>Openings</strong>: drill your own repertoire with spaced repetition. New moves first, tested on the days after; the moves you know are played for you.</li>
+      <li><strong>Analysis board</strong> with Stockfish's evaluation and best line; save a line as a study.</li>
+      <li><strong>Play</strong> against Stockfish, or two players on one board.</li>
+      <li><strong>Made for e-ink</strong>: moves that don't flash, a night mode, opening names, links shown as QR codes.</li>
+    </ul>
+    <p class="note">Everything runs on the device: no account, no tracking, no network needed once installed.</p>
+  </section>
+
+  <section class="wrap" id="install">
+    <h2>Install</h2>
+    <p>You need a jailbroken Kindle with <a href="https://koreader.rocks">KOReader</a> (tested on a Kindle Paperwhite 2). In a terminal on the Kindle (kterm or SSH):</p>
+    <pre><code>curl -fkL https://github.com/corentingi/paperknight/releases/latest/download/pka.sh | sh</code></pre>
+    <p>Then restart KOReader: <strong>Paperknight</strong> is in the Tools menu. The installer checks the archive it downloads; run it again to update (your own studies are kept).</p>
+    <h3>Stockfish (optional)</h3>
+    <p>For the analysis board and playing against the engine, install Stockfish 18 built for the Paperwhite 2 (about 3 MB) from its <a href="https://github.com/corentingi/paperknight/releases">release</a>:</p>
+    <pre><code>curl -fkL https://github.com/corentingi/paperknight/releases/download/stockfish-sf_18/stockfish-pw2.sh | sh</code></pre>
+    <h3>Your studies and repertoires</h3>
+    <p>Copy PGN files (a Lichess study exported as PGN, for example) to <code>koreader/paperknight/studies/</code> or <code>koreader/paperknight/repertoires/</code> on the Kindle.</p>
+  </section>
+
+  <section class="wrap">
+    <h2>More</h2>
+    <ul class="links">
+      <li><a href="https://github.com/corentingi/paperknight/releases">Releases</a></li>
+      <li><a href="https://github.com/corentingi/paperknight/blob/main/docs/studies.md">Studies</a> and <a href="https://github.com/corentingi/paperknight/blob/main/docs/openings.md">openings</a> guides</li>
+      <li><a href="https://github.com/corentingi/paperknight/blob/main/docs/eink-refresh.md">How the board avoids flashing on e-ink</a></li>
+      <li><a href="https://github.com/corentingi/paperknight/blob/main/docs/development.md">Development guide</a></li>
+    </ul>
+  </section>
+</main>
+
+<footer class="wrap">
+  <p>Paperknight is free software (GPL-3.0-or-later), started from <a href="https://github.com/bateast/kochess">Kochess</a>. Puzzles and opening names from <a href="https://lichess.org">Lichess</a>'s open databases (CC0); engine: <a href="https://stockfishchess.org">Stockfish</a> (GPLv3).</p>
+</footer>
+</body>
+</html>
