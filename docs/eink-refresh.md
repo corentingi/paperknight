@@ -172,7 +172,76 @@ button, as a press confirmation), and menus and dialogs.
   page flashes; *Flash buttons and menu items* off removes the remaining
   button highlights everywhere in KOReader.
 
-## 7. Measuring
+## 7. Why a grey square flickers and text does not (PW2 specifics)
+
+Researched 2026-10-17, completing sections 1-2.
+
+**The PW2's hardware.** The PW2 (2013) was the first e-reader with an
+**E Ink Carta** panel, sold as tuned for reading with E Ink's **Regal**
+waveforms (fewer full refreshes between pages). It is a "Wario" board, an
+i.MX6 (Cortex-A9) with its EPD controller, driven by Amazon's `mxcfb`
+driver (KOReader: `frontend/device/kindle/device.lua`). Its waveform
+numbers (`ffi/mxcfb_kindle_h.lua`): DU 1, GC16 2, GC16_FAST 3, A2 4,
+GL16 5, GL16_FAST 6, DU4 7, REAGL 8, REAGLD 9, GL4 10, GL16_INV 11.
+
+**What the waveforms do with each pixel** (E Ink's mode guide):
+
+- **GC16**: "all the pixels are updated or cleared": every pixel goes
+  through black and white before its target. The flash.
+- **GL16**: "the entire display except pixels staying in white will update";
+  a local update for white→white pixels, a global (GC16-like, clearing)
+  one for everything else. "Used to update anti-aliased text with reduced
+  flash." REAGL (GLR16) and REAGLD (GLD16) use the same waveform, plus an
+  algorithm against ghosting at the edges of text; on Kindles they are
+  sent as **full** updates (KOReader's driver: they need it to behave).
+- **DU / A2**: black or white only, no flash. **DU4**: non-flashing and
+  fast, but only to four levels: 0x00, 0x55, 0xAA, 0xFF. E Ink has no
+  non-flashing 16-level grey mode.
+- **Update mode**: a *partial* update drives only the pixels whose value
+  changed; a *full* one drives every pixel of the region with the waveform.
+
+**So, on the PW2, with Paperknight's `[partial]` (REAGL, full update):**
+
+| Pixel in the refreshed rectangle | What REAGL does | Seen |
+|---|---|---|
+| white staying white (light squares, page background) | nothing | nothing |
+| black staying black (text, piece outlines) | driven again, already saturated | barely |
+| black ↔ white (text of a page turn) | the transition REAGL is made for | clean |
+| grey staying the same grey (dark squares 0xDD, last-move tint, night squares) | driven again through the clearing sequence | **a visible redraw of the square** |
+| grey → another grey (a tint added or removed) | clearing sequence | a flicker of the square |
+
+Text is black on white: its background is a no-op and its glyphs are few,
+saturated pixels; only the anti-aliased edges are grey. A chessboard is
+half mid-grey squares, so every grey square inside the rectangle, changed
+or not, is driven again. That is what was seen on the device: a rectangle
+from a move's squares down to the status line redrew every grey square in
+between, and a long move (a1 to h8) redraws the dark squares it spans.
+
+**Levers this leaves** (to try on the device, not measured yet):
+
+1. *Partial update mode* instead of full: only changed pixels are driven,
+   so unchanged grey squares are left alone; changed grey pixels still get
+   GL16's clearing sequence. KOReader's Kindle driver always sends REAGL as
+   full; GL16 (5) as partial is what it uses on the non-REAGL Kindle Touch.
+2. *DU4, partial*: no flash at all and fast, if the board's greys are
+   exactly 0x55/0xAA (today 0xDD and 0xAA by day): pieces' anti-aliasing
+   would be quantized to four levels, and fast waveforms ghost more (the
+   page flashes clear it). Whether the PW2's waveform file has DU4 is not
+   known: FBInk lists it as "on some Kindles, depending on the model".
+3. *Smaller REAGL regions*: one per changed square, so no unchanged square
+   is inside; each REAGL update waits for the previous one, so a move
+   (2 to 4 squares) takes longer.
+
+KOReader's refresh modes do not offer GL16-partial or DU4 on the PW2; a
+plugin would call the framebuffer itself (`Screen:mech_refresh(false,
+waveform, x, y, w, h)`) after painting.
+
+Sources: E Ink, *UI application guidelines: waveform modes* (via
+beck-elektronik.de); epaper-components.dev, *How e-paper partial refresh
+works*; FBInk CLI documentation; E Ink's Carta announcement (2013);
+KOReader `ffi/framebuffer_mxcfb.lua`, `ffi/mxcfb_kindle_h.lua`.
+
+## 8. Measuring
 
 - Emulator: `h.recordRefreshes()` (e2e harness) records the refreshes sent
   to the screen, after merges and promotions; the puzzle and study scenarios
