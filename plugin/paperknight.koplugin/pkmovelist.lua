@@ -67,6 +67,17 @@ function PkMoveList:init()
     self.num_w = probe:getSize().w + Size.padding.small
     probe:free()
     self.move_w = math.floor((self.inner_w - self.num_w) / 2)
+    -- a smaller font when a long move ("Nbxd2+", bold when current) would
+    -- not fit in a narrow list
+    local room = self.move_w - Size.padding.small - 2 * Size.border.thin
+    for size = self.font_size, 12, -1 do
+        local face = Font:getFace("cfont", size)
+        local w = TextWidget:new{ text = "Nbxd2+", face = face, bold = true }
+        local fits = w:getSize().w <= room
+        w:free()
+        self.face = face
+        if fits then break end
+    end
     self.ges_events = {
         Tap = { GestureRange:new{ ges = "tap", range = function() return self.dimen end } },
     }
@@ -113,7 +124,8 @@ end
 -- grey area redraws visibly under the e-ink's non-flashing refresh).
 function PkMoveList:_cellWidget(text, w, face, current, right)
     local b = Size.border.thin
-    local tw = TextWidget:new{ text = text, face = face, bold = current, max_width = w - 2 * Size.padding.small }
+    -- the text's room: the cell less its left padding and its frame
+    local tw = TextWidget:new{ text = text, face = face, bold = current, max_width = w - Size.padding.small - b }
     return FrameContainer:new{
         bordersize = b, margin = 0, padding = 0,
         color = current and Blitbuffer.COLOR_BLACK or Blitbuffer.COLOR_WHITE,

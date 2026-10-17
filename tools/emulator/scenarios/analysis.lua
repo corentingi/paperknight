@@ -134,6 +134,26 @@ esac; done
     UIManager:close(view.menu_dialog)
     h.settle()
 
+    -- 4b. Long moves are not cut in the list ("Nbxd2", not "Nbx…"): the
+    -- Italian Game of the study fixture (python-chess checked)
+    view:setPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    h.settle()
+    for _, san in ipairs({ "e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "c3", "Nf6", "d4", "exd4",
+                           "cxd4", "Bb4+", "Bd2", "Bxd2+", "Nbxd2", "d5" }) do
+        local m = view.game.move(san)
+        view.board:updateBoard()
+        view:onBoardMove(m)
+    end
+    h.settle()
+    local cut = {}
+    local function walk(w)
+        if type(w) ~= "table" then return end
+        if w._is_truncated then cut[#cut + 1] = w.text end
+        for _, c in ipairs(w) do walk(c) end
+    end
+    walk(view.movelist.scroll[1])
+    h.check(#cut == 0, "no move cut in the list: " .. table.concat(cut, ", "))
+
     -- 5. The move list: a line longer than the list scrolls (KOReader's
     -- scrolling, kept on the current move); a tap on a move goes there; the
     -- list can be hidden (the line is then in the panel)
