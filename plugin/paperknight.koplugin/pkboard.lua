@@ -388,6 +388,7 @@ function Board:paintTo(bb, x, y)
     if self.highlighted and next(self.highlighted) then self:_paintHighlights(bb) end
     if self.shapes then self:_paintShapes(bb) end
     if self.badge then self:_paintBadge(bb) end
+    if self.mate_square then self:_paintMate(bb) end
     if self.selected_mark and not self.locked then self:_paintSelection(bb) end
     self:_cacheRects()
     if self.turn_marker then self:_paintTurnMarker(bb) end
@@ -407,6 +408,30 @@ function Board:_syncTurnMarker()
     local game = self.game
     local color = self.show_turn and not self.locked and game and not game.game_over() and game.turn() or nil
     self:setTurnMarker(color)
+    self:_syncMate()
+end
+
+-- A mated king gets a "#" disc in the top-right corner of its square, where
+-- move marks go (never on the mated king's square: it did not just move), in
+-- every mode: the board follows its game, as for the turn marker.
+function Board:_syncMate()
+    local game = self.game
+    local square
+    if game and game.in_checkmate and game.in_checkmate() then
+        local turn, rows = game.turn(), game.board()
+        for rank_idx = 0, BOARD_SIZE - 1 do
+            for file_idx = 0, BOARD_SIZE - 1 do
+                local piece = rows[BOARD_SIZE - rank_idx][file_idx + 1]
+                if piece and piece.type == "k" and piece.color == turn then
+                    square = Board.idToPosition(Board.toId(file_idx, rank_idx))
+                end
+            end
+        end
+    end
+    if square == self.mate_square then return end
+    local old = self.mate_square
+    self.mate_square = square
+    for _, sq in pairs({ old = old, new = square }) do self:_refreshSquare(sq) end
 end
 
 --- Board:setTurnMarker(color): a disc in the empty corner cell left of the
@@ -526,6 +551,26 @@ function Board:_paintBadge(bb)
     local label = self._badge_label
     local size = label:getSize()
     label:paintTo(bb, bx + math.floor((d - size.w) / 2), by + math.floor((d - size.h) / 2))
+end
+
+-- The mate disc: filled black with a white "#", a little larger than a badge.
+function Board:_paintMate(bb)
+    local r = self:_squareRect(self.mate_square)
+    if not r then return end
+    local d = math.floor(self.button_size * 0.36)
+    local black, white = Board.paintColor(Blitbuffer.COLOR_BLACK), Board.paintColor(Blitbuffer.COLOR_WHITE)
+    local x = r.x + r.w - d
+    bb:paintRoundedRect(x, r.y, d, d, black, math.floor(d / 2))
+    local key = d .. "|" .. tostring(Screen.night_mode)
+    if self._mate_key ~= key then
+        if self._mate_label then self._mate_label:free() end
+        local px = d * 0.66
+        local face = Font:getFace("infont", math.max(6, math.floor(px * 1000 / Screen:scaleBySize(1000))))
+        self._mate_label = TextWidget:new{ text = "#", face = face, bold = true, fgcolor = white }
+        self._mate_key = key
+    end
+    local size = self._mate_label:getSize()
+    self._mate_label:paintTo(bb, x + math.floor((d - size.w) / 2), r.y + math.floor((d - size.h) / 2))
 end
 
 function Board:_squareRect(square)
