@@ -61,9 +61,6 @@ Without a terminal: download `paperknight-<version>-usb.zip` from the
 [latest release](https://github.com/corentingi/paperknight/releases/latest),
 unzip it and copy its `koreader` folder onto the Kindle over USB.
 
-> The first release is not published yet. Until then, build the files
-> yourself (`make dist`, see [Development](#development)) and serve them.
-
 **Your own studies and repertoires**: copy PGN files (for example a Lichess
 study exported as PGN) to `koreader/paperknight/studies/` or
 `koreader/paperknight/repertoires/` on the Kindle. See

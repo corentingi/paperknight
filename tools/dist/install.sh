@@ -71,7 +71,12 @@ installed_version() {
         return
     fi
     case "$1" in
-        plugin) [ -f "$PLUGIN/main.lua" ] && echo "?" ;;
+        plugin)
+            if [ -s "$PLUGIN/version.txt" ]; then
+                first_line "$PLUGIN/version.txt"
+            elif [ -f "$PLUGIN/main.lua" ]; then
+                echo "?"
+            fi ;;
         puzzles) [ -f "$PLUGIN/packs/puzzles.sqlite" ] && echo "?" ;;
         fonts) [ -f fonts/NotoEmoji.ttf ] && echo "?" ;;
         studies) [ -f paperknight/.pka-files ] && echo "?" ;;

@@ -137,6 +137,7 @@ printf 'fonts/NotoEmoji.ttf\npaperknight/studies/Old.pgn\n' > "$K/paperknight/.p
 echo old > "$K/pka.tar.gz"
 run "$K" r1 -y || no "installer exit status"
 check "offered as updates" has "$T/out.log" "Puzzle pack  ? -> 2026-01-01"
+check "old plugin version shown" has "$T/out.log" "Plugin       old -> v1"
 check "plugin replaced" has "$K/$P/version.txt" v1
 check "pack replaced" bash -c "! grep -q old '$K/$P/packs/puzzles.sqlite'"
 check "Stockfish replaced" has "$K/$P/bin/stockfish" "Stockfish (test)"
