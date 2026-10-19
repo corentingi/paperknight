@@ -66,6 +66,14 @@ function PkPuzzlePack:isEmpty()
     return tonumber(self.conn:rowexec("SELECT EXISTS (SELECT 1 FROM puzzles)")) == 0
 end
 
+--- The Lichess puzzle id in what the user typed: "004JD", or a puzzle
+-- address ("lichess.org/training/004JD"). nil if there is none.
+function PkPuzzlePack.parseId(text)
+    text = tostring(text or ""):match("^%s*(.-)%s*$")
+    local id = text:match("training/(%w+)/?$") or text
+    return id:match("^%w%w%w%w%w$")
+end
+
 function PkPuzzlePack:get(id)
     local p = rowToPuzzle(self.get_stmt:reset():bind(id):step())
     self.get_stmt:reset() -- don't keep a read transaction open between calls

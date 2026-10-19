@@ -481,5 +481,64 @@ return function(h)
         h.check(iconAt(case.gone):find("empty%.svg$"), case.san .. ": captured pawn removed from " .. case.gone
             .. ", shows " .. iconAt(case.gone))
     end
+
+    -- 11. Liked puzzles and puzzles by id (☰): played for practice, not rated
+    local function menuButton(text)
+        h.tapWidget(view.title_bar.left_button)
+        h.settle()
+        return h.findButton(view.menu_dialog, text)
+    end
+    view:loadPuzzle(view.pack:get("0042j"))
+    h.settle()
+    h.tapWidget(menuButton("Like this puzzle"))
+    h.settle()
+    h.check(view.progress:isLiked("0042j"), "liked from the menu")
+    h.check(menuButton("Unlike this puzzle"), "the menu then offers to unlike it")
+    UIM:close(view.menu_dialog)
+    view.menu_dialog = nil
+    h.settle()
+    view:loadPuzzle(view.pack:get("004JD"))
+    h.settle()
+    h.tapWidget(menuButton("Liked puzzles…"))
+    h.settle()
+    local liked = view.liked_menu
+    h.check(liked and #liked.item_table == 1 and liked.item_table[1].text:find("Puzzle 0042j · Mate in 2", 1, true),
+        "the liked puzzles listed: " .. tostring(liked and liked.item_table[1].text))
+    h.shot("puzzle-liked")
+    local attempts = view.progress:attemptCount()
+    local rating = view.progress:rating()
+    liked.item_table[1].callback()
+    h.settle()
+    h.check(view.liked_menu == nil and view.puzzle.id == "0042j" and view.chosen, "a tap opens it")
+    h.check(status():find("Puzzle 0042j, chosen: not rated.", 1, true), "said not rated: " .. status())
+    tapButton("solution")
+    h.check(view.progress:attemptCount() == attempts and view.progress:rating() == rating, "not recorded, not rated")
+    h.check(status():find("Not rated: a puzzle you chose.", 1, true), "status: " .. status())
+    -- by id: typed, or a Lichess address
+    view:askPuzzleId()
+    h.settle()
+    view.id_dialog:setInputText("https://lichess.org/training/004JD")
+    h.tapWidget(h.findButton(view.id_dialog, "Open"))
+    h.settle()
+    h.check(view.id_dialog == nil and view.puzzle.id == "004JD" and view.chosen, "opened by its address")
+    view:openById("ZZZZZ")
+    h.settle()
+    h.check(view.puzzle.id == "004JD" and view.confirm_box
+        and view.confirm_box.text:find("not in the puzzle pack", 1, true), "not in the pack: said so")
+    h.tapWidget(h.findButton(view.confirm_box, "QR code"))
+    h.settle()
+    qr = UIM._window_stack[#UIM._window_stack].widget
+    h.check(qr.text == "https://lichess.org/training/ZZZZZ", "offered on Lichess: " .. tostring(qr.text))
+    UIM:close(qr)
+    h.settle()
+    view:openById("a game, not a puzzle")
+    h.settle()
+    local info = UIM._window_stack[#UIM._window_stack].widget
+    h.check(info.text and info.text:find("Not a Lichess puzzle id", 1, true), "not an id: said so")
+    UIM:close(info)
+    h.settle()
+    tapButton("solution"); tapButton("next")
+    h.settle()
+    h.check(not view.chosen, "Next: back to rated puzzles")
     view:onClose()
 end

@@ -21,6 +21,8 @@ board is drawn and refreshed so that moves don't flash.
   rating, puzzles picked around your level, a theme filter (forks, mates in
   2…), hints and solutions, and missed puzzles that come back after 3, 7
   and 21 days. A stats page shows your results per theme, weakest first.
+  Like a puzzle to come back to it later, or open any puzzle of the pack by
+  its Lichess id.
 - **Studies**: any PGN or Lichess study, with chapters, variations,
   comments, arrows and circles, interactive lessons, and a move list you can
   tap to jump to a move.

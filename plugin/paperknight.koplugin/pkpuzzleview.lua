@@ -34,12 +34,17 @@ local PkLinks = require("pklinks")
 local PkNav = require("pknav")
 local PkSide = require("pkside")
 local PkPuzzle = require("pkpuzzle")
+local PkPuzzlePack = require("pkpuzzlepack")
 local PkPuzzleReview = require("pkpuzzlereview")
 local PkSrs = require("pksrs")
 local PkThemes = require("pkthemes")
 local PkPuzzleStats = require("pkpuzzlestats")
 local PkStatsView = require("pkstatsview")
 local Menu = require("ui/widget/menu")
+local ConfirmBox = require("ui/widget/confirmbox")
+local InfoMessage = require("ui/widget/infomessage")
+local InputDialog = require("ui/widget/inputdialog")
+local Notification = require("ui/widget/notification")
 
 local REPLY_DELAY = 0.6 -- seconds before the opponent replies, so the user sees their move first
 local RECENT_DAYS = 30  -- don't repeat puzzles attempted this recently (ADR-0010)
@@ -242,18 +247,22 @@ function PkPuzzleView:_toMoveText()
     elseif self.stale then
         text = (self.theme and _("You played every puzzle of this theme recently: repeating.")
             or _("You played every puzzle near your rating recently: repeating.")) .. "\n" .. text
+    elseif self.chosen then
+        text = T(_("Puzzle %1, chosen: not rated."), self.puzzle.id) .. "\n" .. text
     end
     return text
 end
 
 --- Starts `puzzle` (a pack row); `review`: its review card when it is a
--- review of a missed puzzle (ADR-0014); `stale`: played recently (repeat).
-function PkPuzzleView:loadPuzzle(puzzle, review, stale)
+-- review of a missed puzzle (ADR-0014); `stale`: played recently (repeat);
+-- `chosen`: opened from the liked puzzles or by its id (not rated).
+function PkPuzzleView:loadPuzzle(puzzle, review, stale, chosen)
     self:_cancelReply()
     self:_finishAttempt("skipped")
     self.puzzle = puzzle
     self.review = review
     self.stale = stale
+    self.chosen = chosen
     self.session = PkPuzzle.new(puzzle, self.game)
     self.recorded = false
     self.replaying = false
@@ -428,6 +437,8 @@ function PkPuzzleView:_finishAttempt(reason)
     local touched = s.mistakes > 0 or s.used_help or s.index > 2
     if not s:isOver() and not touched then return end
     self.recorded = true
+    -- a chosen puzzle (liked, by id) may be known already: practice only
+    if self.chosen then return nil, nil, _("Not rated: a puzzle you chose.") end
     if self.review then return nil, nil, self:_gradeReview(s:isCleanSolve()) end
     -- missed: it will come back as a review (ADR-0014), saved with the attempt
     local missed = not s:isCleanSolve()
@@ -567,6 +578,16 @@ function PkPuzzleView:showMenu()
             end },
         },
     }
+    -- liked puzzles, to come back to them; any puzzle of the pack by its id
+    local l_ok, liked = pcall(function() return self.puzzle and self.progress:isLiked(self.puzzle.id) end)
+    buttons[#buttons + 1] = {
+        { text = (l_ok and liked) and _("Unlike this puzzle") or _("Like this puzzle"),
+          enabled = self.puzzle ~= nil, callback = function() close(); self:toggleLike() end },
+        { text = _("Liked puzzles…"), callback = function() close(); self:showLiked() end },
+    }
+    buttons[#buttons + 1] = {
+        { text = _("Open a puzzle by its id…"), callback = function() close(); self:askPuzzleId() end },
+    }
     -- the puzzle and its source game on Lichess, as QR codes (scan with a phone)
     local puzzle = self.puzzle
     if puzzle and puzzle.id then
@@ -586,6 +607,121 @@ function PkPuzzleView:showMenu()
     dialog = ButtonDialog:new{ buttons = buttons }
     self.menu_dialog = dialog
     UIManager:show(dialog)
+end
+
+---------------------------------------------------------------------------
+-- Liked puzzles and puzzles opened by id: played for practice, not rated
+-- (their solution may be known; the rating counts first attempts).
+
+function PkPuzzleView:toggleLike()
+    if not self.puzzle then return end
+    local id = self.puzzle.id
+    local ok, err = pcall(function()
+        local liked = self.progress:isLiked(id)
+        self.progress:setLiked(id, not liked)
+        UIManager:show(Notification:new{
+            text = liked and T(_("Puzzle %1: no longer liked."), id) or T(_("Puzzle %1 liked."), id),
+        })
+    end)
+    if not ok then logger.warn("Paperknight: cannot save the like:", err) end
+end
+
+--- Opens puzzle `id` of the pack (not rated). False if it is not in the pack.
+function PkPuzzleView:openPuzzle(id)
+    local ok, puzzle = pcall(self.pack.get, self.pack, id)
+    if not ok or not puzzle then return false end
+    local l_ok, err = pcall(self.loadPuzzle, self, puzzle, nil, false, true)
+    if not l_ok then self:_broken(err) end
+    return true
+end
+
+-- A puzzle that is not in the pack: offered as a QR code of its Lichess page.
+function PkPuzzleView:_notInPack(id)
+    self.confirm_box = ConfirmBox:new{
+        text = T(_("Puzzle %1 is not in the puzzle pack of this device.\nOpen it on Lichess with a phone?"), id),
+        ok_text = _("QR code"),
+        ok_callback = function()
+            self.confirm_box = nil
+            PkLinks.showQR({ url = "https://lichess.org/training/" .. id })
+        end,
+        cancel_callback = function() self.confirm_box = nil end,
+    }
+    UIManager:show(self.confirm_box)
+end
+
+function PkPuzzleView:askPuzzleId()
+    local dialog
+    dialog = InputDialog:new{
+        title = _("Lichess puzzle id"),
+        input_hint = "004JD, lichess.org/training/004JD",
+        buttons = {{
+            { text = _("Cancel"), id = "close", callback = function()
+                UIManager:close(dialog)
+                self.id_dialog = nil
+            end },
+            { text = _("Open"), is_enter_default = true, callback = function()
+                local text = dialog:getInputText()
+                UIManager:close(dialog)
+                self.id_dialog = nil
+                self:openById(text)
+            end },
+        }},
+    }
+    self.id_dialog = dialog
+    UIManager:show(dialog)
+    dialog:onShowKeyboard()
+end
+
+--- Opens the puzzle whose id (or address) the user typed.
+function PkPuzzleView:openById(text)
+    local id = PkPuzzlePack.parseId(text)
+    if not id then
+        UIManager:show(InfoMessage:new{ text = _("Not a Lichess puzzle id (five letters or digits, like 004JD).") })
+    elseif not self:openPuzzle(id) then
+        self:_notInPack(id)
+    end
+end
+
+--- The liked puzzles, the latest liked first; a tap opens one.
+function PkPuzzleView:showLiked()
+    local ok, ids = pcall(self.progress.likedIds, self.progress)
+    if not ok then ids = {} end
+    if #ids == 0 then
+        UIManager:show(InfoMessage:new{ text = _("No liked puzzle yet: like one from this menu.") })
+        return
+    end
+    local function close()
+        if self.liked_menu then UIManager:close(self.liked_menu) end
+        self.liked_menu = nil
+    end
+    local items = {}
+    for _i, id in ipairs(ids) do
+        local g_ok, puzzle = pcall(self.pack.get, self.pack, id)
+        puzzle = g_ok and puzzle or nil
+        local item = { callback = function()
+            close()
+            if not self:openPuzzle(id) then self:_notInPack(id) end
+        end }
+        if puzzle then
+            local labels = PkThemes.shown(puzzle.themes)
+            item.text = T(_("Puzzle %1"), id) .. (labels[1] and (" · " .. table.concat(labels, ", ", 1, math.min(2, #labels))) or "")
+            item.mandatory = tostring(puzzle.rating)
+        else
+            item.text = T(_("Puzzle %1 (not in the puzzle pack)"), id)
+        end
+        items[#items + 1] = item
+    end
+    self.liked_menu = Menu:new{
+        title = T(_("Liked puzzles: %1"), #ids),
+        item_table = items,
+        covers_fullscreen = true,
+        is_borderless = true,
+        is_popout = false,
+        width = Screen:getWidth(),
+        height = Screen:getHeight(),
+    }
+    self.liked_menu.close_callback = close
+    UIManager:show(self.liked_menu)
 end
 
 function PkPuzzleView:showThemeMenu()
@@ -798,7 +934,7 @@ function PkPuzzleView:onRetry()
     self:_cancelReply()
     self:_finishAttempt("retry")
     local recorded = self.recorded
-    local ok, err = pcall(self.loadPuzzle, self, self.puzzle, self.review, self.stale)
+    local ok, err = pcall(self.loadPuzzle, self, self.puzzle, self.review, self.stale, self.chosen)
     if not ok then return self:_broken(err) end
     self.recorded = recorded
 end

@@ -80,4 +80,27 @@ return {
         t.eq(p:seedReviews(NOW, 60), 0, "only once")
         close()
     end },
+    { "liked puzzles: liked once, the latest first, unliked", function(t)
+        local p, done = db()
+        t.ok(not p:isLiked("004JD"), "not liked yet")
+        p:setLiked("004JD", true, NOW)
+        p:setLiked("0042j", true, NOW + 10)
+        p:setLiked("004JD", true, NOW + 20) -- liked again: kept once, at its first time
+        t.ok(p:isLiked("004JD"), "liked")
+        t.eq(table.concat(p:likedIds(), " "), "0042j 004JD", "the latest liked first")
+        p:setLiked("0042j", false)
+        t.eq(table.concat(p:likedIds(), " "), "004JD", "unliked")
+        done()
+    end },
+    { "a puzzle id from what the user typed", function(t)
+        local parse = require("pkpuzzlepack").parseId
+        t.eq(parse("004JD"), "004JD", "an id")
+        t.eq(parse("  004JD \n"), "004JD", "spaces around")
+        t.eq(parse("https://lichess.org/training/004JD"), "004JD", "an address")
+        t.eq(parse("lichess.org/training/004JD/"), "004JD", "without the scheme")
+        t.eq(parse("004J"), nil, "too short")
+        t.eq(parse("004JD9"), nil, "too long")
+        t.eq(parse("lichess.org/abcdefgh"), nil, "a game address")
+        t.eq(parse(nil), nil, "nothing")
+    end },
 }

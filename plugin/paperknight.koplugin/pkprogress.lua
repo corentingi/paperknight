@@ -43,6 +43,10 @@ CREATE TABLE IF NOT EXISTS puzzle_reviews (
     missed    INTEGER NOT NULL   -- timestamp of the first miss
 );
 CREATE INDEX IF NOT EXISTS puzzle_reviews_due ON puzzle_reviews (due);
+CREATE TABLE IF NOT EXISTS puzzle_likes (
+    puzzle_id TEXT PRIMARY KEY,
+    ts        INTEGER NOT NULL   -- when it was liked
+);
 ]]
 
 --- Pure rating update (Glicko-2, ADR-0010): the player state { rating, rd,
@@ -378,6 +382,35 @@ function PkProgress:removeReview(puzzle_id)
     local stmt = self.conn:prepare("DELETE FROM puzzle_reviews WHERE puzzle_id = ?")
     stmt:reset():bind(puzzle_id):step()
     stmt:close()
+end
+
+--- Liked puzzles (to come back to them, from the puzzle screen's menu).
+function PkProgress:isLiked(puzzle_id)
+    local stmt = self.conn:prepare("SELECT 1 FROM puzzle_likes WHERE puzzle_id = ?")
+    local row = stmt:reset():bind(puzzle_id):step()
+    stmt:close()
+    return row ~= nil
+end
+
+function PkProgress:setLiked(puzzle_id, liked, ts)
+    local stmt
+    if liked then
+        stmt = self.conn:prepare("INSERT OR IGNORE INTO puzzle_likes VALUES (?, ?)")
+        stmt:reset():bind(puzzle_id, ts or os.time()):step()
+    else
+        stmt = self.conn:prepare("DELETE FROM puzzle_likes WHERE puzzle_id = ?")
+        stmt:reset():bind(puzzle_id):step()
+    end
+    stmt:close()
+end
+
+--- The liked puzzle ids, the latest liked first.
+function PkProgress:likedIds()
+    local out = {}
+    local stmt = self.conn:prepare("SELECT puzzle_id FROM puzzle_likes ORDER BY ts DESC, rowid DESC")
+    for row in stmt:rows() do out[#out + 1] = row[1] end
+    stmt:close()
+    return out
 end
 
 --- Reviews due on day `today`, the longest overdue first.
