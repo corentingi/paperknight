@@ -1,5 +1,6 @@
 -- Puzzle screen (ADR-0009): board + status + two button bars:
---  * solving: Retry / Hint / Solution / Next;
+--  * solving: Retry / Hint / Solution / Next (greyed until the puzzle is
+--    over: solved, or Solution tapped);
 --  * finished (solved, or Solution tapped): Retry / ‹ / › / Next, to step
 --    through the line (also by swiping, or with page-turn keys).
 -- Judging lives in pkpuzzle.lua, storage in pkpuzzlepack.lua / pkprogress.lua.
@@ -199,6 +200,13 @@ function PkPuzzleView:_setButtons(tbl)
     self.vgroup:resetLayout()
 end
 
+-- Next (solving bar): only once the puzzle is over, or when there is none to
+-- solve (broken, none loaded). Solved or given up, the replay bar shows.
+function PkPuzzleView:_updateNext()
+    local s = self.session
+    self.solve_buttons:getButtonById("next"):enableDisable(not s or s:isOver())
+end
+
 function PkPuzzleView:_updateTitle()
     local ok, rating = pcall(self.progress.rating, self.progress)
     if not ok then rating = "?" end
@@ -251,6 +259,7 @@ function PkPuzzleView:loadPuzzle(puzzle, review, stale)
     self.replaying = false
     self:_prepareBoard(puzzle.solver == Chess.BLACK)
     self:_setButtons(self.solve_buttons)
+    self:_updateNext()
     local setup = self.session:start()
     self.board:updateBoard()
     self.board:setHighlights({ setup.from, setup.to })
@@ -389,6 +398,7 @@ function PkPuzzleView:nextPuzzle()
         self.session, self.puzzle = nil, nil
     end
     logger.warn("Paperknight: cannot load a puzzle:", err)
+    self:_updateNext()
     if self.board then self.board:setLocked(true) end
     self:_updateTitle()
     self:_setStatus(_("Cannot load a puzzle from the pack.") .. "\n" .. tostring(err))
@@ -402,6 +412,7 @@ function PkPuzzleView:_broken(err)
     self.session = nil
     self.replaying = false
     self:_setButtons(self.solve_buttons)
+    self:_updateNext()
     self.board:setBadge(nil)
     self.board:setLocked(true)
     self.board:updateBoard()

@@ -41,12 +41,16 @@ return function(h)
     h.check(status():find("Black to move. Find the best move", 1, true) and view.board.turn_marker == "b",
         "prompt: the side to move in words and as the corner disc: " .. status())
     h.shot("puzzle-1-start")
+    local function nextEnabled() return view.buttons:getButtonById("next").enabled end
+    h.check(not nextEnabled(), "Next greyed while the puzzle is unsolved")
     tapSquare("d8"); tapSquare("d1")
+    h.check(not nextEnabled(), "still greyed after a wrong move")
     h.check(status():find("Not the move"), "wrong move feedback: " .. status())
     h.check(view.session.mistakes == 1, "mistake counted")
     h.check(view.game.get("d8") ~= nil, "wrong move taken back")
     tapSquare("a3"); tapSquare("c2")
     h.check(view.session.state == "solved", "solved, state=" .. view.session.state)
+    h.check(view.buttons == view.replay_buttons and nextEnabled(), "solved: Next available")
     h.check(view.progress:attemptCount() == 1, "attempt recorded")
     h.check(view.progress:rating() < 1200, "failed attempt lowers rating: " .. view.progress:rating())
     h.check(status():find("Solved, after a mistake") and status():find("Rating: " .. view.progress:rating() .. " (−", 1, true), "status: " .. status())
@@ -256,7 +260,7 @@ return function(h)
     h.check(subtitle:find("Mate in 1"), "subtitle shows the theme: " .. subtitle)
     for _ = 1, 3 do
         h.check((" " .. view.puzzle.themes .. " "):find(" mateIn1 "), "puzzle has the theme: " .. view.puzzle.themes)
-        tapButton("next"); h.settle()
+        tapButton("solution"); tapButton("next"); h.settle()
     end
     h.shot("puzzle-theme-mate1")
     -- choosing the current theme again keeps the current puzzle
@@ -266,7 +270,9 @@ return function(h)
 
     -- 5. Next picks another puzzle near the rating.
     local last_id = view.puzzle.id
-    tapButton("next")
+    tapButton("next") -- greyed: the puzzle is not over
+    h.check(view.puzzle.id == last_id, "Next does nothing while the puzzle is unsolved")
+    tapButton("solution"); tapButton("next")
     h.settle()
     h.check(view.puzzle and view.puzzle.id ~= last_id, "a new puzzle is loaded")
     h.shot("puzzle-next")
@@ -305,6 +311,7 @@ return function(h)
     h.settle()
     h.check(view.session == nil and view.board.locked, "broken line stopped")
     h.check(status():find("invalid move", 1, true), "status: " .. status())
+    h.check(view.buttons == view.solve_buttons and nextEnabled(), "broken puzzle: Next available")
     view.progress.record = record
     h.check(view:nextPuzzle() and view.session, "Next works after a broken puzzle")
 
