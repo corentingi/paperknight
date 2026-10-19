@@ -13,13 +13,17 @@ In Play, Stockfish thinks 5 seconds per move by default (game settings ⚙ →
 most 1/30 of what it has left), not the clocks' budget of a real game. The tick button at the bottom right starts or pauses the clocks; a
 game starts paused, and your first move (or the tick) starts it.
 
-## Install (on the Kindle, kterm or SSH)
+## Install
 
-    curl -fkL https://github.com/corentingi/paperknight/releases/download/stockfish-sf_18/stockfish-pw2.sh | sh
+The Paperknight installer offers it (on the Kindle, kterm or SSH):
 
-It downloads `stockfish-pw2.gz` (~3 MB) from the same release, checks its sha256, unpacks it into
-`bin/` (replacing an older Stockfish) and runs it once. `pka.sh` updates
-keep `bin/`. Restart KOReader.
+    curl -fkL https://github.com/corentingi/paperknight/releases/latest/download/install.sh | sh
+
+It downloads `stockfish-pw2.gz` (~3 MB) from the Stockfish release
+(`stockfish-sf_18`), checks its sha256, unpacks it into `bin/` (replacing
+an older Stockfish) and runs it once; plugin updates keep `bin/`. The USB
+zip of a release has it already. Restart KOReader.
+([releasing.md](releasing.md))
 
 ## The binary
 
@@ -44,12 +48,11 @@ keep `bin/`. Restart KOReader.
     tools/dist/build-stockfish.sh            # sf_18 small network; or: tools/dist/build-stockfish.sh sf_19
 
 Downloads Zig 0.17.0 (checksum pinned) and the Stockfish source,
-cross-compiles, and writes `build/dist/stockfish`, `stockfish.gz`,
-`stockfish-sf_18-src.tar.gz`, the patch, and `stockfish.sh` (with the
-checksum and `PAPERKNIGHT_DIST_URL`). With `SF_PLATFORM=pw2` (as the
-release workflow does), the binary and installer are named
-`stockfish-pw2*`. Check it under qemu-user
-(`qemu-arm-static -cpu cortex-a9 build/dist/stockfish`, then `uci`,
+cross-compiles, and writes into `build/dist/stockfish/`
+`stockfish-pw2` (`SF_PLATFORM`, default `pw2`), `stockfish-pw2.gz`,
+`stockfish-sf_18-src.tar.gz` and the patch; `make dist` picks them up.
+Check it under qemu-user
+(`qemu-arm-static -cpu cortex-a9 build/dist/stockfish/stockfish-pw2`, then `uci`,
 `go depth 10`). Releases are built by GitHub Actions
 ([releasing.md](releasing.md)).
 

@@ -29,6 +29,8 @@ recent Stockfish embeds a ~100 MB network. Stockfish is GPLv3.
 B, Stockfish 19 for `armv7-neon`. It is not part of `pka.tar.gz` (too large
 for every update): `stockfish.sh` installs it once into `bin/`, which
 `pka.sh` keeps. The source tarball is hosted next to the binary (GPLv3).
+(Since 2026-10-19 the binary is a GitHub release of its own, offered by
+`install.sh`, which replaced `pka.sh` and `stockfish.sh`: docs/releasing.md.)
 
 ## Consequences
 - Play and the analysis board work as soon as `bin/stockfish` exists;

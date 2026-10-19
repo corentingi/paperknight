@@ -27,7 +27,6 @@ jobs:
             qemu: qemu-arm-static -cpu cortex-a9
     env:
       SF_PLATFORM: ${{ matrix.platform }}
-      PAPERKNIGHT_DIST_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v4
       - name: Stockfish tag
@@ -42,16 +41,15 @@ jobs:
         run: |
           sudo apt-get update -q && sudo apt-get install -yq qemu-user-static
           printf 'uci\nisready\nposition startpos\ngo depth 8\n' | timeout 120 ${{ matrix.qemu }} \
-            "build/dist/stockfish-$SF_PLATFORM" | tee qemu.log
+            "build/dist/stockfish/stockfish-$SF_PLATFORM" | tee qemu.log
           grep -q uciok qemu.log && grep -q '^bestmove' qemu.log
       - uses: actions/upload-artifact@v4
         with:
           name: stockfish-${{ matrix.platform }}
           path: |
-            build/dist/stockfish-${{ matrix.platform }}.gz
-            build/dist/stockfish-${{ matrix.platform }}.sh
-            build/dist/stockfish-*-src.tar.gz
-            build/dist/stockfish-*.patch
+            build/dist/stockfish/stockfish-${{ matrix.platform }}.gz
+            build/dist/stockfish/stockfish-*-src.tar.gz
+            build/dist/stockfish/stockfish-*.patch
 
   release:
     if: startsWith(github.ref, 'refs/tags/stockfish-')
@@ -69,5 +67,5 @@ jobs:
           cd dist && sha256sum * > SHA256SUMS
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --latest=false \
             --title "Stockfish ${GITHUB_REF_NAME#stockfish-} for e-readers" \
-            --notes "Stockfish built for the devices Paperknight supports (GPLv3: the source and our patch are attached). Install on a Kindle Paperwhite 2: curl -fkL https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/stockfish-pw2.sh | sh" \
+            --notes "Stockfish built for the devices Paperknight supports (GPLv3: the source and our patch are attached). The Paperknight installer offers it: curl -fkL https://github.com/$GITHUB_REPOSITORY/releases/latest/download/install.sh | sh" \
             *

@@ -573,7 +573,7 @@ function PkAnalysis:toggleEngine(restoring)
         require("pkutils").memoryLine(self.engine and self.engine.pid, "engine"))
     if self.engine_missing then
         UIManager:show(InfoMessage:new{
-            text = _("Stockfish is not installed (bin/stockfish in the plugin folder). See the Paperknight docs: stockfish.md."),
+            text = _("Stockfish is not installed: run the Paperknight installer again and answer yes to Stockfish."),
         })
         return
     end

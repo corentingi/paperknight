@@ -16,19 +16,18 @@ committed; read it too when present).
   (a path, not a bare name). Scenarios run 2 at a time (`PK_JOBS`), each in
   its own home, within `PK_TIMEOUT` s (default 120).
 - `make koreader` once if `build/koreader` is missing.
-- `make pka` — device archive `build/dist/pka.tar.gz` + installer
-  `build/dist/pka.sh` (`tools/dist/`). Repacks the current plugin with the
-  assets staged in `build/dist/all` (studies, repertoires, puzzle pack: not
-  rebuilt). Needs `PAPERKNIGHT_DIST_URL`, the base URL the files are served
-  from, baked into the installer (`local.mk`, not committed, or the
-  environment). On the Kindle `curl -fkL <url>/pka.sh | sh` (it checks the
-  archive's sha256, baked in by build-pka.sh: serve both files together).
-- `make pkc` — code-only archive `build/dist/pkc.tar.gz` + `pkc.sh` (~140 KB,
-  no puzzle pack/studies/fonts; the device keeps its assets). Use it when
-  only the plugin code changed; `make pka` when assets changed.
-- Stockfish for the Kindle: `tools/dist/build-stockfish.sh` (docs/stockfish.md,
-  also needs `PAPERKNIGHT_DIST_URL`); serve `stockfish.gz`, `stockfish.sh`,
-  the source tarball and the patch.
+- `make dist` — device files in `build/dist/out/` (`tools/dist/build-dist.sh`):
+  `install.sh` (the parts' versions and sha256 baked in) and one archive per
+  part, named after its version (plugin, puzzle pack, emoji font, studies),
+  Stockfish from `build/dist/stockfish/`, a USB zip, `SHA256SUMS`. Repacks
+  the current plugin with the assets staged in `build/dist/all` (not
+  rebuilt). Needs `PAPERKNIGHT_DIST_URL` (`local.mk`, not committed, or the
+  environment). On the Kindle `curl -fkL <url>/install.sh | sh`: it
+  downloads only the parts whose version changed. docs/releasing.md.
+- `make test-dist` — installer tests (`tools/dist/test-install.sh`, under
+  busybox when installed); part of `make test`.
+- Stockfish for the Kindle: `tools/dist/build-stockfish.sh`
+  (docs/stockfish.md) into `build/dist/stockfish/`.
 
 ## Token hygiene
 - Don't read `main.lua`, `pkboard.lua`, `pkstudyview.lua` in full: grep for the

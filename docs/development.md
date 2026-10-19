@@ -3,7 +3,8 @@
 ## Requirements
 
 - Linux x86_64 with glibc ≥ 2.35 (for the desktop KOReader build)
-- Python ≥ 3.10, `make`, `curl`, `tar`, `rsync` (`make pka`), `sha256sum`
+- Python ≥ 3.10, `make`, `curl`, `tar`, `rsync` (`make dist`), `sha256sum`;
+  `busybox` to run the installer tests as on the Kindle (optional)
 
 ## Make targets
 
@@ -16,8 +17,8 @@ Run `make help` for the current list. Main ones:
 | `make e2e` | Headless end-to-end scenarios; screenshots and logs in `build/e2e/` |
 | `make emulator` | Visible KOReader window with the plugin loaded (needs a display) |
 | `make packs` | Build data packs into `build/packs/` (`--refresh` on the pipeline downloads the dump again) |
-| `make pka` | Device archive and installer in `build/dist/` (see Deploying) |
-| `make pkc` | Code-only device archive and installer (`pkc.tar.gz`, `pkc.sh`) |
+| `make dist` | Device files in `build/dist/out/`: `install.sh`, one archive per part, the USB zip (see Deploying) |
+| `make test-dist` | Installer tests (`tools/dist/test-install.sh`, part of `make test`) |
 | `make check` | Everything: run it before committing (there is no CI) |
 
 ## The emulator
@@ -71,23 +72,21 @@ timeout, or a non-zero exit.
 
 ## Deploying to a Kindle
 
-The installers download from the server they are served from: set its base
+The installer downloads from the server it is served from: set its base
 URL in `PAPERKNIGHT_DIST_URL` (environment, or a `local.mk` file next to the
 Makefile, not committed: `PAPERKNIGHT_DIST_URL = https://example.org/files`).
 
-Over Wi-Fi: `make pka` builds `build/dist/pka.tar.gz` (the plugin with the
-assets staged in `build/dist/all`) and `pka.sh` (with the archive's
-checksum); put both on a web server, then on the Kindle run
-`curl -fkL <server>/pka.sh | sh`. It checks the archive, extracts it into a
-staging folder, then swaps the plugin folder (keeping `bin/` and a pack it
-doesn't bring). Stockfish: [stockfish.md](stockfish.md).
+Over Wi-Fi: `make dist` builds `build/dist/out/` from the assets staged in
+`build/dist/all` (puzzle pack, fonts, your studies and repertoires) and the
+current plugin: `install.sh` and one archive per part, named after its
+version, plus Stockfish when `build/dist/stockfish/` has it. Upload the
+folder to a web server, then on the Kindle run
+`curl -fkL <server>/install.sh | sh`: it downloads only the parts that
+changed (usually the plugin, about 220 KB). Details:
+[releasing.md](releasing.md).
 
-When only the code changed, `make pkc` builds a code-only archive
-(`pkc.tar.gz`, about 140 KB) and `pkc.sh`, used the same way
-(`curl -fkL <server>/pkc.sh | sh`): it replaces the plugin's code and keeps
-the puzzle pack, studies, repertoires and fonts already installed.
-
-Over USB:
+Over USB: unzip `paperknight-<version>-usb.zip` (from `make dist` or a
+release) and copy its `koreader/` folder onto the Kindle. Or by hand:
 
 ```sh
 # Kindle mounted over USB at /media/$USER/Kindle

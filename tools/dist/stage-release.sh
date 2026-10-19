@@ -1,6 +1,6 @@
 #!/bin/sh
 # Assembles the assets of a public release in build/dist/release (the
-# PKA_STAGE of build-pka.sh): the puzzle pack built by `make packs`, the Noto
+# PK_STAGE of build-dist.sh): the puzzle pack built by `make packs`, the Noto
 # Emoji font (OFL, from google/fonts at a pinned commit, checksums checked)
 # and empty studies and repertoires folders: no third-party study is shipped
 # (Lichess study text has no clear licence). build/dist/all, the local stage

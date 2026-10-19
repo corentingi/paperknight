@@ -4,14 +4,14 @@
             PC (developer)                               Kindle (KOReader)
  ┌────────────────────────────────────┐       ┌──────────────────────────────────┐
  │ pipeline/  (Python)                │       │ plugin/paperknight.koplugin (Lua)│
- │                                    │ pka   │                                  │
+ │                                    │install│                                  │
  │ download ─► filter ─► build pack ──┼──────►│ packs/puzzles.sqlite (read-only) │
  │ (Lichess    (rating,   (SQLite,    │       │ paperknight/studies, repertoires │
  │  puzzles,    themes,    schema in  │       │        │                         │
  │  studies)    quality)   pack-format)       │        ▼                         │
  │                                    │       │ Home · Puzzles · Studies ·       │
- │ tools/dist: pka.tar.gz + pka.sh,   │       │ Openings · Analysis board · Play │
- │ stockfish.gz + stockfish.sh        │       │        │                         │
+ │ tools/dist: install.sh + one       │       │ Openings · Analysis board · Play │
+ │ archive per part, Stockfish        │       │        │                         │
  └────────────────────────────────────┘       │        ▼                         │
                                                │ settings/paperknight/progress.sqlite
                                                │ (user progress, writable)        │

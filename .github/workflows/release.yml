@@ -1,8 +1,10 @@
 # Releases the plugin: on a version tag (vX.Y.Z), tests, builds the puzzle
-# pack from the Lichess database, then the full archive (pka) and the
-# code-only one (pkc) with their installers, and publishes them as a GitHub
-# release. Run by hand (workflow_dispatch), it builds the same files as an
-# artifact without releasing (a dry run). docs/releasing.md.
+# pack from the Lichess database, then install.sh, one archive per part and
+# the USB zip (tools/dist/build-dist.sh), and publishes them as a GitHub
+# release. Stockfish comes from its own release (STOCKFISH_RELEASE, built by
+# stockfish.yml): install.sh downloads it from there. Run by hand
+# (workflow_dispatch), it builds the same files as an artifact without
+# releasing (a dry run). docs/releasing.md.
 name: Release
 on:
   push:
@@ -12,14 +14,19 @@ on:
 permissions:
   contents: write
 
+env:
+  # the Stockfish release install.sh offers (publish it first)
+  STOCKFISH_RELEASE: stockfish-sf_18
+
 jobs:
   release:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
-      # what the installers download: this release's assets
+      # what install.sh downloads: this release's assets
       PAPERKNIGHT_DIST_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
       PAPERKNIGHT_VERSION: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,6 +39,8 @@ jobs:
         with:
           path: build/koreader
           key: koreader-${{ hashFiles('Makefile') }}
+      - name: Busybox (the installer tests run under it)
+        run: sudo apt-get install -yq busybox
       - name: Test
         run: make check
       - name: Cache the Lichess puzzle database (monthly)
@@ -43,26 +52,40 @@ jobs:
           key: lichess-puzzles-${{ steps.month.outputs.month }}
       - name: Build the puzzle pack
         run: make packs
-      - name: Build the archives
+      - name: Stockfish from its release
         run: |
+          mkdir -p build/sf
+          if ! gh release download "$STOCKFISH_RELEASE" --repo "$GITHUB_REPOSITORY" \
+              --pattern 'stockfish-*.gz' --dir build/sf; then
+            # a release needs it; a dry run goes on without
+            case "$GITHUB_REF" in refs/tags/*) exit 1 ;; esac
+            echo "::warning::no $STOCKFISH_RELEASE release: built without Stockfish"
+          fi
+          rm -f build/sf/*.tar.gz
+          ls build/sf
+      - name: Build the release files
+        env:
+          SF_DIR: build/sf
+          PK_STAGE: build/dist/release
+          PAPERKNIGHT_STOCKFISH_URL: https://github.com/${{ github.repository }}/releases/download/${{ env.STOCKFISH_RELEASE }}
+        run: |
+          export PAPERKNIGHT_STOCKFISH_VERSION="${STOCKFISH_RELEASE#stockfish-}"
           tools/dist/stage-release.sh
-          PKA_STAGE=build/dist/release sh tools/dist/build-pka.sh
-          sh tools/dist/build-pka.sh --code
-          cd build/dist && sha256sum pka.tar.gz pka.sh pkc.tar.gz pkc.sh > SHA256SUMS
+          tools/dist/build-dist.sh
       - uses: actions/upload-artifact@v4
         with:
           name: paperknight-${{ github.ref_name }}
-          path: |
-            build/dist/pka.tar.gz
-            build/dist/pka.sh
-            build/dist/pkc.tar.gz
-            build/dist/pkc.sh
-            build/dist/SHA256SUMS
+          path: build/dist/out/
       - name: Publish the release
         if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
+          repo="https://github.com/$GITHUB_REPOSITORY"
+          cat > notes.md <<NOTES
+          Install or update on the Kindle (kterm or SSH):
+
+              curl -fkL $repo/releases/latest/download/install.sh | sh
+
+          Without a terminal: unzip \`paperknight-$GITHUB_REF_NAME-usb.zip\` and copy its \`koreader\` folder onto the Kindle over USB. Stockfish (GPLv3) comes from [$STOCKFISH_RELEASE]($repo/releases/tag/$STOCKFISH_RELEASE), with its source.
+          NOTES
           gh release create "$GITHUB_REF_NAME" --title "Paperknight $GITHUB_REF_NAME" \
-            --generate-notes --latest \
-            build/dist/pka.tar.gz build/dist/pka.sh build/dist/pkc.tar.gz build/dist/pkc.sh build/dist/SHA256SUMS
+            --notes-file notes.md --generate-notes --latest build/dist/out/*

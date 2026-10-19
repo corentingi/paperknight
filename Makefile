@@ -18,7 +18,7 @@ PIPELINE  := $(PY) -m paperknight_pipeline
 FIXTURE_PACKS := $(BUILD)/packs/fixture
 
 # Local settings, not committed: PAPERKNIGHT_DIST_URL, the base URL the device
-# files are served from (baked into the installers by `make pka` / `make pkc`).
+# files are served from (baked into the installer by `make dist`).
 -include local.mk
 export PAPERKNIGHT_DIST_URL
 
@@ -49,14 +49,17 @@ e2e: koreader fixture-packs ## Headless end-to-end scenarios (screenshots in bui
 emulator: koreader ## Desktop KOReader window with the plugin loaded (needs a display)
 	tools/emulator/run.sh window
 
-.PHONY: test test-lua test-py check
+.PHONY: test test-lua test-py test-dist check
 test-lua: koreader fixture-packs ## Lua unit tests (KOReader's LuaJIT and environment)
 	cd $(KO_ASSETS) && timeout 600 ./luajit $(abspath plugin/tests/run.lua)
 
 test-py: venv ## Pipeline unit tests (pytest)
 	cd pipeline && .venv/bin/pytest -q
 
-test: test-lua test-py ## All unit tests
+test-dist: ## Installer tests (tools/dist/install.sh against fake releases)
+	tools/dist/test-install.sh
+
+test: test-lua test-py test-dist ## All unit tests
 
 check: test e2e ## Everything CI runs (exit command of the dev loop)
 
@@ -75,13 +78,10 @@ fixture-packs: venv ## Small deterministic packs for e2e tests (build/packs/fixt
 	$(PIPELINE) puzzles --input pipeline/tests/fixtures/lichess_puzzles_sample.csv \
 		--output $(FIXTURE_PACKS)/puzzles.sqlite --min-popularity -100 --min-plays 0 --max-rating-dev 500
 
-.PHONY: study pka pkc
+.PHONY: study dist
 study: venv ## Download a Lichess study: make study ID=<id or URL> (private: LICHESS_TOKEN=...)
 	@test -n "$(ID)" || { echo "usage: make study ID=<study id or URL>"; exit 2; }
 	$(PIPELINE) study "$(ID)"
 
-pka: ## Device archive build/dist/pka.tar.gz + installer build/dist/pka.sh (needs staged build/dist/all)
-	tools/dist/build-pka.sh
-
-pkc: ## Code-only device archive build/dist/pkc.tar.gz + installer build/dist/pkc.sh (keeps the assets on the device)
-	tools/dist/build-pka.sh --code
+dist: ## Device files in build/dist/out: install.sh, one archive per part, the USB zip (from the stage build/dist/all)
+	tools/dist/build-dist.sh

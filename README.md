@@ -46,22 +46,23 @@ installed (tested on a Kindle Paperwhite 2 with KOReader 2026.07).
 
 In a terminal on the Kindle (kterm or SSH):
 
-    curl -fkL https://github.com/corentingi/paperknight/releases/latest/download/pka.sh | sh
+    curl -fkL https://github.com/corentingi/paperknight/releases/latest/download/install.sh | sh
 
-The installer checks the archive it downloads and installs the plugin, the
-puzzle pack and an emoji font. Run it again to update; your own studies and
-repertoires are kept. Then restart KOReader: **Paperknight** is in the
-**Tools** menu (KOReader's gesture settings can also open it with one tap,
-*Paperknight* action).
+The installer shows what it will install (the plugin, the puzzle pack, an
+emoji font) and offers **Stockfish**, the engine behind the analysis board
+and *Play against the engine* (Stockfish 18 built for the Paperwhite 2,
+about 3 MB, [details](docs/stockfish.md)). It checks every download before
+changing anything. Run it again to update: it downloads only what changed,
+and your own studies and repertoires are kept. Then restart KOReader:
+**Paperknight** is in the **Tools** menu (KOReader's gesture settings can
+also open it with one tap, *Paperknight* action).
 
-> The first release is not published yet. Until then, build the archive
-> yourself (`make pka`, see [Development](#development)) and serve it.
+Without a terminal: download `paperknight-<version>-usb.zip` from the
+[latest release](https://github.com/corentingi/paperknight/releases/latest),
+unzip it and copy its `koreader` folder onto the Kindle over USB.
 
-**Stockfish** (optional, for the analysis board and playing against the
-engine) is installed apart, Stockfish 18 built for the Paperwhite 2, about
-3 MB ([details](docs/stockfish.md)):
-
-    curl -fkL https://github.com/corentingi/paperknight/releases/download/stockfish-sf_18/stockfish-pw2.sh | sh
+> The first release is not published yet. Until then, build the files
+> yourself (`make dist`, see [Development](#development)) and serve them.
 
 **Your own studies and repertoires**: copy PGN files (for example a Lichess
 study exported as PGN) to `koreader/paperknight/studies/` or
@@ -90,19 +91,18 @@ make help          # list targets
 make check         # unit tests (plugin + pipeline) and headless end-to-end scenarios
 make emulator      # the plugin in a desktop KOReader window
 make packs         # download the Lichess puzzle database (~300 MB, once) and build the puzzle pack
-make pka           # device archive and installer in build/dist/ (pka.tar.gz, pka.sh)
-make pkc           # code-only archive (pkc.tar.gz, pkc.sh): keeps the data on the device
+make dist          # device files in build/dist/out: install.sh, one archive per part, a USB zip
 ```
 
-`make pka` and `make pkc` need `PAPERKNIGHT_DIST_URL`, the address the files
-will be served from (set it in the environment or in a `local.mk` file).
+`make dist` needs `PAPERKNIGHT_DIST_URL`, the address the files will be
+served from (set it in the environment or in a `local.mk` file).
 
 | Path | What lives there |
 |---|---|
 | [`plugin/paperknight.koplugin/`](plugin/) | The KOReader plugin (Lua) |
 | [`pipeline/`](pipeline/) | Python tools that download public datasets and build the data packs |
 | [`tools/emulator/`](tools/emulator/) | The desktop KOReader that runs the end-to-end tests |
-| [`tools/dist/`](tools/dist/) | Device archives, installers and the Stockfish build |
+| [`tools/dist/`](tools/dist/) | The installer, the release files and the Stockfish build |
 | [`docs/`](docs/) | [Architecture](docs/architecture.md), [development guide](docs/development.md), [releasing](docs/releasing.md), [e-ink refreshes](docs/eink-refresh.md), [decision records](docs/adr/), [roadmap](docs/roadmap.md) |
 | [`site/`](site/) | The project's web page (GitHub Pages) |
 

@@ -1,5 +1,6 @@
-# Tests on every push and pull request: Lua specs, pipeline pytest and the
-# headless end-to-end scenarios (make check).
+# Tests on every push and pull request: Lua specs, pipeline pytest, the
+# installer tests (under busybox, as on the Kindle) and the headless
+# end-to-end scenarios (make check).
 name: CI
 on:
   push:
@@ -21,6 +22,8 @@ jobs:
         with:
           path: build/koreader
           key: koreader-${{ hashFiles('Makefile') }}
+      - name: Busybox (the installer tests run under it)
+        run: sudo apt-get install -yq busybox
       - name: Test
         run: make check
       - name: Keep the logs and screenshots on failure
@@ -28,4 +31,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: e2e
-          path: build/e2e/
+          path: |
+            build/e2e/
+            build/test-dist/*.log

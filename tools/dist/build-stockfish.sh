@@ -1,17 +1,15 @@
 #!/bin/sh
 # Builds the Kindle Stockfish (docs/stockfish.md): a static ARMv7 + NEON
 # binary against musl (the PW2's kernel 3.0 is too old for a static glibc
-# binary), with Zig's cross compiler. Output in build/dist/: stockfish,
-# stockfish.gz, the source tarball, and stockfish.sh with the checksum.
+# binary), with Zig's cross compiler. Output in build/dist/stockfish/:
+# stockfish-<platform> (checked under qemu by CI), stockfish-<platform>.gz
+# (what install.sh downloads), the source tarball and the patch (GPL).
 # A patch tools/dist/stockfish-<tag>-*.patch is applied when there is one:
 # for sf_18, the small network only (~4 MB binary, tens of MB of RAM instead
 # of ~130 MB, ADR-0016).
 # Usage: tools/dist/build-stockfish.sh [sf_tag]   (default sf_18)
-# SF_PLATFORM: the device built for (default pw2, the only one so far); when
-# given (releases), the outputs are named stockfish-<platform>.*.
+# SF_PLATFORM: the device built for (default pw2, the only one so far).
 set -eu
-# where the files are served from, baked into the installers
-DIST_URL="${PAPERKNIGHT_DIST_URL:?set PAPERKNIGHT_DIST_URL to the base URL of the served files}"
 TAG="${1:-sf_18}"
 ZIG_VERSION="0.17.0"
 ZIG_SHA256=1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026
@@ -22,10 +20,10 @@ case "$PLATFORM" in
     pw2) SF_ARCH=armv7-neon; ZIG_TARGET=arm-linux-musleabihf; ZIG_CPU=cortex_a9 ;;
     *) echo "unknown platform: $PLATFORM (known: pw2)" >&2; exit 1 ;;
 esac
-NAME="stockfish${SF_PLATFORM:+-$SF_PLATFORM}"
+NAME="stockfish-$PLATFORM"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 WORK="$ROOT/build/stockfish"
-OUT="$ROOT/build/dist"
+OUT="$ROOT/build/dist/stockfish"
 mkdir -p "$WORK" "$OUT"
 cd "$WORK"
 
@@ -56,9 +54,6 @@ gzip -9 -c stockfish > "$OUT/$NAME.gz"
 # the corresponding source (GPL): the release and the patch applied
 cp "$WORK/$TAG.tar.gz" "$OUT/stockfish-$TAG-src.tar.gz"
 for patch in "$ROOT"/tools/dist/stockfish-"$TAG"-*.patch; do
-    [ -f "$patch" ] && cp "$patch" "$OUT/"
+    if [ -f "$patch" ]; then cp "$patch" "$OUT/"; fi
 done
-SHA="$(sha256sum "$OUT/$NAME.gz" | cut -d' ' -f1)"
-sed -e "s/@SF_SHA256@/$SHA/" -e "s#@DIST_URL@#$DIST_URL#" -e "s#@SF_ASSET@#$NAME.gz#" \
-    "$ROOT/tools/dist/stockfish.sh" > "$OUT/$NAME.sh"
-echo "build/dist: $NAME, $NAME.gz ($SHA), stockfish-$TAG-src.tar.gz, $NAME.sh"
+echo "build/dist/stockfish: $NAME, $NAME.gz, stockfish-$TAG-src.tar.gz and the patch"

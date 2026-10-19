@@ -48,11 +48,10 @@
   <section class="wrap" id="install">
     <h2>Install</h2>
     <p>You need a jailbroken Kindle with <a href="https://koreader.rocks">KOReader</a> (tested on a Kindle Paperwhite 2). In a terminal on the Kindle (kterm or SSH):</p>
-    <pre><code>curl -fkL https://github.com/corentingi/paperknight/releases/latest/download/pka.sh | sh</code></pre>
-    <p>Then restart KOReader: <strong>Paperknight</strong> is in the Tools menu. The installer checks the archive it downloads; run it again to update (your own studies are kept).</p>
-    <h3>Stockfish (optional)</h3>
-    <p>For the analysis board and playing against the engine, install Stockfish 18 built for the Paperwhite 2 (about 3 MB) from its <a href="https://github.com/corentingi/paperknight/releases">release</a>:</p>
-    <pre><code>curl -fkL https://github.com/corentingi/paperknight/releases/download/stockfish-sf_18/stockfish-pw2.sh | sh</code></pre>
+    <pre><code>curl -fkL https://github.com/corentingi/paperknight/releases/latest/download/install.sh | sh</code></pre>
+    <p>The installer shows what it will install: the plugin, the puzzle pack, an emoji font, and optionally <strong>Stockfish</strong> 18 built for the Paperwhite 2 (about 3 MB), the engine behind the analysis board and playing against the engine. It checks every download before changing anything. Then restart KOReader: <strong>Paperknight</strong> is in the Tools menu. Run it again to update: it downloads only what changed, and your own studies are kept.</p>
+    <h3>Without a terminal</h3>
+    <p>Download <code>paperknight-&lt;version&gt;-usb.zip</code> from the <a href="https://github.com/corentingi/paperknight/releases/latest">latest release</a>, unzip it and copy its <code>koreader</code> folder onto the Kindle over USB.</p>
     <h3>Your studies and repertoires</h3>
     <p>Copy PGN files (a Lichess study exported as PGN, for example) to <code>koreader/paperknight/studies/</code> or <code>koreader/paperknight/repertoires/</code> on the Kindle.</p>
   </section>
