@@ -83,6 +83,8 @@ check "Stockfish declined" test ! -e "$K/$P/bin/stockfish"
 check "plugin record" has "$K/paperknight/.parts/plugin" v1
 check "studies record lists the files" has "$K/paperknight/.parts/studies" paperknight/studies/A.pgn
 check "no download folder left" test ! -e "$K/.paperknight-download"
+check "downloads named with their size" has "$T/out.log" "Downloading paperknight-plugin-v1.tar.gz ("
+check "no progress bar (kterm prints each redraw on a new line)" bash -c "! grep -q \$'\r' '$T/out.log'"
 
 echo "second run without a terminal: Stockfish taken by default"
 run "$K" r1 || no "installer exit status"

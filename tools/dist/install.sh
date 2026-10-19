@@ -147,7 +147,7 @@ plan() {
                     ask "    Update Stockfish?" y || continue
                 fi ;;
         esac
-        SELECTED="$SELECTED$part|$version|$file|$sha
+        SELECTED="$SELECTED$part|$version|$file|$sha|$size
 "
     done <<EOF
 $PARTS
@@ -158,14 +158,15 @@ EOF
     return 0
 }
 
-download() { # part, file, sha256 -> the checked download in $DL
+download() { # part, file, sha256, size -> the checked download in $DL
     case "$2" in
         *://*) url=$2 ;;
         *) url="$DIST_URL/$2" ;;
     esac
     out="$DL/${2##*/}"
-    say "Downloading ${2##*/}"
-    curl -fkL -# -o "$out.part" "$url" || fail "Download failed ($url): nothing changed."
+    # no progress bar: kterm prints every redraw on a new line
+    say "Downloading ${2##*/} ($(human "$4"))"
+    curl -fksSL -o "$out.part" "$url" || fail "Download failed ($url): nothing changed."
     if command -v sha256sum >/dev/null 2>&1; then
         echo "$3  $out.part" | sha256sum -c - >/dev/null 2>&1 \
             || fail "Download corrupted or outdated installer (checksum of ${2##*/}): nothing changed."
@@ -308,13 +309,13 @@ main() {
     cleanup
     mkdir -p "$DL"
     trap cleanup EXIT
-    while IFS='|' read -r part version file sha; do
+    while IFS='|' read -r part version file sha size; do
         [ -n "$part" ] || continue
-        download "$part" "$file" "$sha"
+        download "$part" "$file" "$sha" "$size"
     done <<EOF
 $SELECTED
 EOF
-    while IFS='|' read -r part version file sha; do
+    while IFS='|' read -r part version file sha size; do
         [ -n "$part" ] || continue
         say "Installing $(label "$part" | tr 'A-Z' 'a-z') $version"
         archive="$DL/${file##*/}"
