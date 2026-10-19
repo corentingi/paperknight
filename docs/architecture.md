@@ -83,7 +83,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 
 | File | Role |
 |---|---|
-| `pkanalysis.lua` | Analysis board: moves for both sides, line stepping, move list (full height, can be hidden), FEN, flip, save the line as a study (Studies/Analyses); Stockfish evaluation and best line, on/off with the knight button (remembered, like the move list; one search at a time, stopped on close) |
+| `pkanalysis.lua` | Analysis board: moves for both sides, line stepping, move list (full height, can be hidden), position from a FEN, the position on Lichess (QR code, the FEN under it), flip, save the line as a study (Studies/Analyses); Stockfish evaluation and best line, on/off with the knight button (remembered, like the move list; one search at a time, stopped on close) |
 | `pkgame.lua` | Game screen (from Kochess): against Stockfish when installed, else two players; settings saved; clock and engine stopped on close |
 | `pkuci.lua` | UCI engine in a subprocess: one polling task, stopped and reaped on close |
 | `pktimer.lua` | Chess clocks |

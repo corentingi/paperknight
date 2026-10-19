@@ -16,7 +16,7 @@ local PkText = require("pktext")
 
 local PkLinks = {}
 
--- QRMessage with the address written under the code.
+-- QRMessage with the address (or `caption`) written under the code.
 local LinkQR = QRMessage:extend{}
 
 function LinkQR:init()
@@ -28,7 +28,7 @@ function LinkQR:init()
         qr,
         VerticalSpan:new{ width = Size.padding.large },
         TextBoxWidget:new{
-            text = self.text,
+            text = self.caption or self.text,
             face = Font:getFace("cfont", 14),
             width = self.width - 2 * Size.padding.fullscreen,
             alignment = "center",
@@ -40,12 +40,13 @@ function LinkQR:init()
     }
 end
 
---- Shows the QR code of `link` ({ url, label }). Returns the widget.
+--- Shows the QR code of `link` ({ url, label, caption }): `caption`, when
+-- given, is written under the code instead of the address. Returns the widget.
 function PkLinks.showQR(link)
     local size = math.floor(math.min(Screen:getWidth(), Screen:getHeight()) * 0.7)
     local url = link.url
     if not url:match("^%a[%w+.-]*://") then url = "https://" .. url end -- "www.…": phones need a scheme
-    local widget = LinkQR:new{ text = url, width = size, height = size }
+    local widget = LinkQR:new{ text = url, caption = link.caption, width = size, height = size }
     UIManager:show(widget)
     return widget
 end

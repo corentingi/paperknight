@@ -30,6 +30,7 @@ local Chess = require("pkchess")
 local ChessBoard = require("pkboard")
 local PkButton = require("pkbutton")
 local PkIcons = require("pkicons")
+local PkLinks = require("pklinks")
 local PkMoveList = require("pkmovelist")
 local PkOpeningNames = require("pkopeningnames")
 local PkNav = require("pknav")
@@ -546,10 +547,7 @@ function PkAnalysis:showMenu()
         },
         {
             { text = _("Position from FEN…"), callback = function() close(); self:askFen() end },
-            { text = _("Show FEN"), callback = function()
-                close()
-                UIManager:show(InfoMessage:new{ text = self.game.fen() })
-            end },
+            { text = _("Position on Lichess…"), callback = function() close(); self:showOnLichess() end },
         },
         {{ text = _("Save line as a study…"), enabled = #self.line > 0,
            callback = function() close(); self:askSave() end }},
@@ -558,6 +556,17 @@ function PkAnalysis:showMenu()
     dialog = ButtonDialog:new{ buttons = buttons }
     self.menu_dialog = dialog
     UIManager:show(dialog)
+end
+
+--- The position shown on Lichess's analysis board, from the side shown.
+function PkAnalysis:lichessUrl()
+    return "https://lichess.org/analysis/" .. self.game.fen():gsub(" ", "_")
+        .. (self.flipped and "?color=black" or "")
+end
+
+--- A QR code of lichessUrl() (scan it with a phone), the FEN written under it.
+function PkAnalysis:showOnLichess()
+    return PkLinks.showQR({ url = self:lichessUrl(), caption = self.game.fen() })
 end
 
 function PkAnalysis:flip()

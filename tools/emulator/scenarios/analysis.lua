@@ -116,6 +116,19 @@ esac; done
     h.check(view.board.flipped and view.pos == 1, "flipped, line kept")
     h.check(iconAt("d8"):find("wR%.svg$") and iconAt("g8"):find("bK%.svg$"), "the flipped board shows the pieces")
     h.shot("analysis")
+    -- ☰ → the position on Lichess's analysis board: a QR code, from the side
+    -- shown, the FEN written under it (FEN checked with python-chess)
+    h.tapWidget(view.title_bar.left_button)
+    h.settle()
+    h.tapWidget(h.findButton(view.menu_dialog, "Position on Lichess…"))
+    h.settle()
+    local qr = UIManager._window_stack[#UIManager._window_stack].widget
+    h.check(qr.text == "https://lichess.org/analysis/3R2k1/5ppp/8/8/8/8/5PPP/6K1_b_-_-_1_1?color=black",
+        "QR code of the Lichess analysis: " .. tostring(qr.text))
+    h.check(qr.caption == "3R2k1/5ppp/8/8/8/8/5PPP/6K1 b - - 1 1", "the FEN under it: " .. tostring(qr.caption))
+    h.shot("analysis-lichess")
+    UIManager:close(qr)
+    h.settle()
     -- saved as a study (☰ → Save line as a study…): a PGN the studies read
     -- back, from the position set and from Black's side; a taken name gets " (2)"
     local tmp = os.getenv("HOME") .. "/analyses"

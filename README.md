@@ -31,8 +31,8 @@ board is drawn and refreshed so that moves don't flash.
   after; moves you know are played for you, and the trainer stops on what is
   due.
 - **Analysis board**: play both sides, step through the line, set a position
-  from a FEN, save the line as a study, and see Stockfish's evaluation and
-  best line.
+  from a FEN, save the line as a study, open the position on Lichess with a
+  phone (QR code), and see Stockfish's evaluation and best line.
 - **Play** against Stockfish, or two players on one board.
 - **Opening names** ("C50 Italian Game") everywhere a line is played.
 - **Made for e-ink**: no flashing moves, a night mode, and links in
