@@ -18,8 +18,12 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
   when you come back to the list.
 - **Folders**: sub-folders of `studies/` (e.g. `Openings/`, `Endgames/`)
   are listed first, as `Openings/` with the number of studies inside (and
-  `done/total ✓` once some are done); tap one to open it, Back to return.
+  `done/total ✓` once some are done); tap one to open it. Its first line,
+  `../  Back to Studies` (or to the parent folder), returns, as does ✕.
   Folders can be nested.
+- **Recent studies…**, at the top of the Studies list once a study was
+  opened: the last 10 studies opened, the latest first (a tap opens its
+  chapters, with *Continue*).
 - Any PGN works; each game is a chapter.
 
 ## What we read from the PGN

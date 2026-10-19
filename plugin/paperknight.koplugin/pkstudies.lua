@@ -16,6 +16,7 @@ local T = require("ffi/util").template
 local PkDone = require("pkdone")
 local PkNav = require("pknav")
 local PkProgress = require("pkprogress")
+local PkRefresh = require("pkrefresh")
 local PkStudy = require("pkstudy")
 local PkStudyView = require("pkstudyview")
 
@@ -139,6 +140,57 @@ local function withProgress(fn)
     return res
 end
 
+-- Recent studies: the paths of the last studies opened, the latest first
+-- (setting "studies.recent", one path per line).
+PkStudies.RECENT_MAX = 10
+
+--- The recent list `value` (setting text, or nil) after opening `path`.
+function PkStudies.pushRecent(value, path, max)
+    local out = { path }
+    for line in (value or ""):gmatch("[^\n]+") do
+        if line ~= path and #out < (max or PkStudies.RECENT_MAX) then out[#out + 1] = line end
+    end
+    return table.concat(out, "\n")
+end
+
+PkStudies.recent_version = 0 -- changes with the list (the lists showing it follow)
+
+local function recordRecent(path)
+    PkStudies.recent_version = PkStudies.recent_version + 1
+    withProgress(function(progress)
+        if not progress then return end
+        progress:setSetting("studies.recent", PkStudies.pushRecent(progress:getSetting("studies.recent"), path))
+    end)
+end
+
+--- The recent studies that still exist, the latest first.
+function PkStudies.recent()
+    local value = withProgress(function(progress) return progress and progress:getSetting("studies.recent") end)
+    local out = {}
+    for line in (value or ""):gmatch("[^\n]+") do
+        if lfs.attributes(line, "mode") == "file" then out[#out + 1] = line end
+    end
+    return out
+end
+
+--- The recent studies list: a tap opens one (its chapters, with Continue).
+function PkStudies.showRecent()
+    local root = PkStudies.dir()
+    local items = {}
+    for _i, path in ipairs(PkStudies.recent()) do
+        local folder = path:match("^(.*)/[^/]+$")
+        items[#items + 1] = {
+            text = util.fixUtf8((path:match("([^/]+)$"):gsub("%.[Pp][Gg][Nn]$", "")), "?"),
+            mandatory = folder ~= root and util.fixUtf8(folder:match("([^/]+)$") or "", "?") or nil,
+            callback = function() PkStudies.openStudy(path) end,
+        }
+    end
+    if #items == 0 then items[1] = { text = _("(no study opened yet)"), callback = function() end } end
+    local menu = fullscreenMenu(_("Recent studies"), items)
+    UIManager:show(menu)
+    return menu
+end
+
 --- Opens a study file and shows its chapter list. Returns the chapter menu.
 function PkStudies.openStudy(path)
     local name = path:match("([^/]+)$") or path
@@ -156,6 +208,7 @@ function PkStudies.openStudy(path)
             ERRORS[err] or tostring(err)) })
         return nil
     end
+    recordRecent(path)
     local file = PkDone.fileOf(study.path)
     local menu = fullscreenMenu(util.fixUtf8(study.name, "?"), PkStudies.chapterItems(study), file and function(close)
         local done = withProgress(function(progress) return progress and PkDone.isDone(progress, file) end)
@@ -224,8 +277,16 @@ local function hideDone()
     end) == true
 end
 
-local function listItems(dir, files, folders, is_root)
+-- `here`: this list's title; `parent`: the parent list's title (a
+-- sub-folder: a "../" line first, back to it; the ✕ does the same, less
+-- obviously).
+local function listItems(dir, files, folders, is_root, here, parent)
     local items = {}
+    if parent then
+        items[1] = { text = T(_("../  Back to %1"), parent), _pk_up = true }
+    elseif is_root and #PkStudies.recent() > 0 then
+        items[1] = { text = _("Recent studies…"), callback = function() PkStudies.showRecent() end }
+    end
     local done = withProgress(PkDone.doneSet) or {}
     local hide, hidden = hideDone(), 0
     for _i, folder in ipairs(folders) do
@@ -235,7 +296,9 @@ local function listItems(dir, files, folders, is_root)
         items[#items + 1] = {
             text = util.fixUtf8(folder, "?") .. "/",
             mandatory = n_done > 0 and T("%1/%2 %3", n_done, #all, PkDone.MARK) or tostring(#all),
-            callback = function() PkStudies.show(dir .. "/" .. folder, folder) end,
+            callback = function()
+                PkStudies.show(dir .. "/" .. folder, folder, here)
+            end,
         }
     end
     for _i, file in ipairs(files) do
@@ -255,7 +318,7 @@ local function listItems(dir, files, folders, is_root)
         items[#items + 1] = { text = T(_("(%1 done hidden: ☰ to show them)"), hidden), callback = function() end }
     end
     if not is_root then
-        if #items == 0 then items[1] = { text = _("(empty folder)"), callback = function() end } end
+        if #items == 1 then items[2] = { text = _("(empty folder)"), callback = function() end } end
         return items
     end
     items[#items + 1] = {
@@ -270,8 +333,8 @@ local function listItems(dir, files, folders, is_root)
             })
         end,
     }
-    if #items == 1 and #folders == 0 then
-        items[1].text = items[1].text .. "  " .. T(_("(no studies in %1)"), dir)
+    if #files == 0 and #folders == 0 then
+        items[#items].text = items[#items].text .. "  " .. T(_("(no studies in %1)"), dir)
     end
     return items
 end
@@ -303,25 +366,27 @@ end
 
 local function entriesKey(files, folders)
     return table.concat(files, "\n") .. "|" .. table.concat(folders, "\n") .. "|" .. PkDone.version
+        .. "|" .. PkStudies.recent_version
 end
 
 --- Studies list of `dir` (default PkStudies.dir(), the top level; tests
 -- pass their own); `title`: a sub-folder's name. Sub-folders open their
--- own list. The list follows the folder and the done marks: each repaint
--- (e.g. back from a study) rebuilds the items if the files, folders or
--- marks changed. Long-press on a study toggles its done mark.
-function PkStudies.show(dir, title)
+-- own list, `parent` being the title of the one they come from. The list
+-- follows the folder and the done marks: each repaint (e.g. back from a
+-- study) rebuilds the items if the files, folders or marks changed.
+-- Long-press on a study toggles its done mark.
+function PkStudies.show(dir, title, parent)
     local is_root = title == nil
     dir = dir or PkStudies.dir()
     if is_root then applyRenames(dir) end
     local files, folders = PkStudies.listEntries(dir)
+    local here = title and util.fixUtf8(title, "?") or _("Studies")
     local menu
     local function rebuild(m, now_files, now_folders)
         local first = ((m.page or 1) - 1) * (m.perpage or 1) + 1 -- stay on the current page
-        m:switchItemTable(nil, listItems(dir, now_files, now_folders, is_root), first)
+        m:switchItemTable(nil, listItems(dir, now_files, now_folders, is_root, here, parent), first)
     end
-    menu = fullscreenMenu(title and util.fixUtf8(title, "?") or _("Studies"),
-        listItems(dir, files, folders, is_root), function(close)
+    menu = fullscreenMenu(here, listItems(dir, files, folders, is_root, here, parent), function(close)
             local hide = hideDone()
             return { { { text = hide and _("Show done studies") or _("Hide done studies"), callback = function()
                 close()
@@ -333,6 +398,17 @@ function PkStudies.show(dir, title)
             end } } }
         end)
     menu._pk_files = entriesKey(files, folders)
+    if parent then
+        -- "../": back to the parent list (underneath), like the ✕
+        local onMenuSelect = menu.onMenuSelect
+        menu.onMenuSelect = function(m, item, ...)
+            if item and item._pk_up then
+                PkRefresh.close(m)
+                return true
+            end
+            return onMenuSelect(m, item, ...)
+        end
+    end
     menu.onMenuHold = function(m, item)
         if item and item._pk_file and PkStudies.toggleDone(item._pk_file) ~= nil then
             -- rebuild now (one refresh), on the same page
@@ -349,7 +425,7 @@ function PkStudies.show(dir, title)
     local function stamp()
         local mtime = lfs.attributes(dir, "modification")
         if not mtime or mtime >= os.time() - 1 then return nil end
-        return mtime .. "|" .. PkDone.version
+        return mtime .. "|" .. PkDone.version .. "|" .. PkStudies.recent_version
     end
     menu._pk_stamp = stamp()
     local paintTo = menu.paintTo
