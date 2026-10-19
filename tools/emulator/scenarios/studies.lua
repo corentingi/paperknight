@@ -123,6 +123,19 @@ return function(h)
     h.check(panel():find("^3%. Bb5"), "variation entered: " .. panel())
     h.check(panel():find("The Spanish."), "variation comment")
     h.check(not view.cursor:onMainline(), "off the main line")
+    -- the analysis board gets the line: from the chapter start to this move,
+    -- then the rest of the variation, at the move shown
+    local function sans(av)
+        local out = {}
+        for _, m in ipairs(av.line) do out[#out + 1] = m.san end
+        return table.concat(out, " ")
+    end
+    local av = view:analyse()
+    h.settle()
+    h.check(sans(av) == "e4 e5 Nf3 Nc6 Bb5 a6 Ba4" and av.pos == 5 and av.game.fen() == view.game.fen(),
+        "analysis: the variation's line, at Bb5: " .. sans(av) .. " @" .. tostring(av.pos))
+    av:onClose()
+    h.settle()
     tapButton("back")
     h.check(panel():find("^2%.%.%. Nc6"), "back to the branch")
     -- the end of a variation: › goes back to the main line, after asking

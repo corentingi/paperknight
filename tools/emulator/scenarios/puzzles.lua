@@ -170,6 +170,33 @@ return function(h)
     h.check(status():find("Themes: Mate in 2", 1, true), "themes kept while stepping: " .. status())
     tapButton("forward")
     h.check(view.board.badge and view.board.badge.square == "d8", "badge back at the final position")
+    -- ☰ → Analyse position: the analysis board has the puzzle's line in its
+    -- list (from the position before the setup move), at the move shown
+    -- (SAN checked with python-chess)
+    local function sans(av)
+        local out = {}
+        for _, m in ipairs(av.line) do out[#out + 1] = m.san end
+        return table.concat(out, " ")
+    end
+    h.tapWidget(view.title_bar.left_button)
+    h.settle()
+    h.tapWidget(h.findButton(view.menu_dialog, "Analyse position"))
+    h.settle()
+    local av = UIManager._window_stack[#UIManager._window_stack].widget
+    h.check(av.name == "paperknight_analysis" and sans(av) == "dxe5 Qxd8+ Qxd8 Rxd8#" and av.pos == 4,
+        "analysis: the puzzle's line, at its end: " .. sans(av) .. " @" .. tostring(av.pos))
+    h.check(av.start_fen == view.puzzle.fen and av.game.fen() == view.game.fen(), "from the puzzle position, at the one shown")
+    av:onClose()
+    h.settle()
+    tapButton("back")
+    av = view:analyse()
+    h.settle()
+    h.check(sans(av) == "dxe5 Qxd8+ Qxd8 Rxd8#" and av.pos == 3 and av.game.fen() == view.game.fen(),
+        "stepped back: the whole line, at the move shown @" .. tostring(av.pos))
+    h.shot("analysis-from-puzzle")
+    av:onClose()
+    h.settle()
+    tapButton("forward")
 
     -- 3. Hint and solution on the same puzzle via Retry.
     tapButton("retry")

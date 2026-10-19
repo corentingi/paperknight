@@ -51,7 +51,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 
 | File | Role |
 |---|---|
-| `pkpuzzleview.lua` | Puzzle screen: Retry / Hint / Solution / Next (greyed until the puzzle is over) while solving, Retry / ‹ / › / Next to step through the line once finished; themes once finished; ☰ Theme…, Stats…, Analyse position, Like this puzzle, Liked puzzles…, Open a puzzle by its id… (chosen puzzles are not rated), the puzzle and its game on Lichess (QR codes) |
+| `pkpuzzleview.lua` | Puzzle screen: Retry / Hint / Solution / Next (greyed until the puzzle is over) while solving, Retry / ‹ / › / Next to step through the line once finished; themes once finished; ☰ Theme…, Stats…, Analyse position (the analysis board with the puzzle's line), Like this puzzle, Liked puzzles…, Open a puzzle by its id… (chosen puzzles are not rated), the puzzle and its game on Lichess (QR codes) |
 | `pkpuzzle.lua` | Puzzle session state machine (pure logic) |
 | `pkpuzzlepack.lua` | Read-only access to `puzzles.sqlite` (paged random picks within ±50 of the rating first) |
 | `pkglicko.lua` | Glicko-2 rating math (ADR-0010) |
@@ -83,7 +83,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 
 | File | Role |
 |---|---|
-| `pkanalysis.lua` | Analysis board: moves for both sides, line stepping, move list (full height, can be hidden), position from a FEN, the position on Lichess (QR code, the FEN under it), flip, save the line as a study (Studies/Analyses); Stockfish evaluation and best line, on/off with the knight button (remembered, like the move list; one search at a time, stopped on close) |
+| `pkanalysis.lua` | Analysis board: moves for both sides, line stepping, move list (full height, can be hidden), position from a FEN or a line handed over (☰ Analyse position in puzzles and studies: the line that led to the position, and what follows), the position on Lichess (QR code, the FEN under it), flip, save the line as a study (Studies/Analyses); Stockfish evaluation and best line, on/off with the knight button (remembered, like the move list; one search at a time, stopped on close) |
 | `pkgame.lua` | Game screen (from Kochess): against Stockfish when installed, else two players; settings saved; clock and engine stopped on close |
 | `pkuci.lua` | UCI engine in a subprocess: one polling task, stopped and reaped on close |
 | `pktimer.lua` | Chess clocks |

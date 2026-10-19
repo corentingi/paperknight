@@ -46,6 +46,8 @@ local PkAnalysis = InputContainer:extend{
     name = "paperknight_analysis",
     covers_fullscreen = true,
     fen = nil,          -- start position (nil: the initial position)
+    moves = nil,        -- a line from `fen` to show (from a puzzle, a study…), see setLine
+    pos = nil,          -- the move of `moves` shown (default: the last)
     flipped = false,
     engine_path = nil,  -- default: bin/stockfish (pkgame.lua)
     movetime = 4000,    -- milliseconds of analysis per position
@@ -53,7 +55,7 @@ local PkAnalysis = InputContainer:extend{
     list_layout = "full", -- "full" (the whole height) or "beside" (as tall as the board)
 }
 
---- Opens the analysis board. `opts`: { fen, flipped, engine_path }.
+--- Opens the analysis board. `opts`: { fen, moves, pos, flipped, engine_path }.
 function PkAnalysis.show(opts)
     local view = PkAnalysis:new(opts or {})
     UIManager:show(view)
@@ -103,7 +105,7 @@ function PkAnalysis:init()
     local lfs = require("libs/libkoreader-lfs")
     self.engine_missing = lfs.attributes(self:_enginePath(), "mode") ~= "file"
     self:_updateEngineButton()
-    self:setPosition(self.fen or START_FEN)
+    if not self:setLine(self.fen or START_FEN, self.moves, self.pos) then self:setPosition(START_FEN) end
     if not self.engine_missing and PkAnalysis._setting("analysis.engine") == "1" then self:toggleEngine(true) end
 end
 
@@ -128,11 +130,41 @@ end
 
 --- Starts from `fen` (an empty line). Returns false if the FEN is invalid.
 function PkAnalysis:setPosition(fen)
+    return self:setLine(fen)
+end
+
+-- { from, to, promotion } of a move given as a table or in UCI ("e7e8q").
+local function moveSpec(m)
+    if type(m) == "string" then
+        return { from = m:sub(1, 2), to = m:sub(3, 4), promotion = m:sub(5, 5) ~= "" and m:sub(5, 5) or nil }
+    end
+    return { from = m.from, to = m.to, promotion = m.promotion }
+end
+
+--- Starts from `fen` with the line `moves` (tables with from/to/promotion,
+-- or UCI strings), shown at move `pos` (0: the start; default: the end),
+-- so that the move list has the line that led here (and what follows).
+-- A move that cannot be played ends the line. Returns false if the FEN is
+-- invalid.
+function PkAnalysis:setLine(fen, moves, pos)
     local probe = Chess:new()
     if not probe.load(fen) then return false end
     self.start_fen = fen
-    self.line, self.pos = {}, 0
+    self.line = {}
     self.game.load(fen)
+    for _i, m in ipairs(moves or {}) do
+        local move = self.game.move(moveSpec(m))
+        if not move then break end
+        self.line[#self.line + 1] = { from = move.from, to = move.to, promotion = move.promotion, san = move.san,
+                                      fen = self.game.fen() }
+    end
+    self.pos = #self.line
+    pos = math.max(0, math.min(pos or self.pos, self.pos))
+    if pos < self.pos then
+        self.game.load(fen)
+        for i = 1, pos do self.game.move(moveSpec(self.line[i])) end
+        self.pos = pos
+    end
     self:_build()
     self:_update(true)
     return true

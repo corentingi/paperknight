@@ -470,7 +470,7 @@ function PkStudyView:showMenu()
             -- the position shown, on the analysis board (closing it comes back here)
             { text = _("Analyse position"), callback = function()
                 close()
-                require("pkanalysis").show{ fen = self.game.fen(), flipped = self.board and self.board.flipped }
+                self:analyse()
             end },
         },
     }
@@ -505,6 +505,32 @@ function PkStudyView:showMenu()
     dialog = ButtonDialog:new{ buttons = buttons }
     self.menu_dialog = dialog
     UIManager:show(dialog)
+end
+
+--- The position shown, on the analysis board, with the line in its move
+-- list: the moves from the chapter start, then the rest of the current line
+-- (not during a lesson: it would give the answers away). Closing it comes
+-- back here.
+function PkStudyView:analyse()
+    local opts = { flipped = self.board and self.board.flipped }
+    local cursor = self.cursor
+    if not cursor then
+        opts.fen = self.game.fen()
+        return require("pkanalysis").show(opts)
+    end
+    local path, node = {}, cursor.node
+    while node.parent do
+        table.insert(path, 1, node.move)
+        node = node.parent
+    end
+    opts.fen, opts.pos = cursor.root.fen, #path
+    node = cursor.node
+    while not self.lesson and node.children[1] and cursor:resolve(node.children[1]) do
+        node = node.children[1]
+        path[#path + 1] = node.move
+    end
+    opts.moves = path
+    return require("pkanalysis").show(opts)
 end
 
 --- Marks the current chapter done (or not) and says so; marking the last

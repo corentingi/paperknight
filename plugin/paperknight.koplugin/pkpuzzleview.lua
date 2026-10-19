@@ -574,7 +574,7 @@ function PkPuzzleView:showMenu()
             -- the position shown, on the analysis board (closing it comes back here)
             { text = _("Analyse position"), callback = function()
                 close()
-                require("pkanalysis").show{ fen = self.game.fen(), flipped = self.board and self.board.flipped }
+                self:analyse()
             end },
         },
     }
@@ -607,6 +607,24 @@ function PkPuzzleView:showMenu()
     dialog = ButtonDialog:new{ buttons = buttons }
     self.menu_dialog = dialog
     UIManager:show(dialog)
+end
+
+--- The position shown, on the analysis board, with the puzzle's line in
+-- its move list: from the position before the setup move, the moves played
+-- (once over, the whole line, at the move shown). Closing it comes back here.
+function PkPuzzleView:analyse()
+    local s, opts = self.session, { flipped = self.board and self.board.flipped }
+    if self.puzzle and s then
+        opts.fen = self.puzzle.fen
+        if self.replaying and s.line then
+            opts.moves, opts.pos = s.line, s.pos
+        else
+            opts.moves = self.game.history({ verbose = true })
+        end
+    else
+        opts.fen = self.game.fen()
+    end
+    return require("pkanalysis").show(opts)
 end
 
 ---------------------------------------------------------------------------
