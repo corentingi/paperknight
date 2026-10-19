@@ -60,9 +60,12 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
   the next move (main move first, then variations). Tapping on the board a
   move that exists as a child follows it; other moves are refused.
   Buttons that can't act are greyed (⏮ ◀ at the start, ⏭ at the end of the
-  line, *Lines* without alternatives). At the end of a line (or in a chapter
-  without moves), ▶ opens the next chapter, announced in the panel; leaving
-  a chapter with moves this way marks it as done.
+  line, *Lines* without alternatives). At the end of a variation, ▶ goes
+  back to the main line, at the move the variation branched from; at the end
+  of the main line, ▶ opens the next chapter. Both are announced in the
+  panel and asked first (a page-turn key pressed once too often does not
+  leave the line); a chapter without moves opens the next one directly.
+  Leaving a chapter with moves this way marks it as done.
 - **Opening name** ("C50 Italian Game", Lichess's CC0 list) under the move
   in the panel: the name of the position shown, or of the last named one
   before it.

@@ -2,6 +2,7 @@
 -- Tree logic lives in pkstudy.lua; this file only displays and dispatches.
 local ButtonDialog = require("ui/widget/buttondialog")
 local ButtonTable = require("ui/widget/buttontable")
+local ConfirmBox = require("ui/widget/confirmbox")
 local Device = require("device")
 local Geometry = require("ui/geometry")
 local InputContainer = require("ui/widget/container/inputcontainer")
@@ -282,10 +283,15 @@ function PkStudyView:_panelText()
     parts[#parts + 1] = PkOpeningNames.forNode(node) -- "C50 Italian Game", if known
     local children = node.children
     if #children == 0 then
-        local text = (node == self.cursor.root) and _("(no moves)") or _("— End of line —")
-        local next_chapter = self.study.chapters[self.chapter_index + 1]
-        if next_chapter then
-            text = text .. "\n" .. T(_("› Next chapter: %1"), next_chapter.title)
+        local text
+        if self.cursor:mainlineExit() then
+            text = _("— End of the variation —") .. "\n" .. _("› Back to the main line")
+        else
+            text = (node == self.cursor.root) and _("(no moves)") or _("— End of line —")
+            local next_chapter = self.study.chapters[self.chapter_index + 1]
+            if next_chapter then
+                text = text .. "\n" .. T(_("› Next chapter: %1"), next_chapter.title)
+            end
         end
         parts[#parts + 1] = text
     elseif #children > 1 then
@@ -344,11 +350,42 @@ end
 
 -- Browse navigation (ignored during a lesson, e.g. from page-turn keys).
 function PkStudyView:_canBrowse() return self.cursor ~= nil and self.lesson == nil end
---- One move forward; at the end of a line, the next chapter.
+--- One move forward. At the end of a variation, back to the main line; at
+-- the end of the main line, the next chapter: both after a confirmation
+-- (a page-turn key pressed once too often must not leave the line).
 function PkStudyView:forward(i)
     if not self:_canBrowse() then return end
-    if #self.cursor.node.children == 0 then return self:nextChapter() end
-    self:_show(self.cursor:forward(i))
+    if #self.cursor.node.children > 0 then return self:_show(self.cursor:forward(i)) end
+    local exit = self.cursor:mainlineExit()
+    if exit then
+        local where = exit == self.cursor.root and _("the start of the chapter")
+            or T(_("after %1"), PkStudy.moveLabel(exit, false))
+        return self:_confirm(T(_("End of the variation.\nBack to the main line, %1?"), where),
+            _("Main line"), function() self:toMainline() end)
+    end
+    local next_chapter = self.study.chapters[self.chapter_index + 1]
+    if not next_chapter then return end
+    if #self.cursor.root.children == 0 then return self:nextChapter() end -- nothing to leave
+    self:_confirm(T(_("End of the chapter.\nOpen the next one, %1?"), next_chapter.title),
+        _("Next chapter"), function() self:nextChapter() end)
+end
+
+-- A confirmation dialog (kept in self.confirm_box for the tests).
+function PkStudyView:_confirm(text, ok_text, callback)
+    self.confirm_box = ConfirmBox:new{
+        text = text,
+        ok_text = ok_text,
+        ok_callback = function() self.confirm_box = nil; callback() end,
+        cancel_callback = function() self.confirm_box = nil end,
+    }
+    UIManager:show(self.confirm_box)
+end
+
+--- From a variation: back to the main-line position it branched from.
+function PkStudyView:toMainline()
+    local exit = self:_canBrowse() and self.cursor:mainlineExit()
+    if not exit then return end
+    if self.cursor:jump(exit) then self:refresh(nil, true) end
 end
 
 --- From the end of a line: marks this chapter done (if it has moves and
@@ -372,7 +409,8 @@ function PkStudyView:_updateBrowseButtons()
     b:getButtonById("start"):enableDisable(not at_start)
     b:getButtonById("back"):enableDisable(not at_start)
     b:getButtonById("end"):enableDisable(not at_end)
-    b:getButtonById("forward"):enableDisable(not at_end or self.chapter_index < #self.study.chapters)
+    b:getButtonById("forward"):enableDisable(not at_end or self.chapter_index < #self.study.chapters
+        or self.cursor:mainlineExit() ~= nil)
     b:getButtonById("lines"):enableDisable(#node.children > 1)
 end
 function PkStudyView:back() if self:_canBrowse() and self.cursor:back() then self:refresh() end end

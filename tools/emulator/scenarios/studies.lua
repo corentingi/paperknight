@@ -125,6 +125,28 @@ return function(h)
     h.check(not view.cursor:onMainline(), "off the main line")
     tapButton("back")
     h.check(panel():find("^2%.%.%. Nc6"), "back to the branch")
+    -- the end of a variation: › goes back to the main line, after asking
+    view:forward(2)
+    view:toEnd()
+    h.settle()
+    local function enabledB(id) return view.browse_buttons:getButtonById(id).enabled end
+    h.check(panel():find("^4%. Ba4") and panel():find("› Back to the main line", 1, true),
+        "end of a variation announced: " .. panel())
+    h.check(enabledB("forward"), "› enabled at the end of a variation")
+    tapButton("forward")
+    h.settle()
+    local box = view.confirm_box
+    h.check(box and box.text:find("Back to the main line, after 2... Nc6?", 1, true),
+        "› asks first: " .. tostring(box and box.text))
+    h.shot("study-variation-end")
+    h.tapWidget(h.findButton(box, "Cancel"))
+    h.settle()
+    h.check(view.confirm_box == nil and panel():find("^4%. Ba4"), "cancel: still at the end of the variation")
+    tapButton("forward")
+    h.settle()
+    h.tapWidget(h.findButton(view.confirm_box, "Main line"))
+    h.settle()
+    h.check(view.cursor:onMainline() and panel():find("^2%.%.%. Nc6"), "back on the main line, at the branch: " .. panel())
 
     tapButton("end")
     h.check(panel():find("^8%.%.%. d5"), "end of main line: " .. panel())
@@ -149,6 +171,11 @@ return function(h)
     local PkDone = require("pkdone")
     view.progress:setSetting("chapter_done:study.pgn#1", nil)
     tapButton("forward")
+    h.settle()
+    h.check(view.chapter_index == 1 and view.confirm_box
+        and view.confirm_box.text:find("Open the next one, Mate in two?", 1, true), "› asks before the next chapter")
+    h.tapWidget(h.findButton(view.confirm_box, "Next chapter"))
+    h.settle()
     h.check(view.chapter_index == 2, "› at the end of a line: next chapter (" .. view.chapter_index .. ")")
     h.check(PkDone.isChapterDone(view.progress, "study.pgn", 1), "the chapter left is marked done")
     view:loadChapter(4) -- a chapter without moves (intro): › is the way on

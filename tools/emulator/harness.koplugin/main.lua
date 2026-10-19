@@ -133,6 +133,24 @@ function Harness:helpers(co)
         h.tap(d.x + math.floor(d.w / 2), d.y + math.floor(d.h / 2))
     end
 
+    -- The first button under `widget` (a dialog...) whose text contains
+    -- `text`: a widget with a text, a callback and a place on screen.
+    function h.findButton(widget, text)
+        local seen = {}
+        local function walk(w)
+            if type(w) ~= "table" or seen[w] then return nil end
+            seen[w] = true
+            if type(w.text) == "string" and w.callback and w.dimen and w.text:find(text, 1, true) then return w end
+            for k, v in pairs(w) do
+                if type(v) == "table" and k ~= "show_parent" and k ~= "parent" then
+                    local found = walk(v)
+                    if found then return found end
+                end
+            end
+        end
+        return walk(widget)
+    end
+
     function h.shot(name)
         UIManager:forceRePaint()
         local path = shots_dir .. "/" .. name .. ".png"

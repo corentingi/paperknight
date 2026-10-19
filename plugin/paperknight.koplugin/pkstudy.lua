@@ -238,6 +238,19 @@ function Cursor:onMainline(node)
     return true
 end
 
+--- Where a variation leaves the chapter's main line: the main-line node it
+-- branches from (for a nested variation, the outermost one's), or nil when
+-- `node` (default: the current one) is on the main line.
+function Cursor:mainlineExit(node)
+    node = node or self.node
+    local exit
+    while node.parent do
+        if node.parent.children[1] ~= node then exit = node.parent end
+        node = node.parent
+    end
+    return exit
+end
+
 --- The move mark of a node ("!!", "?"…: NAGs $1-$6) for the board badge, or nil.
 function PkStudy.moveMark(node)
     for _, nag in ipairs(node and node.glyphs or {}) do
