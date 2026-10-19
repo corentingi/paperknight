@@ -99,5 +99,13 @@ committed; read it too when present).
   update `docs/` with behaviour changes.
 - Routine for a change: implement, quick review of the diff, `make check`
   green, commit.
+- Commit messages follow [Conventional Commits](https://www.conventionalcommits.org):
+  `type(scope): summary`, lowercase type, summary without a final period.
+  Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`,
+  `chore`. Scope optional, the area touched: `puzzles`, `studies`,
+  `openings`, `analysis`, `play`, `board`, `movelist`, `nav`, `eink`,
+  `engine`, `pgn`, `pipeline`, `dist`, `stockfish`, `adr`, `claude`…
+  A breaking change gets `!` after the type/scope (`feat(studies)!: …`) and
+  a `BREAKING CHANGE:` footer.
 - A new e2e check must fail without the fix: revert the fix once and run it
   (mutation check).
