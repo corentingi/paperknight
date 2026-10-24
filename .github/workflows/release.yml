@@ -30,14 +30,14 @@ jobs:
       PAPERKNIGHT_UPDATE_URL: https://github.com/${{ github.repository }}/releases/latest/download/install.sh
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Cache the desktop KOReader
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: build/koreader
           key: koreader-${{ hashFiles('Makefile') }}
@@ -48,7 +48,7 @@ jobs:
       - name: Cache the Lichess puzzle database (monthly)
         id: month
         run: echo "month=$(date +%Y-%m)" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: build/downloads
           key: lichess-puzzles-${{ steps.month.outputs.month }}
@@ -65,8 +65,16 @@ jobs:
           fi
           rm -f build/sf/*.tar.gz
           ls build/sf
+      - name: Release notes (git-cliff, from the venv of make check)
+        run: |
+          # a dry run: what the next tag would hold
+          case "$GITHUB_REF" in refs/tags/*) range=--latest ;; *) range=--unreleased ;; esac
+          mkdir -p build/dist
+          tools/dist/release-notes.sh "$range" > build/dist/notes.md
+          cat build/dist/notes.md
       - name: Build the release files
         env:
+          PAPERKNIGHT_NOTES: build/dist/notes.md
           SF_DIR: build/sf
           PK_STAGE: build/dist/release
           PAPERKNIGHT_STOCKFISH_URL: https://github.com/${{ github.repository }}/releases/download/${{ env.STOCKFISH_RELEASE }}
@@ -74,7 +82,7 @@ jobs:
           export PAPERKNIGHT_STOCKFISH_VERSION="${STOCKFISH_RELEASE#stockfish-}"
           tools/dist/stage-release.sh
           tools/dist/build-dist.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: paperknight-${{ github.ref_name }}
           path: build/dist/out/
@@ -82,12 +90,21 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           repo="https://github.com/$GITHUB_REPOSITORY"
-          cat > notes.md <<NOTES
+          previous=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          cat build/dist/notes.md > notes.md
+          if [ -n "$previous" ]; then
+            printf '\n[All changes since %s](%s/compare/%s...%s)\n' "$previous" "$repo" "$previous" "$GITHUB_REF_NAME" >> notes.md
+          fi
+          cat >> notes.md <<NOTES
+
+          ### Install
           Install or update on the Kindle (kterm or SSH):
 
               curl -fkL $repo/releases/latest/download/install.sh | sh
 
+          Or, from Paperknight v0.3.0 on, in the app: *Settings… → Check for updates…*.
+
           Without a terminal: unzip \`paperknight-$GITHUB_REF_NAME-usb.zip\` and copy its \`koreader\` folder onto the Kindle over USB. Stockfish (GPLv3) comes from [$STOCKFISH_RELEASE]($repo/releases/tag/$STOCKFISH_RELEASE), with its source.
           NOTES
           gh release create "$GITHUB_REF_NAME" --title "Paperknight $GITHUB_REF_NAME" \
-            --notes-file notes.md --generate-notes --latest build/dist/out/*
+            --notes-file notes.md --latest build/dist/out/*

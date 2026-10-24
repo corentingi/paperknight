@@ -10,6 +10,7 @@ local _ = require("gettext")
 local PkUpdate = {
     DEFAULT_URL = "https://github.com/corentingi/paperknight/releases/latest/download/install.sh",
     POLL_SECONDS = 0.5,
+    NOTES_MAX_LINES = 10, -- in the update dialog (it does not scroll)
     -- tests: where to look for updates and the koreader folder
     url_override = nil,
     koreader_dir_override = nil,
@@ -90,6 +91,23 @@ end
 --- The release version written in an installer (VERSION='v0.2.0').
 function PkUpdate.parseVersion(script)
     return (script or ""):match("\nVERSION='([^'\n]*)'")
+end
+
+--- The release notes written in an installer (NOTES='...', plain text
+-- without '), at most `max_lines` lines (then "…"); nil if none.
+function PkUpdate.parseNotes(script, max_lines)
+    local notes = (script or ""):match("\nNOTES='([^']*)'")
+    if not notes then return nil end
+    local lines = {}
+    for line in notes:gmatch("[^\n]+") do
+        if line:find("%S") then lines[#lines + 1] = line end
+    end
+    if #lines == 0 then return nil end
+    if max_lines and #lines > max_lines then
+        lines[max_lines] = "…"
+        for i = #lines, max_lines + 1, -1 do lines[i] = nil end
+    end
+    return table.concat(lines, "\n")
 end
 
 --- What to offer: `changes`, the installed parts with another version and
@@ -221,8 +239,9 @@ function PkUpdate.apply(parts, release)
     end)
 end
 
---- The installer's answer: up to date, or what it would change.
-function PkUpdate.offer(parts, release)
+--- The installer's answer: up to date, or what it would change (with the
+-- release notes when the plugin changes).
+function PkUpdate.offer(parts, release, notes)
     local ConfirmBox = require("ui/widget/confirmbox")
     local changes, stockfish = PkUpdate.plan(parts)
     if #changes == 0 and not stockfish then
@@ -234,6 +253,9 @@ function PkUpdate.offer(parts, release)
     local text, ok_text, other
     if #changes > 0 then
         text = T(_("Updates available (Paperknight %1):"), release or "?") .. "\n\n" .. table.concat(lines, "\n")
+        if notes and changes[1].part == "plugin" then
+            text = text .. "\n\n" .. T(_("What's new in %1:"), release or "?") .. "\n" .. notes
+        end
         ok_text = _("Update")
         if stockfish then
             local with = { stockfish }
@@ -269,7 +291,9 @@ function PkUpdate.fetchAndCheck()
             info(_("Could not check for updates.") .. "\n" .. lastLine(output))
             return
         end
-        PkUpdate.offer(PkUpdate.parseList(output), PkUpdate.parseVersion(readFile(file)))
+        local script = readFile(file)
+        PkUpdate.offer(PkUpdate.parseList(output), PkUpdate.parseVersion(script),
+            PkUpdate.parseNotes(script, PkUpdate.NOTES_MAX_LINES))
     end)
 end
 

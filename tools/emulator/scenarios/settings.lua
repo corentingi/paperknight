@@ -48,6 +48,10 @@ return function(h)
     os.execute("mkdir -p '" .. k .. "'")
     write(root .. "/install.sh", [[#!/bin/sh
 VERSION='v9.9.9'
+NOTES='
+New:
+• Studies: Something new
+'
 case "$*" in
     *--list*)
         if [ -f "$KOREADER_DIR/uptodate" ]; then
@@ -90,6 +94,7 @@ esac
     h.check(box.text:find("Updates available (Paperknight v9.9.9):", 1, true), "release named: " .. box.text)
     h.check(box.text:find("Paperknight: v1 → v9.9.9 (2 KB)", 1, true), "plugin change listed")
     h.check(not box.text:find("Puzzle pack", 1, true), "the pack up to date: not listed")
+    h.check(box.text:find("What's new in v9.9.9:\nNew:\n• Studies: Something new", 1, true), "release notes")
     h.check(h.findButton(box, "Update and install Stockfish (1 MB)"), "Stockfish offered apart")
     h.shot("settings-update")
     h.tapWidget(exactButton(box, "Update"))

@@ -31,6 +31,14 @@ return {
         t.eq(PkUpdate.parseVersion("#!/bin/sh\nPARTS='\nplugin|v2|f|s|1\n'\nVERSION='v0.2.0'\nDIST_URL='x'\n"), "v0.2.0")
         t.eq(PkUpdate.parseVersion("<html>Not found</html>"), nil)
     end },
+    { "the release notes in an installer", function(t)
+        local script = "VERSION='v2'\n# what changed\nNOTES='\nNew:\n• Puzzles: It’s new\n\nFixed:\n• A fix\n'\nDIST_URL='x'\n"
+        t.eq(PkUpdate.parseNotes(script), "New:\n• Puzzles: It’s new\nFixed:\n• A fix")
+        t.eq(PkUpdate.parseNotes(script, 3), "New:\n• Puzzles: It’s new\n…", "cut")
+        t.eq(PkUpdate.parseNotes(script, 4), "New:\n• Puzzles: It’s new\nFixed:\n• A fix", "fits")
+        t.eq(PkUpdate.parseNotes("VERSION='v1'\nNOTES='\n\n'\n"), nil, "a release without notes")
+        t.eq(PkUpdate.parseNotes("VERSION='v1'\n"), nil, "an older installer")
+    end },
     { "the koreader folder and shell quoting", function(t)
         t.eq(PkUpdate.koreaderDir("/mnt/us/koreader/plugins/paperknight.koplugin"), "/mnt/us/koreader")
         t.eq(PkUpdate.quote("it's here"), [['it'\''s here']])

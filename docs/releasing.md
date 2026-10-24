@@ -76,6 +76,19 @@ under busybox against releases built from a fake stage, served as
 corrupted download, a dry run, an install made by `pka.sh`, the USB zip,
 `--list` and `--parts`.
 
+## Release notes
+
+`tools/dist/release-notes.sh` (`make notes` for the changes not released
+yet) writes them from the commits with [git-cliff](https://git-cliff.org)
+(`cliff.toml`, `pip install git-cliff`): the `feat`, `fix` and `perf`
+commits since the previous `v*` tag, grouped as *New*, *Fixed*, *Faster*,
+each under its area (the scope: `dist` reads *Install and updates*). The
+other types (docs, ci, refactor…) are left out. `release.yml` puts them at
+the top of the GitHub release, with a link to the full comparison, and
+`build-dist.sh` bakes them as plain text into `install.sh`
+(`PAPERKNIGHT_NOTES`): the installer prints them before *Go?* when the
+plugin changes, and the in-app update shows their first lines.
+
 ## A plugin release
 
 Publish the Stockfish release first (the plugin release downloads its

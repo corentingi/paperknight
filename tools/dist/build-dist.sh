@@ -17,6 +17,9 @@
 # PAPERKNIGHT_DIST_URL: where these files are served from (required).
 # PAPERKNIGHT_UPDATE_URL: where the plugin looks for updates, written into
 #   update-url.txt (default: install.sh in PAPERKNIGHT_DIST_URL).
+# PAPERKNIGHT_NOTES: a Markdown file of release notes (release-notes.sh),
+#   baked into install.sh as plain text: the installer and the in-app
+#   update show it (default: none).
 # PK_OUT: the output folder (default build/dist/out).
 # PAPERKNIGHT_VERSION: the plugin's version (default: git describe).
 # Stockfish: the stockfish-<platform>.gz in SF_DIR (default
@@ -106,9 +109,16 @@ for gz in "$SF_DIR"/stockfish-*.gz; do
     add_part "stockfish-$platform" "${PAPERKNIGHT_STOCKFISH_VERSION:-$(sha "$gz" | cut -c1-8)}" "$where" "$gz"
 done
 
-# the installer
-awk -v parts="$(printf '%s' "$PARTS")" -v version="$VERSION" -v url="$DIST_URL" '
+# the installer, with the release notes as plain text ("New:", "• Area:
+# change"; no ' in the shell string)
+NOTES=
+if [ -n "${PAPERKNIGHT_NOTES:-}" ]; then
+    # (awk -v reads backslash escapes: doubled)
+    NOTES="$(sed -e '/^[[:space:]]*$/d' -e 's/\\/\\\\/g' -e 's/^### \(.*\)/\1:/' -e 's/^- /• /' -e 's/\*\*//g' -e "s/'/’/g" "$PAPERKNIGHT_NOTES")"
+fi
+awk -v parts="$(printf '%s' "$PARTS")" -v notes="$NOTES" -v version="$VERSION" -v url="$DIST_URL" '
     $0 == "@PARTS@" { print parts; next }
+    $0 == "@NOTES@" { if (notes != "") print notes; next }
     { gsub(/@VERSION@/, version); gsub(/@DIST_URL@/, url); print }
 ' tools/dist/install.sh > "$OUT/install.sh"
 

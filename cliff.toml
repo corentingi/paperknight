@@ -1,0 +1,39 @@
+# Release notes from the Conventional Commits (git-cliff,
+# tools/dist/release-notes.sh): the changes a user sees, grouped by type.
+# docs/releasing.md.
+
+[changelog]
+header = ""
+body = """
+{%- macro area(scope) -%}
+{%- if scope == "puzzles" %}Puzzles{% elif scope == "studies" %}Studies\
+{% elif scope == "openings" %}Openings{% elif scope == "analysis" %}Analysis board\
+{% elif scope == "play" %}Play{% elif scope == "board" %}Board{% elif scope == "movelist" %}Move list\
+{% elif scope == "nav" %}Navigation{% elif scope == "eink" %}Screen{% elif scope == "engine" %}Engine\
+{% elif scope == "pgn" %}PGN{% elif scope == "dist" %}Install and updates{% elif scope == "stockfish" %}Stockfish\
+{% else %}{{ scope | upper_first }}{% endif -%}
+{%- endmacro area -%}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ self::area(scope=commit.scope) }}**: {% endif %}{{ commit.message | upper_first }}\
+{% endfor %}
+{% endfor %}
+"""
+footer = ""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+# plugin releases only (not stockfish-* tags)
+tag_pattern = "v[0-9].*"
+commit_parsers = [
+    { message = "^feat", group = "<!-- 0 -->New" },
+    { message = "^fix", group = "<!-- 1 -->Fixed" },
+    { message = "^perf", group = "<!-- 2 -->Faster" },
+    { message = ".*", skip = true },
+]
+filter_commits = false
+sort_commits = "oldest"

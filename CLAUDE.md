@@ -24,6 +24,9 @@ committed; read it too when present).
   rebuilt). Needs `PAPERKNIGHT_DIST_URL` (`local.mk`, not committed, or the
   environment). On the Kindle `curl -fkL <url>/install.sh | sh`: it
   downloads only the parts whose version changed. docs/releasing.md.
+- `make notes` — the next release's notes (git-cliff, `cliff.toml`: feat,
+  fix and perf commits, by scope): commit subjects are what users read in
+  the release and the in-app update, so write them for users.
 - `make test-dist` — installer tests (`tools/dist/test-install.sh`, under
   busybox when installed); part of `make test`.
 - Stockfish for the Kindle: `tools/dist/build-stockfish.sh`

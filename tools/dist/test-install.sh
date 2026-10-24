@@ -52,14 +52,24 @@ EOF
 }
 mkdir -p "$T/sf"
 printf '#!/bin/sh\necho "Stockfish (test)"\n' | gzip -c > "$T/sf/stockfish-pw2.gz"
-release() { # name, version, stage
-    PK_STAGE="$3" PK_OUT="$T/$1" SF_DIR="$T/sf" PAPERKNIGHT_VERSION="$2" \
+release() { # name, version, stage, release notes (Markdown file, optional)
+    PK_STAGE="$3" PK_OUT="$T/$1" SF_DIR="$T/sf" PAPERKNIGHT_VERSION="$2" PAPERKNIGHT_NOTES="${4:-}" \
         PAPERKNIGHT_DIST_URL="file://$T/$1" sh tools/dist/build-dist.sh > "$T/$1.build.log"
 }
+cat > "$T/notes.md" <<'EOF'
+
+### New
+
+- **Puzzles**: It's new, with a \ and $HOME
+
+### Fixed
+
+- **Studies**: A fix
+EOF
 stage "$T/stage1" 2026-01-01 "studies/A.pgn" "studies/Cat/C.pgn" "repertoires/W.pgn"
 stage "$T/stage2" 2026-01-01 "studies/B.pgn" "repertoires/W.pgn"
 release r1 v1 "$T/stage1"
-release r2 v2 "$T/stage2"
+release r2 v2 "$T/stage2" "$T/notes.md"
 
 run() { # koreader folder, release, installer arguments... (answers on $ANSWERS)
     local k=$1 r=$2
@@ -97,11 +107,20 @@ check "Stockfish record" has "$K/paperknight/.parts/stockfish" "$P/bin/stockfish
 echo "third run: nothing to do"
 run "$K" r1 --yes || no "installer exit status"
 check "everything up to date" has "$T/out.log" "Everything is up to date."
+check "no release notes in r1: none shown" bash -c "! grep -q \"What's new\" '$T/out.log'"
 
 echo "update to r2, with a study of your own"
 echo mine > "$K/paperknight/studies/Mine.pgn"
 run "$K" r2 -y || no "installer exit status"
 check "plugin updated" has "$K/$P/version.txt" v2
+cat > "$T/notes.expected" <<'EOF'
+What's new in v2:
+New:
+• Puzzles: It’s new, with a \ and $HOME
+Fixed:
+• Studies: A fix
+EOF
+check "release notes shown" bash -c "grep -A4 \"^What's new in v2:\" '$T/out.log' | diff - '$T/notes.expected'"
 check "same pack: not downloaded" bash -c "! grep -q 'Downloading paperknight-puzzles' '$T/out.log'"
 check "pack kept through the plugin swap" test -f "$K/$P/packs/puzzles.sqlite"
 check "Stockfish kept through the plugin swap" test -x "$K/$P/bin/stockfish"

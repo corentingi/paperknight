@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest==9.1.1"]
+dev = ["pytest==9.1.1", "git-cliff==2.14.2"]  # git-cliff: release notes (make notes)
 
 [project.scripts]
 paperknight-pipeline = "paperknight_pipeline.cli:main"

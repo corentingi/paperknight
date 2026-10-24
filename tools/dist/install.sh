@@ -30,6 +30,10 @@ PARTS='
 @PARTS@
 '
 VERSION='@VERSION@'
+# what changed in this release (plain text, from its release notes)
+NOTES='
+@NOTES@
+'
 DIST_URL='@DIST_URL@'
 
 PLUGIN=plugins/paperknight.koplugin
@@ -327,6 +331,13 @@ main() {
         say "Dry run: nothing changed."
         return 0
     fi
+    case "$SELECTED" in
+        plugin\|*|*"
+plugin|"*)
+            case "$NOTES" in
+                *[![:space:]]*) printf "What's new in %s:%s" "$VERSION" "$NOTES" ;;
+            esac ;;
+    esac
     ask "Go?" y || { say "Nothing changed."; return 0; }
 
     cleanup

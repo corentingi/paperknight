@@ -78,10 +78,13 @@ fixture-packs: venv ## Small deterministic packs for e2e tests (build/packs/fixt
 	$(PIPELINE) puzzles --input pipeline/tests/fixtures/lichess_puzzles_sample.csv \
 		--output $(FIXTURE_PACKS)/puzzles.sqlite --min-popularity -100 --min-plays 0 --max-rating-dev 500
 
-.PHONY: study dist
+.PHONY: study dist notes
 study: venv ## Download a Lichess study: make study ID=<id or URL> (private: LICHESS_TOKEN=...)
 	@test -n "$(ID)" || { echo "usage: make study ID=<study id or URL>"; exit 2; }
 	$(PIPELINE) study "$(ID)"
 
 dist: ## Device files in build/dist/out: install.sh, one archive per part, the USB zip (from the stage build/dist/all)
 	tools/dist/build-dist.sh
+
+notes: venv ## Release notes of the changes since the last tag (git-cliff, cliff.toml)
+	tools/dist/release-notes.sh --unreleased
