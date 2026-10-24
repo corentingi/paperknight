@@ -2,7 +2,8 @@
 --  * the home screen: the modes, with a status line, and screen settings;
 --  * quick settings: a pop-up with frontlight, night mode and the other
 --    modes, from every screen's ☰ menu or a tap on its title;
---  * switching mode closes the Paperknight screens above the home screen.
+--  * switching mode closes the Paperknight screens above the home screen;
+--  * the settings screen (pksettings.lua): screen, updates, Stockfish.
 -- Frontlight and night mode are KOReader's own (its frontlight dialog and
 -- its ToggleNightMode event), so its settings stay the source of truth.
 local ButtonDialog = require("ui/widget/buttondialog")
@@ -127,6 +128,9 @@ function PkNav.quickRows(close, current)
         screen_row[#screen_row + 1] = { text = _("Frontlight…"), callback = function() close(); PkNav.showFrontlight() end }
     end
     screen_row[#screen_row + 1] = { text = nightLabel(), callback = function() close(); PkNav.toggleNightMode() end }
+    if current ~= "settings" then
+        screen_row[#screen_row + 1] = { text = _("Settings…"), callback = function() close(); PkNav.showSettings() end }
+    end
     rows[#rows + 1] = screen_row
     local mode_row = {}
     for _, mode in ipairs(PkNav.modes()) do
@@ -221,6 +225,20 @@ local function puzzlesStatus()
     return status_cache.text
 end
 
+--- The screen settings, as menu items.
+function PkNav.screenItems(items)
+    if PkNav.hasFrontlight() then
+        items[#items + 1] = { text = _("Frontlight…"), callback = PkNav.showFrontlight }
+    end
+    items[#items + 1] = { text = nightLabel(), callback = PkNav.toggleNightMode }
+    return items
+end
+
+--- The settings screen, above the home screen.
+function PkNav.showSettings()
+    return require("pksettings").show()
+end
+
 function PkNav.homeItems()
     local items = {}
     for _, mode in ipairs(PkNav.modes()) do
@@ -231,10 +249,8 @@ function PkNav.homeItems()
         }
     end
     items[#items].separator = true
-    if PkNav.hasFrontlight() then
-        items[#items + 1] = { text = _("Frontlight…"), callback = PkNav.showFrontlight }
-    end
-    items[#items + 1] = { text = nightLabel(), callback = PkNav.toggleNightMode }
+    PkNav.screenItems(items)
+    items[#items + 1] = { text = _("Settings…"), mandatory = require("pkupdate").version(), callback = PkNav.showSettings }
     return items
 end
 
@@ -244,13 +260,14 @@ local function itemsKey(items)
     return table.concat(parts, "|")
 end
 
---- Shows the home screen. Its items follow the state (rating, reviews due,
--- night mode): a repaint (e.g. back from a mode) rebuilds them if changed.
-function PkNav.showHome()
-    local items = PkNav.homeItems()
+--- A full-screen menu (a Paperknight screen) whose items follow the state
+-- (rating, reviews due, night mode...): `items()` builds them, and a
+-- repaint (e.g. back from a mode) rebuilds the menu if they changed.
+function PkNav.liveMenu(name, title, items_func)
+    local items = items_func()
     local menu = Menu:new{
-        name = HOME,
-        title = _("Paperknight"),
+        name = name,
+        title = title,
         item_table = items,
         covers_fullscreen = true,
         is_borderless = true,
@@ -258,13 +275,11 @@ function PkNav.showHome()
         width = Screen:getWidth(),
         height = Screen:getHeight(),
     }
-    -- no ☰: the home screen is itself the general menu (title tap: quick settings)
-    PkNav.tapTitle(menu, function() return menu.title_bar end, "home")
     menu._pk_key = itemsKey(items)
     local paintTo = menu.paintTo
     menu.paintTo = function(m, bb, x, y)
         paintTo(m, bb, x, y)
-        local now = PkNav.homeItems()
+        local now = items_func()
         local key = itemsKey(now)
         if key ~= m._pk_key then
             m._pk_key = key
@@ -272,6 +287,14 @@ function PkNav.showHome()
             UIManager:nextTick(function() m:switchItemTable(nil, now) end)
         end
     end
+    return menu
+end
+
+--- Shows the home screen.
+function PkNav.showHome()
+    local menu = PkNav.liveMenu(HOME, _("Paperknight"), PkNav.homeItems)
+    -- no ☰: the home screen is itself the general menu (title tap: quick settings)
+    PkNav.tapTitle(menu, function() return menu.title_bar end, "home")
     UIManager:show(menu)
     return menu
 end

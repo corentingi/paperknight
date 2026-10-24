@@ -30,6 +30,8 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 | `_meta.lua` | Plugin name and description for KOReader's plugin manager |
 | `main.lua` | The plugin: menu entries, dispatcher action, starting each mode |
 | `pknav.lua` | Home screen, quick settings (frontlight, night mode, modes), switching modes (ADR-0015) |
+| `pksettings.lua` | Settings screen: screen settings, version and updates, Stockfish, project page |
+| `pkupdate.lua` | In-app update: fetches the latest `install.sh`, shows what changed (`--list`), runs it for those parts (ADR-0019) |
 | `pkfonts.lua` | Emoji UI fallback font when Noto Emoji is installed (ADR-0017) |
 
 ### Board and screen widgets

@@ -26,6 +26,8 @@ jobs:
       # what install.sh downloads: this release's assets
       PAPERKNIGHT_DIST_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
       PAPERKNIGHT_VERSION: ${{ github.ref_name }}
+      # where the in-app updater looks for the next release
+      PAPERKNIGHT_UPDATE_URL: https://github.com/${{ github.repository }}/releases/latest/download/install.sh
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4

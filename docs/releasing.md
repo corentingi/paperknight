@@ -53,15 +53,28 @@ version, then the files): an update removes the previous version's files
 (studies you added yourself stay). An install made by the older `pka.sh`
 (`paperknight/.pka-files`) is updated the same way.
 
-Options: `--yes` (the default answers; also when there is no terminal, as
-for a future in-app updater), `--dry-run` (the plan only):
+Options: `--yes` (the default answers; also when there is no terminal),
+`--dry-run` (the plan only), `--parts=plugin,puzzles` (only these parts),
+`--list` (`part|installed|offered|size` per part, nothing changed):
 `curl -fkL …/install.sh | sh -s -- --yes`. Questions are read from
 `/dev/tty`, since the script itself is on stdin.
+
+## The in-app update
+
+*Settings… → Check for updates…* (`pkupdate.lua`, ADR-0019) turns Wi-Fi on,
+downloads the installer named in the plugin's `update-url.txt` (written by
+the build: `PAPERKNIGHT_UPDATE_URL`, the release's `latest/download` URL;
+by default `install.sh` next to the other files) into
+`koreader/paperknight/.update/`, runs it with `--list`, shows what changed,
+then runs it with `--yes --parts=<those>` in the background and offers to
+restart KOReader. Stockfish not yet installed is offered by a button of its
+own. Tested by the `settings` e2e scenario against a fake installer.
 
 `tools/dist/test-install.sh` (`make test-dist`, in `make check`) tests it
 under busybox against releases built from a fake stage, served as
 `file://` URLs: a fresh install, updates, a study of your own kept, a
-corrupted download, a dry run, an install made by `pka.sh`, the USB zip.
+corrupted download, a dry run, an install made by `pka.sh`, the USB zip,
+`--list` and `--parts`.
 
 ## A plugin release
 

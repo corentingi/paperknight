@@ -15,6 +15,8 @@
 #   stage-release.sh fills build/dist/release): fonts/, paperknight/studies
 #   and repertoires, plugins/paperknight.koplugin/packs/puzzles.sqlite.
 # PAPERKNIGHT_DIST_URL: where these files are served from (required).
+# PAPERKNIGHT_UPDATE_URL: where the plugin looks for updates, written into
+#   update-url.txt (default: install.sh in PAPERKNIGHT_DIST_URL).
 # PK_OUT: the output folder (default build/dist/out).
 # PAPERKNIGHT_VERSION: the plugin's version (default: git describe).
 # Stockfish: the stockfish-<platform>.gz in SF_DIR (default
@@ -57,6 +59,7 @@ rsync -a --exclude pkchesslib/spec/ --exclude pkchesslib/perft.lua --exclude pkc
     --exclude .travis.yml --exclude .gitignore --exclude .gitkeep --exclude /bin/ --exclude /packs/ \
     plugin/paperknight.koplugin/ "$WORK/plugin/$PLUGIN/"
 echo "$VERSION" > "$WORK/plugin/$PLUGIN/version.txt"
+echo "${PAPERKNIGHT_UPDATE_URL:-$DIST_URL/install.sh}" > "$WORK/plugin/$PLUGIN/update-url.txt"
 pack "paperknight-plugin-$VERSION.tar.gz" "$WORK/plugin" "$PLUGIN"
 add_part plugin "$VERSION" "paperknight-plugin-$VERSION.tar.gz" "$OUT/paperknight-plugin-$VERSION.tar.gz"
 

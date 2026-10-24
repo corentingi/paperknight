@@ -42,26 +42,11 @@ Order matters: the updater reads what the releases publish.
       `install.sh` (the parts with their versions and sha256), one archive
       per part (plugin, puzzle pack, emoji font), a USB zip; Stockfish in a
       release of its own, offered by the installer
-- [ ] Version shown in the plugin (`version.txt` is written into the
-      package by the build; show it on the home screen)
-- [ ] **In-app updater**: *Update Paperknight* in the title-tap menu
-  1. Turn Wi-Fi on if needed (KOReader's NetworkMgr), read the latest
-     release's `install.sh` parts list, compare with
-     `paperknight/.parts/`; say "up to date" or show what is new.
-  2. Download the parts that changed over HTTPS with KOReader's network
-     library and its CA bundle (no `curl -k`), with a progress message.
-  3. Check their sha256 from the parts list.
-  4. Unpack into a staging folder, then swap the plugin folder by renames,
-     keeping `bin/` (Stockfish) and the packs, as `install.sh` does; the
-     updater loads everything it needs before swapping (the running code
-     stays in memory). (Or run `install.sh --yes` when the device has a
-     shell and curl.)
-  5. Offer to restart KOReader.
-  - Later: Stockfish through the same path.
-  - Tests: an e2e scenario against a local HTTP server (as the pipeline's
-    download tests), including a bad checksum and a cut download.
-  - Stopgap until then: KOReader's terminal emulator, or a `update.sh`
-    run from the file browser, can run `install.sh`.
+- [x] Version shown in the plugin (home screen, *Settings…*)
+- [x] Settings screen: screen settings, version, Stockfish, project page
+- [x] **In-app updater**: *Settings… → Check for updates…* runs the latest
+      release's `install.sh` (`--list`, then `--yes --parts=`), Stockfish
+      installed on request, then offers to restart KOReader (ADR-0019)
 
 ## Later / undecided
 - Strip unused Kochess features (clocks, human-vs-human)

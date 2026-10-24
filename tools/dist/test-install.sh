@@ -75,6 +75,7 @@ printf 'n\ny\n' > "$T/answers"
 ANSWERS="$T/answers" run "$K" r1 || no "installer exit status"
 check "plugin installed" test -f "$K/$P/main.lua"
 check "version.txt" has "$K/$P/version.txt" v1
+check "update-url.txt" has "$K/$P/update-url.txt" "file://$T/r1/install.sh"
 check "puzzle pack" test -f "$K/$P/packs/puzzles.sqlite"
 check "font" test -f "$K/fonts/NotoEmoji.ttf"
 check "studies, in a folder too" test -f "$K/paperknight/studies/Cat/C.pgn"
@@ -163,6 +164,22 @@ K="$T/k6"
 mkdir -p "$K"
 KOREADER_DIR="$K" SF_PLATFORM=kobo PK_TTY=/nonexistent PATH="$T/bb:$PATH" "$SH" "$T/r1/install.sh" -n > "$T/out.log" 2>&1 || no "installer exit status"
 check "said so" has "$T/out.log" "no build for this device"
+
+echo "--list and --parts (the in-app updater)"
+K="$T/k7"
+run "$K" r1 --parts=plugin,fonts -y || no "installer exit status"
+check "listed parts installed" test -f "$K/fonts/NotoEmoji.ttf"
+check "others left out" test ! -e "$K/$P/packs/puzzles.sqlite"
+check "Stockfish left out" test ! -e "$K/$P/bin/stockfish"
+run "$K" r2 --list || no "installer exit status"
+check "list: plugin update" has "$T/out.log" "plugin|v1|v2|"
+check "list: missing pack" has "$T/out.log" "puzzles||2026-01-01|"
+check "list: Stockfish for the device" has "$T/out.log" "stockfish||"
+check "list only" test "$(grep -vc '|' "$T/out.log")" = 0
+check "list changes nothing" has "$K/$P/version.txt" v1
+run "$K" r2 --parts=stockfish -y || no "installer exit status"
+check "only Stockfish installed" test -x "$K/$P/bin/stockfish"
+check "plugin not updated" has "$K/$P/version.txt" v1
 
 if [ "$FAILS" -gt 0 ]; then
     echo "test-install: $FAILS failed (last installer output: $T/out.log)" >&2

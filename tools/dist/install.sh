@@ -4,7 +4,10 @@
 #   curl -fkL <server>/install.sh | sh
 #   curl -fkL <server>/install.sh | sh -s -- --yes      (no questions)
 # Options: -y/--yes takes the default answers (also when there is no
-# terminal to ask on); -n/--dry-run shows the plan and changes nothing.
+# terminal to ask on); -n/--dry-run shows the plan and changes nothing;
+# --parts=plugin,puzzles,... only these parts; --list prints, for each part
+# offered, `part|installed version|offered version|size` and changes
+# nothing (the in-app updater, pkupdate.lua, reads it).
 # Environment: KOREADER_DIR (default /mnt/us/koreader), SF_PLATFORM (the
 # Stockfish build, default from `uname -m`), PK_TTY (where answers are read,
 # default /dev/tty: under `curl | sh` the script itself is on stdin).
@@ -111,6 +114,13 @@ platform() {
     esac
 }
 
+wanted() { # part: true if in --parts (or no --parts)
+    case ",${ONLY:-$1}," in
+        *",$1,"*) return 0 ;;
+    esac
+    return 1
+}
+
 # decides what to install, in PARTS' order; prints the plan
 plan() {
     SELECTED=
@@ -126,7 +136,12 @@ plan() {
                 part=stockfish ;;
             *) part=$name ;;
         esac
+        wanted "$part" || continue
         have=$(installed_version "$part")
+        if [ "$LIST" = 1 ]; then
+            echo "$part|$have|$version|$size"
+            continue
+        fi
         what="$(label "$part")"
         if [ "$have" = "$version" ]; then
             printf '  %-12s %s\n' "$what" "up to date ($version)"
@@ -152,7 +167,7 @@ plan() {
     done <<EOF
 $PARTS
 EOF
-    if [ -n "$sf_any" ] && [ -z "$sf_offered" ]; then
+    if [ -n "$sf_any" ] && [ -z "$sf_offered" ] && [ "$LIST" = 0 ] && wanted stockfish; then
         printf '  %-12s %s\n' "Stockfish" "no build for this device ($(uname -m))"
     fi
     return 0
@@ -270,14 +285,18 @@ main() {
     set -e
     YES=0
     DRY=0
+    LIST=0
+    ONLY=
     for arg in "$@"; do
         case "$arg" in
             -y|--yes) YES=1 ;;
             -n|--dry-run) DRY=1 ;;
-            *) fail "unknown option: $arg (options: --yes, --dry-run)" ;;
+            --list) LIST=1 ;;
+            --parts=*) ONLY=${arg#--parts=} ;;
+            *) fail "unknown option: $arg (options: --yes, --dry-run, --parts=a,b, --list)" ;;
         esac
     done
-    [ "$DRY" = 1 ] && YES=1 # the plan with the default answers
+    [ "$DRY" = 1 ] || [ "$LIST" = 1 ] && YES=1 # the plan with the default answers
     KOREADER_DIR=${KOREADER_DIR:-/mnt/us/koreader}
     PK_TTY=${PK_TTY:-/dev/tty}
     # answers are read on fd 3; no terminal to ask on (run by a script):
@@ -293,6 +312,10 @@ main() {
 
     [ -d "$KOREADER_DIR" ] || fail "KOReader not found in $KOREADER_DIR (set KOREADER_DIR)."
     cd "$KOREADER_DIR"
+    if [ "$LIST" = 1 ]; then
+        plan
+        return 0
+    fi
     say "Paperknight $VERSION"
     say "KOReader: $KOREADER_DIR"
     plan

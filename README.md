@@ -54,14 +54,17 @@ The installer shows what it will install (the plugin, the puzzle pack, an
 emoji font) and offers **Stockfish**, the engine behind the analysis board
 and *Play against the engine* (Stockfish 18 built for the Paperwhite 2,
 about 3 MB, [details](docs/stockfish.md)). It checks every download before
-changing anything. Run it again to update: it downloads only what changed,
-and your own studies and repertoires are kept. Then restart KOReader:
+changing anything. Your own studies and repertoires are kept. Then restart KOReader:
 **Paperknight** is in the **Tools** menu (KOReader's gesture settings can
 also open it with one tap, *Paperknight* action).
 
 Without a terminal: download `paperknight-<version>-usb.zip` from the
 [latest release](https://github.com/corentingi/paperknight/releases/latest),
 unzip it and copy its `koreader` folder onto the Kindle over USB.
+
+To update: **Settings… → Check for updates…** in Paperknight (Wi-Fi on). It
+lists what changed, downloads only that, and offers to restart KOReader. It
+runs the same installer, which you can also run again from a terminal.
 
 **Your own studies and repertoires**: copy PGN files (for example a Lichess
 study exported as PGN) to `koreader/paperknight/studies/` or
