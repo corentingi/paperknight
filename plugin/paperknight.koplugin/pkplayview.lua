@@ -61,7 +61,9 @@ function PkPlayView:init()
     -- (the subtitle's discs follow at the next move or clock tick)
     PkSide.followNight(self, function(v) if v.raw_text then v:_setText(PkSide.swap(v.raw_text)) end end)
     self.has_engine = PkEngine.installed(self.engine_path)
-    self.list_shown = PkPlayView._setting("play.movelist") ~= "0"
+    -- the board takes the whole width, as in puzzles: the moves in the
+    -- panel; the move list beside the board on request (☰, remembered)
+    self.list_shown = PkPlayView._setting("play.movelist") == "1"
     self.title_bar = TitleBar:new{
         fullscreen = true,
         title = _("Play"),
@@ -81,8 +83,10 @@ function PkPlayView:init()
         }},
         zero_sep = true,
     }
+    -- the board as large as the screen allows, the panel three lines below it
     local free_h = self.dimen.h - self.title_bar:getHeight() - self.buttons:getSize().h
-    self.board_size = math.min(self.dimen.w, math.floor(free_h * 0.7))
+    local panel_min = Screen:scaleBySize(80)
+    self.board_size = math.min(self.dimen.w, free_h - panel_min - 3 * Size.padding.default)
     self.text_h = free_h - self.board_size - 3 * Size.padding.default
     local saved, times = PkPlay.restore(PkPlayView._setting("play.current"), { engine = self.has_engine })
     self.resumed = saved ~= nil
@@ -111,7 +115,7 @@ function PkPlayView:startGame(play, times)
         if times then self.timer.time = { w = times.w, b = times.b } end
         self.timer.currentPlayer = play:turn()
     end
-    self.rotate_black = not play:vsEngine() and play.settings.face
+    self.face_to_face = not play:vsEngine() and play.settings.face
     local flipped = play:vsEngine() and play.user_side == "b"
     self:_build(flipped)
     if play:vsEngine() then self:_prepareEngine(true) end
@@ -290,21 +294,27 @@ function PkPlayView:_setSubtitle()
     PkRefresh.setSubTitle(self, self:_subtitle())
 end
 
--- "1. e4 e5 2. Nf3": the game in the panel when the move list is hidden.
+local LINE_PLIES = 12 -- the last moves in the panel
+
+-- "… 11. Nf3 Nc6 12. Bb5": the last moves in the panel when the move list
+-- is hidden.
 function PkPlayView:_lineText()
     local sans = self.game.history()
     if #sans == 0 then return nil end
     local fields = {}
     for f in self.play.start_fen:gmatch("%S+") do fields[#fields + 1] = f end
     local number, white = tonumber(fields[6]) or 1, fields[2] ~= "b"
-    local parts = {}
+    local first = math.max(1, #sans - LINE_PLIES + 1)
+    local parts = first > 1 and { "…" } or {}
     for i, san in ipairs(sans) do
-        if white then
-            parts[#parts + 1] = number .. ". " .. san
-        elseif i == 1 then
-            parts[#parts + 1] = number .. "… " .. san
-        else
-            parts[#parts + 1] = san
+        if i >= first then
+            if white then
+                parts[#parts + 1] = number .. ". " .. san
+            elseif i == first then
+                parts[#parts + 1] = number .. "… " .. san
+            else
+                parts[#parts + 1] = san
+            end
         end
         if not white then number = number + 1 end
         white = not white
@@ -344,12 +354,13 @@ function PkPlayView:refresh(page)
             fens[#fens + 1] = probe.fen()
         end
     end
-    local opening = PkOpeningNames.latest(fens)
-    if opening then lines[#lines + 1] = opening end
+    -- the last moves (unless the list shows them), then the opening
     if not self.movelist then
         local line = self:_lineText()
-        if line then lines[#lines + 1] = "\n" .. line end
+        if line then lines[#lines + 1] = line end
     end
+    local opening = PkOpeningNames.latest(fens)
+    if opening then lines[#lines + 1] = opening end
     self:_setText(table.concat(lines, "\n"))
     local sans = {}
     for i, m in ipairs(history) do sans[i] = m.san end

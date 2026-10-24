@@ -35,9 +35,9 @@ function PkBoardScreen:_buildScreen(flipped)
     -- the width); the panel below gets the height it no longer uses
     local size = with_list and math.min(math.floor(self.dimen.w * 0.78), self.board_size) or self.board_size
     self.text_extra_h = self.board_size - size
-    local rotate_black = self.rotate_black == true -- Play, face to face
+    local face_to_face = self.face_to_face == true -- Play, two players
     if not self.board or self.board.flipped ~= flipped or self.board.width_list ~= with_list
-            or self.board.rotate_black ~= rotate_black then
+            or self.board.face_to_face ~= face_to_face then
         if self.board then self.board:free() end
         self.board = ChessBoard:new{
             game = self.game,
@@ -46,7 +46,7 @@ function PkBoardScreen:_buildScreen(flipped)
             width_list = with_list,
             centre_squares = not with_list, -- the list takes the room on the right
             flipped = flipped,
-            rotate_black = rotate_black,
+            face_to_face = face_to_face,
             show_parent = self,
             moveCallback = function(move) self:onBoardMove(move) end,
             onPromotionNeeded = function(from, to, color)

@@ -63,7 +63,7 @@ local Board = FrameContainer:extend{
     holdCallback = nil,
     onPromotionNeeded = nil, -- function(from, to, color): a pawn reaches the last rank (the view asks the piece)
     flipped = false, -- Paperknight: true shows the board from Black's side
-    rotate_black = false, -- Paperknight: Black's pieces upside down (two players face to face)
+    face_to_face = false, -- Paperknight: the pieces of the side at the top upside down (two players across the Kindle)
     locked = false,  -- Paperknight: true ignores taps (e.g. puzzle finished, opponent thinking); set with setLocked
     show_turn = true, -- Paperknight: the corner disc shows the side to move while the board takes moves
     coordinates = true, -- Paperknight: draw a–h / 1–8 around the board
@@ -813,8 +813,10 @@ end
 -- @param piece String, the piece type (e.g., Chess.PAWN, Chess.QUEEN) or nil to clear.
 -- @param color String, the piece color (Chess.WHITE or Chess.BLACK), only required if `piece` is not nil.
 function Board:placePiece(square, piece, color, no_refresh)
-    -- face to face: the Black player, across the Kindle, sees their pieces upright
-    local rotation = (self.rotate_black and piece and color == "b") and 180 or 0
+    -- face to face: the player across the Kindle (the side at the top:
+    -- Black, or White on a flipped board) sees their pieces upright
+    local top = self.flipped and "w" or "b"
+    local rotation = (self.face_to_face and piece and color == top) and 180 or 0
     -- night mode inverts the screen: show the other set, inverted
     if Screen.night_mode and color then color = (color == "w") and "b" or "w" end
     local icon = (piece and icons[piece] and icons[piece][color]) or icons.empty

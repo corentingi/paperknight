@@ -34,8 +34,9 @@ B. Choices made with it:
 - The new game dialog: opponent (Stockfish, two players), your side (White,
   Black, random), Stockfish's strength (1350, 1500, 1800, 2100, 2400 Elo with
   `UCI_LimitStrength`, or full strength; 1 to 5 s per move by level), seats
-  for two players (face to face: Black's pieces drawn upside down, by the
-  board's `rotate_black`), clock (none, 5, 10, 15+10, 30 min). Remembered.
+  for two players (face to face: the pieces of the side at the top drawn
+  upside down, Black's, or White's on a flipped board: the board's
+  `face_to_face`), clock (none, 5, 10, 15+10, 30 min). Remembered.
 - Take back: to the user's last move against Stockfish (its reply too), one
   move between two players; also after the end (the game goes on).
 - Clocks run from a move to the next; a take-back or reopening pauses them
@@ -43,6 +44,8 @@ B. Choices made with it:
 - The game in progress is saved after each move (`play.current`: settings,
   the side drawn, moves, clocks) and comes back when Play opens; a finished
   game is not kept.
+- The board as large as the screen allows, as in puzzles: the last moves
+  in the panel under it, the move list beside the board on request (☰).
 - Games are saved as studies in Studies → Games; Analyse (or a tap in the
   move list) hands the game to the analysis board.
 
