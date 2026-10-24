@@ -53,7 +53,9 @@ EOF
 mkdir -p "$T/sf"
 printf '#!/bin/sh\necho "Stockfish (test)"\n' | gzip -c > "$T/sf/stockfish-pw2.gz"
 release() { # name, version, stage, release notes (Markdown file, optional)
-    PK_STAGE="$3" PK_OUT="$T/$1" SF_DIR="$T/sf" PAPERKNIGHT_VERSION="$2" PAPERKNIGHT_NOTES="${4:-}" \
+    # (not the settings of the release workflow these tests may run in)
+    env -u PAPERKNIGHT_UPDATE_URL -u PAPERKNIGHT_STOCKFISH_URL -u PAPERKNIGHT_STOCKFISH_VERSION \
+        PK_STAGE="$3" PK_OUT="$T/$1" SF_DIR="$T/sf" PAPERKNIGHT_VERSION="$2" PAPERKNIGHT_NOTES="${4:-}" \
         PAPERKNIGHT_DIST_URL="file://$T/$1" sh tools/dist/build-dist.sh > "$T/$1.build.log"
 }
 cat > "$T/notes.md" <<'EOF'
