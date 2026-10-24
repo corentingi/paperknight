@@ -39,7 +39,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 | File | Role |
 |---|---|
 | `pkboard.lua` | Board widget, shared by every mode: squares, pieces, last move (corner triangles), selection, badges, arrows and circles, the side to move (corner disc, shown while the board takes moves); DU4 refreshes of the squares an update changes (ADR-0018) |
-| `pkboardscreen.lua` | Board + text panel + buttons shared by the study view and the openings drill (layout, optional move list beside the board, panel text with links, refreshes, reply timer) |
+| `pkboardscreen.lua` | Board + text panel + buttons shared by the study view, the openings drill and Play (layout, optional move list beside the board, panel text with links, refreshes, reply timer) |
 | `pkbutton.lua` | KOReader's Button for icon buttons given as absolute paths; `no_feedback` (no tap flash) |
 | `pkrefresh.lua` | E-ink refresh policy: steps are `[partial]` (never promoted to a flash), pages a counted `partial`; see [eink-refresh.md](eink-refresh.md) |
 | `pkmovelist.lua` | Move list beside the board (#, White, Black): tap a move to go there; KOReader's scrolling |
@@ -86,10 +86,12 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 | File | Role |
 |---|---|
 | `pkanalysis.lua` | Analysis board: moves for both sides, line stepping, move list (full height, can be hidden), position from a FEN or a line handed over (☰ Analyse position in puzzles and studies: the line that led to the position, and what follows), the position on Lichess (QR code, the FEN under it), flip, save the line as a study (Studies/Analyses); Stockfish evaluation and best line, on/off with the knight button (remembered, like the move list; one search at a time, stopped on close) |
-| `pkgame.lua` | Game screen (from Kochess): against Stockfish when installed, else two players; settings saved; clock and engine stopped on close |
+| `pkplay.lua` | Play logic (ADR-0020): settings (opponent, side, Stockfish's level, face to face, clock), sides, take-back, results, PGN, the game in progress saved and restored |
+| `pkplayview.lua` | Play screen (board, panel, move list, buttons: pkboardscreen.lua): Stockfish's moves (one search at a time, stale answers dropped), clocks, ☰ resign / flip / move list / save as a study (Studies/Games), Analyse (also a tap in the move list), resumed when opened |
+| `pkplaysetup.lua` | New game dialog: radio buttons for the opponent, your side, Stockfish's strength, seats (face to face: Black's pieces upside down), clock |
+| `pkengine.lua` | Where Stockfish is installed (`bin/stockfish`) |
 | `pkuci.lua` | UCI engine in a subprocess: one polling task, stopped and reaped on close |
 | `pktimer.lua` | Chess clocks |
-| `pksettingswidget.lua` | Player types, engine strength, time controls |
 | `pkchess.lua` + `pkchesslib/` | Rules engine (move generation, FEN, SAN, PGN) from arizati/chess.lua, with a redo history |
 | `pkutils.lua` | Subprocess, pipe reader and writer |
 

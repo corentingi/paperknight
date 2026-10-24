@@ -56,15 +56,6 @@ function PkNav.closeScreens(with_home)
     end
 end
 
--- The engine binary is looked for once per session (a file stat).
-local engine_present
-local function hasEngine()
-    if engine_present == nil then
-        engine_present = PkNav.app ~= nil and PkNav.app:hasEngine() or false
-    end
-    return engine_present
-end
-
 --- The modes: { id, text, start }.
 function PkNav.modes()
     local modes = {
@@ -72,9 +63,8 @@ function PkNav.modes()
         { id = "studies", text = _("Studies"), start = function() return require("pkstudies").show() end },
         { id = "openings", text = _("Openings"), start = function() return require("pkopenings").show() end },
         { id = "analysis", text = _("Analysis board"), start = function() return PkNav.app:startAnalysis() end },
-        -- against Stockfish when installed, else two players on one board
-        { id = "play", text = hasEngine() and _("Play") or _("Play (two players)"),
-          start = function() return PkNav.app:startGame() end },
+        -- against Stockfish or two players (chosen in the new game dialog)
+        { id = "play", text = _("Play"), start = function() return PkNav.app:startGame() end },
     }
     return modes
 end

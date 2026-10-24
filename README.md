@@ -33,7 +33,10 @@ board is drawn and refreshed so that moves don't flash.
 - **Analysis board**: play both sides, step through the line, set a position
   from a FEN, save the line as a study, open the position on Lichess with a
   phone (QR code), and see Stockfish's evaluation and best line.
-- **Play** against Stockfish, or two players on one board.
+- **Play** against Stockfish (your side, its strength from 1350 Elo to full
+  strength, an optional clock), or two players face to face on one Kindle
+  (Black's pieces upside down). A game in progress comes back when you open
+  Play again; take back, resign, save it as a study, or analyse it.
 - **Opening names** ("C50 Italian Game") everywhere a line is played.
 - **Made for e-ink**: no flashing moves, a night mode, and links in
   comments shown as QR codes to open on a phone.
@@ -52,7 +55,7 @@ In a terminal on the Kindle (kterm or SSH):
 
 The installer shows what it will install (the plugin, the puzzle pack, an
 emoji font) and offers **Stockfish**, the engine behind the analysis board
-and *Play against the engine* (Stockfish 18 built for the Paperwhite 2,
+and *Play* against the engine (Stockfish 18 built for the Paperwhite 2,
 about 3 MB, [details](docs/stockfish.md)). It checks every download before
 changing anything. Your own studies and repertoires are kept. Then restart KOReader:
 **Paperknight** is in the **Tools** menu (KOReader's gesture settings can

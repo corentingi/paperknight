@@ -30,6 +30,15 @@
 - [x] Opening name shown in studies, the drill and the analysis board
 - [x] Repertoire drill with spaced repetition (repertoire PGNs, ADR-0012)
 
+## Milestone 3b — Play (ADR-0020)
+- [x] Play rewritten on the app's board screen (Kochess's game screen and
+      settings widget removed): move list, ☰ menu, e-ink refreshes
+- [x] New game dialog: Stockfish or two players, your side (or random),
+      strength (1350–2400 Elo, full), clock
+- [x] Two players face to face: Black's pieces upside down
+- [x] Take back, resign, save as a study, analyse; the game in progress
+      comes back
+
 ## Milestone 4 — Master games
 - [ ] Curated list (Wikipedia seed) → `games.sqlite` with Stockfish key moments
 - [ ] Guess-the-move mode
@@ -49,5 +58,4 @@ Order matters: the updater reads what the releases publish.
       installed on request, then offers to restart KOReader (ADR-0019)
 
 ## Later / undecided
-- Strip unused Kochess features (clocks, human-vs-human)
 - Puzzles generated from master games (lichess-puzzler)

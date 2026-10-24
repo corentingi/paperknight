@@ -63,6 +63,7 @@ local Board = FrameContainer:extend{
     holdCallback = nil,
     onPromotionNeeded = nil, -- function(from, to, color): a pawn reaches the last rank (the view asks the piece)
     flipped = false, -- Paperknight: true shows the board from Black's side
+    rotate_black = false, -- Paperknight: Black's pieces upside down (two players face to face)
     locked = false,  -- Paperknight: true ignores taps (e.g. puzzle finished, opponent thinking); set with setLocked
     show_turn = true, -- Paperknight: the corner disc shows the side to move while the board takes moves
     coordinates = true, -- Paperknight: draw a–h / 1–8 around the board
@@ -812,6 +813,8 @@ end
 -- @param piece String, the piece type (e.g., Chess.PAWN, Chess.QUEEN) or nil to clear.
 -- @param color String, the piece color (Chess.WHITE or Chess.BLACK), only required if `piece` is not nil.
 function Board:placePiece(square, piece, color, no_refresh)
+    -- face to face: the Black player, across the Kindle, sees their pieces upright
+    local rotation = (self.rotate_black and piece and color == "b") and 180 or 0
     -- night mode inverts the screen: show the other set, inverted
     if Screen.night_mode and color then color = (color == "w") and "b" or "w" end
     local icon = (piece and icons[piece] and icons[piece][color]) or icons.empty
@@ -822,8 +825,12 @@ function Board:placePiece(square, piece, color, no_refresh)
     end
     local button = self.table:getButtonById(id_result)
     -- Paperknight: skip unchanged squares; each refresh is an e-ink update
-    if button.icon == icon then return end
+    if button.icon == icon and (button.icon_rotation_angle or 0) == rotation then return end
     local rect = self:_screenRect(square)
+    if (button.icon_rotation_angle or 0) ~= rotation then
+        button.icon_rotation_angle = rotation
+        button.icon = nil -- (swapIcon skips the same icon)
+    end
     button:swapIcon(icon) -- the icon only: the frame and its position stay
     self:_showIcon(button)
     button.frame.background = self:squareColor(square)

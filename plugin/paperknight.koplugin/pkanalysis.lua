@@ -49,7 +49,7 @@ local PkAnalysis = InputContainer:extend{
     moves = nil,        -- a line from `fen` to show (from a puzzle, a study…), see setLine
     pos = nil,          -- the move of `moves` shown (default: the last)
     flipped = false,
-    engine_path = nil,  -- default: bin/stockfish (pkgame.lua)
+    engine_path = nil,  -- default: bin/stockfish (pkengine.lua)
     movetime = 4000,    -- milliseconds of analysis per position
     list_shown = true,  -- the move list beside the board (the two-column button toggles it, remembered)
     list_layout = "full", -- "full" (the whole height) or "beside" (as tall as the board)
@@ -436,7 +436,7 @@ end
 -- Engine
 
 function PkAnalysis:_enginePath()
-    return self.engine_path or require("pkgame").ENGINE_PATH
+    return self.engine_path or require("pkengine").PATH
 end
 
 function PkAnalysis:_startEngine()
@@ -693,8 +693,14 @@ end
 --- Writes the line to <studies folder>/Analyses/<name>.pgn (" (2)"… when
 -- the name is taken). Returns the path, or nil and an error.
 function PkAnalysis:saveLine(name, dir)
+    return PkAnalysis.writePgn(self:pgnText(name), name, dir or (require("pkstudies").dir() .. "/Analyses"))
+end
+
+--- Writes PGN `text` to <dir>/<name>.pgn (" (2)"… when the name is taken;
+-- `dir` made if needed; also Play's saved games). Returns the path, or nil
+-- and an error.
+function PkAnalysis.writePgn(text, name, dir)
     local lfs = require("libs/libkoreader-lfs")
-    dir = dir or (require("pkstudies").dir() .. "/Analyses")
     if lfs.attributes(dir, "mode") ~= "directory" then
         local ok, err = lfs.mkdir(dir)
         if not ok then return nil, err end
@@ -709,7 +715,7 @@ function PkAnalysis:saveLine(name, dir)
     end
     local f, err = io.open(path, "wb")
     if not f then return nil, err end
-    f:write(self:pgnText(name))
+    f:write(text)
     f:close()
     return path
 end

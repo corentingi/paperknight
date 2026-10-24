@@ -1,12 +1,11 @@
 -- Paperknight plugin: menu entries, the dispatcher action and the modes'
--- entry points. Each screen is its own widget (pkgame.lua, pkpuzzleview.lua,
+-- entry points. Each screen is its own widget (pkplayview.lua, pkpuzzleview.lua,
 -- pkstudies.lua, pkopenings.lua; navigation in pknav.lua).
 local Dispatcher = require("dispatcher")
 local UIManager = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local infoMessage = require("ui/widget/infomessage")
-local lfs = require("libs/libkoreader-lfs")
-local PkGame = require("pkgame")
+local PkEngine = require("pkengine")
 local PkNav = require("pknav")
 local Logger = require("logger")
 local _ = require("gettext")
@@ -36,9 +35,9 @@ function Paperknight:init()
     PkNav.app = self
 end
 
---- Whether the engine binary is installed ("Play against the engine").
+--- Whether the engine binary is installed (analysis, Play against Stockfish).
 function Paperknight:hasEngine()
-    return PkGame.hasEngine()
+    return PkEngine.installed()
 end
 
 --- Paperknight:onPaperknightStart()
@@ -79,10 +78,8 @@ function Paperknight:addToMainMenu(menu_items)
                 callback = function() PkNav.open("analysis") end,
             },
             {
-                -- against Stockfish when installed (bin/stockfish), else two players
-                text_func = function()
-                    return self:hasEngine() and _("Play against the engine") or _("Play (two players)")
-                end,
+                -- against Stockfish or between two players (the new game dialog)
+                text = _("Play"),
                 callback = function() PkNav.open("play") end,
             },
         },
@@ -92,7 +89,7 @@ end
 --- Paperknight:packsDir()
 -- Data packs live in <plugin>/packs; PAPERKNIGHT_PACKS_DIR overrides it (tests).
 function Paperknight:packsDir()
-    return os.getenv("PAPERKNIGHT_PACKS_DIR") or (PkGame.PLUGIN_PATH .. "/packs")
+    return os.getenv("PAPERKNIGHT_PACKS_DIR") or (require("pkicons").plugin_dir .. "/packs")
 end
 
 --- Paperknight:startPuzzles()
@@ -130,24 +127,22 @@ function Paperknight:startPuzzles()
     return view
 end
 
---- Paperknight:startGame()
--- Entry point for starting a new chess game.
--- Initializes all game components (logic, engine, board) and builds the UI.
 --- Opens the analysis board (pkanalysis.lua); `opts`: { fen = ... }.
 function Paperknight:startAnalysis(opts)
     return require("pkanalysis").show(opts)
 end
 
+--- Opens Play (pkplayview.lua): the game in progress, or a new game.
+-- `opts`: { engine_path } (tests).
 function Paperknight:startGame(opts)
-    Logger.info("Paperknight: new game")
-    self.game_view = PkGame:new(opts or {})
-    local view = self.game_view
+    Logger.info("Paperknight: play")
+    local view = require("pkplayview").show(opts)
+    self.game_view = view
     local on_close = view.onCloseWidget
     view.onCloseWidget = function(v)
         on_close(v)
         if self.game_view == v then self.game_view = nil end
     end
-    UIManager:show(view)
     return view
 end
 

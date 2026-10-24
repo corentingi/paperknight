@@ -1,4 +1,4 @@
--- What the study view and the openings drill share: a board above a
+-- What the study view, the openings drill and Play share: a board above a
 -- scrollable text panel and a button bar, the panel's text (links shown
 -- short, tappable for a QR code), their e-ink refreshes, the opponent's
 -- reply timer, and taking back a move the board played (the view decides
@@ -35,7 +35,9 @@ function PkBoardScreen:_buildScreen(flipped)
     -- the width); the panel below gets the height it no longer uses
     local size = with_list and math.min(math.floor(self.dimen.w * 0.78), self.board_size) or self.board_size
     self.text_extra_h = self.board_size - size
-    if not self.board or self.board.flipped ~= flipped or self.board.width_list ~= with_list then
+    local rotate_black = self.rotate_black == true -- Play, face to face
+    if not self.board or self.board.flipped ~= flipped or self.board.width_list ~= with_list
+            or self.board.rotate_black ~= rotate_black then
         if self.board then self.board:free() end
         self.board = ChessBoard:new{
             game = self.game,
@@ -44,6 +46,7 @@ function PkBoardScreen:_buildScreen(flipped)
             width_list = with_list,
             centre_squares = not with_list, -- the list takes the room on the right
             flipped = flipped,
+            rotate_black = rotate_black,
             show_parent = self,
             moveCallback = function(move) self:onBoardMove(move) end,
             onPromotionNeeded = function(from, to, color)

@@ -1,17 +1,17 @@
 # Stockfish on the Kindle
 
 Paperknight looks for a UCI engine at
-`koreader/plugins/paperknight.koplugin/bin/stockfish`. With it, *Play
-against the engine* plays Stockfish and the analysis board shows its
+`koreader/plugins/paperknight.koplugin/bin/stockfish`. With it, *Play*
+offers Stockfish as an opponent and the analysis board shows its
 evaluation and best line once the knight button (bottom left) turns it on
 (off the first time, then as you left it; Stockfish is started when the
-engine is on and kept until the board closes). Without it, Play is a two-player board and the
+engine is on and kept until the board closes). Without it, Play is between two players and the
 analysis board has no evaluation. Decision: ADR-0016.
 
-In Play, Stockfish thinks 5 seconds per move by default (game settings ⚙ →
-*Engine thinking time*: 1 to 60 s, saved), less when its clock runs low (at
-most 1/30 of what it has left), not the clocks' budget of a real game. The tick button at the bottom right starts or pauses the clocks; a
-game starts paused, and your first move (or the tick) starts it.
+In Play (ADR-0020), the new game dialog sets its strength: 1350 to 2400
+Elo (`UCI_LimitStrength`, `UCI_Elo`) or full strength. It thinks 1 s per
+move up to 1800, 2 s at 2100 and 2400, 5 s at full strength, less when its
+clock runs low (at most 1/30 of what it has left).
 
 ## Install
 

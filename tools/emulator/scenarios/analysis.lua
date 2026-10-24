@@ -6,14 +6,14 @@ return function(h)
     local PkNav = require("pknav")
     local PkAnalysis = require("pkanalysis")
 
-    -- 1. From the home screen: listed with Play (two players: no engine here)
+    -- 1. From the home screen: listed with Play
     PkNav.home()
     h.settle()
     local home = PkNav.homeShown()
     local labels = {}
     for _, item in ipairs(home.item_table) do labels[#labels + 1] = item.text end
     local joined = table.concat(labels, "|")
-    h.check(joined:find("Analysis board", 1, true) and joined:find("Play (two players)", 1, true),
+    h.check(joined:find("Analysis board", 1, true) and joined:find("|Play", 1, true),
         "home lists the analysis board and Play: " .. joined)
     local view = PkNav.open("analysis")
     h.settle()
