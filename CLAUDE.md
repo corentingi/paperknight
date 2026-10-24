@@ -83,6 +83,9 @@ committed; read it too when present).
   in one rectangle (`Board.square_refresh`, each REAGL refresh waits for the
   previous one), the text below as its own refresh (`PkRefresh.below`/
   `step`); never one region over both (seen on the PW2).
+- A button enabled/disabled outside the region a step refreshes stays
+  as it was on the e-ink: `PkRefresh.enable` refreshes it on a change (the
+  analysis bar under the full-height move list).
 - Closing a full-screen view: `PkRefresh.close` (UIManager:close without a
   mode repaints what is below but refreshes nothing; KOReader's menus
   refresh themselves, our board screens don't).

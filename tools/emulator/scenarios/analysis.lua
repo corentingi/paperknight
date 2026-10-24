@@ -111,6 +111,26 @@ esac; done
     h.check(view.board.mate_square == nil, "stepping back takes the # away")
     view:step(1)
     h.check(view.board.mate_square == "g8", "and forward brings it back")
+    -- the arrows' new state reaches the screen: under the full-height list,
+    -- a step refreshes the panel, not the bar (they stayed grey on the e-ink)
+    h.settle()
+    h.check(view.movelist and view.list_layout == "full", "the list down the right side")
+    local function refreshed(sent, d)
+        for _, r in ipairs(sent) do
+            if r.x <= d.x and r.y <= d.y and r.x + r.w >= d.x + d.w and r.y + r.h >= d.y + d.h then return true end
+        end
+        return false
+    end
+    for _, case in ipairs({ { -1, true }, { 1, false } }) do
+        local d = view.buttons:getButtonById("forward")[1].dimen:copy()
+        stop = h.recordRefreshes()
+        view:step(case[1])
+        h.settle()
+        sent = stop()
+        local forward = view.buttons:getButtonById("forward")
+        h.check(forward.enabled == case[2], "forward enabled: " .. tostring(forward.enabled))
+        h.check(refreshed(sent, d), "forward " .. (case[2] and "enabled" or "greyed") .. " on screen too")
+    end
     view:flip()
     h.settle()
     h.check(view.board.flipped and view.pos == 1, "flipped, line kept")

@@ -90,6 +90,19 @@ function PkRefresh.step(view, first, last)
     UIManager:setDirty(view, PkRefresh.STEP, PkRefresh.region(view, first, last))
 end
 
+--- Enables or disables `button` of `view`, and refreshes it when that
+-- changes: for a button outside the regions a step refreshes (the analysis
+-- board's bar under its full-height move list). Its place is taken before
+-- enableDisable rebuilds it (no dimen until the next paint).
+function PkRefresh.enable(view, button, enabled)
+    enabled = enabled and true or false
+    if (button.enabled and true or false) == enabled then return end
+    local d = button[1] and button[1].dimen
+    d = d and d.x and d:copy()
+    button:enableDisable(enabled)
+    if d then UIManager:setDirty(view, PkRefresh.STEP, d) end
+end
+
 --- Sets the subtitle of `view.title_bar` when it changed, refreshed as a
 -- step (TitleBar's own refresh is "ui", GC16_FAST: it flickers the changed
 -- text).
