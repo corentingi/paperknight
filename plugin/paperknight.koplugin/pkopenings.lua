@@ -99,6 +99,25 @@ local function cachePath(file, ext)
     return PkOpenings.cacheDir() .. "/" .. name .. ext
 end
 
+--- Removes the cache files of repertoires no longer in `files` (the
+-- repertoire folder's file names). Returns the number removed.
+function PkOpenings.pruneCache(files)
+    local keep = {}
+    for _i, file in ipairs(files) do
+        keep[cachePath(file, ".sum")], keep[cachePath(file, ".res")] = true, true
+    end
+    local dir, removed = PkOpenings.cacheDir(), 0
+    local ok, iter, dir_obj = pcall(lfs.dir, dir)
+    if not ok then return 0 end
+    for name in iter, dir_obj do
+        local path = dir .. "/" .. name
+        if (name:match("%.sum$") or name:match("%.res$")) and not keep[path] then
+            if os.remove(path) then removed = removed + 1 end
+        end
+    end
+    return removed
+end
+
 local SUMMARY_VERSION = "pksum 1." .. PkRepertoire.VERSION .. "." .. PkSan.VERSION
 
 -- `summary` nil: the file cannot be drilled, `err` says why (cached too, so
@@ -368,6 +387,9 @@ function PkOpenings.show(dir)
     if not ok then
         logger.warn("Paperknight: cannot list repertoires:", items)
         items = { { text = T(_("Cannot list %1"), dir), callback = function() end } }
+    elseif dir == PkOpenings.dir() then
+        -- the cache is keyed by file name: only the repertoire folder's list prunes it
+        PkOpenings.pruneCache(PkStudies.listFiles(dir))
     end
     local menu = Menu:new{
         title = _("Openings"),

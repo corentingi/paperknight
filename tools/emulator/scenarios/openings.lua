@@ -23,9 +23,15 @@ return function(h)
     local lfs = require("libs/libkoreader-lfs")
     local cache = PkOpenings.cacheDir()
     os.remove(cache .. "/repertoire.pgn.sum"); os.remove(cache .. "/repertoire.pgn.res")
+    -- the cache of a repertoire deleted since: removed when the list opens
+    for _, ext in ipairs({ ".sum", ".res" }) do
+        local f = assert(io.open(cache .. "/deleted.pgn" .. ext, "w")); f:write("x"); f:close()
+    end
     PkOpenings._clearMemory()
     local list = PkOpenings.show()
     h.settle()
+    h.check(not lfs.attributes(cache .. "/deleted.pgn.sum") and not lfs.attributes(cache .. "/deleted.pgn.res"),
+        "a deleted repertoire's cache removed")
     local item = menuItem(list, "repertoire")
     h.check(item, "repertoire listed")
     h.check(item.mandatory == "0 due · 10 new", "counts: " .. tostring(item.mandatory))
@@ -35,6 +41,16 @@ return function(h)
     PkOpenings._clearMemory()
     local dir = os.getenv("PAPERKNIGHT_REPERTOIRES_DIR")
     h.check(not PkOpenings.needsParse(dir .. "/repertoire.pgn"), "no parse after a restart")
+    -- a damaged summary (its last card cut) is refused, then written again
+    local sum = cache .. "/repertoire.pgn.sum"
+    local f = assert(io.open(sum)); local good = f:read("*a"); f:close()
+    f = assert(io.open(sum, "w")); f:write((good:gsub("[^\n]*\n$", ""))); f:close()
+    PkOpenings._clearMemory()
+    h.check(PkOpenings.needsParse(dir .. "/repertoire.pgn"), "a truncated summary is refused")
+    PkOpenings.load(dir .. "/repertoire.pgn", nil, true)
+    f = assert(io.open(sum)); local again = f:read("*a"); f:close()
+    h.check(again == good, "and written again")
+    PkOpenings._clearMemory()
     PkOpenings.refreshList()
     item = menuItem(list, "repertoire")
     h.check(item.mandatory == "0 due · 10 new", "same counts from the cache: " .. tostring(item.mandatory))
