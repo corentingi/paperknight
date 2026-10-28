@@ -16,7 +16,8 @@ body = """
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group | striptags | trim }}
 {% for commit in commits %}
-- {% if commit.scope %}**{{ self::area(scope=commit.scope) }}**: {% endif %}{{ commit.message | upper_first }}\
+{%- set label = "" -%}{%- if commit.scope %}{% set label = self::area(scope=commit.scope) %}{% endif %}
+- {% if commit.scope %}**{{ label }}**: {% endif %}{{ commit.message | trim_start_matches(pat=label ~ ": ") | upper_first }}\
 {% endfor %}
 {% endfor %}
 """
