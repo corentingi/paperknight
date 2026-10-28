@@ -18,7 +18,7 @@ PkRepertoire.__index = PkRepertoire
 
 -- Bump when cards, keys or lines change: it invalidates the cached list
 -- summaries (pkopenings.lua).
-PkRepertoire.VERSION = 1
+PkRepertoire.VERSION = 2 -- 2: en passant kept only when legal (pinned pawns)
 
 local function fields(fen)
     local f = {}
@@ -51,7 +51,7 @@ local function pieceAt(placement, square)
 end
 
 --- FEN without move counters, and with the en passant square only when a
--- pawn can actually take there (so transpositions get the same key).
+-- pawn can legally take there (so transpositions get the same key).
 function PkRepertoire.normalizeFen(fen)
     local f = fields(fen)
     local placement, turn, castling, ep = f[1], f[2] or "w", f[3] or "-", f[4] or "-"
@@ -64,6 +64,16 @@ function PkRepertoire.normalizeFen(fen)
             local f2 = file + df
             if f2 >= 97 and f2 <= 104 and pieceAt(placement, string.char(f2) .. pawn_rank) == pawn then
                 can_take = true
+            end
+        end
+        -- next to it, the pawn may still be pinned: a legal capture there?
+        if can_take then
+            can_take = false
+            local chess = require("pkchess"):new()
+            if chess.load(table.concat({ placement, turn, castling, ep, "0", "1" }, " ")) then
+                for _, m in ipairs(chess.moves({ verbose = true })) do
+                    if m.flags:find("e", 1, true) then can_take = true; break end
+                end
             end
         end
         if not can_take then ep = "-" end

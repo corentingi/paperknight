@@ -60,6 +60,8 @@ return {
             "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -", "no black pawn next to e4")
         t.eq(n("rnbqkbnr/ppp1pppp/8/8/3pP3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 3"),
             "rnbqkbnr/ppp1pppp/8/8/3pP3/8/PPPP1PPP/RNBQKBNR b KQkq e3", "d4 pawn can take en passant")
+        t.eq(n("3k4/8/8/8/3pP3/8/8/3RK3 b - e3 0 1"), "3k4/8/8/8/3pP3/8/8/3RK3 b - -",
+            "the d4 pawn is pinned: no en passant")
     end },
     { "orientation override and unplayable moves", function(t)
         local s = assert(PkStudy.open(FIXTURE))
