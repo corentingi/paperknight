@@ -164,3 +164,28 @@ def test_a_file_changed_on_the_server_restarts_instead_of_appending(server, tmp_
     s.etag, s.data = '"v2"', bytes(reversed(DATA))
     path = sources.download(s.url, tmp_path, retries=0, backoff=0)
     assert path.read_bytes() == s.data, "the new file, not old start + new end"
+
+
+def _lines(n: int) -> bytes:
+    return "".join(f"{i},a line of the file\n" for i in range(n)).encode()
+
+
+def test_zst_files_are_read_across_frames(tmp_path):
+    import zstandard
+    c = zstandard.ZstdCompressor()
+    path = tmp_path / "two-frames.csv.zst"
+    path.write_bytes(c.compress(_lines(50000)) + c.compress(b"last\n"))
+    with sources.open_text(path) as f:
+        lines = f.read().splitlines()
+    assert len(lines) == 50001 and lines[0] == "0,a line of the file" and lines[-1] == "last"
+
+
+def test_a_truncated_zst_file_raises(tmp_path):
+    import zstandard
+    data = zstandard.ZstdCompressor().compress(_lines(50000))
+    path = tmp_path / "cut.csv.zst"
+    path.write_bytes(data[: len(data) // 2])
+    with pytest.raises(IOError, match="truncated"):
+        with sources.open_text(path) as f:
+            for _line in f:
+                pass

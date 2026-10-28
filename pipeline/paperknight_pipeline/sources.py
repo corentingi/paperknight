@@ -116,10 +116,54 @@ def _range_total(content_range: str | None) -> int | None:
     return int(m.group(1)) if m else None
 
 
+class _ZstdReader(io.RawIOBase):
+    """Decompresses a .zst file frame after frame, and raises at its end if
+    the last frame is cut (zstandard's stream_reader just stops there: a
+    truncated cached file would give part of the data without an error)."""
+
+    CHUNK = 1 << 17
+
+    def __init__(self, path: Path):
+        self._raw = open(path, "rb")
+        self._path = path
+        self._decompressor = zstandard.ZstdDecompressor()
+        self._frame = None  # the frame being decompressed
+        self._out = memoryview(b"")
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer) -> int:
+        while not self._out:
+            chunk = self._raw.read(self.CHUNK)
+            if not chunk:
+                if self._frame is not None:
+                    raise IOError(f"{self._path}: truncated .zst file")
+                return 0
+            out = []
+            while chunk:
+                if self._frame is None:
+                    self._frame = self._decompressor.decompressobj()
+                out.append(self._frame.decompress(chunk))
+                chunk = b""
+                if self._frame.eof:
+                    chunk, self._frame = self._frame.unused_data, None
+            self._out = memoryview(b"".join(out))
+        n = min(len(buffer), len(self._out))
+        buffer[:n] = self._out[:n]
+        self._out = self._out[n:]
+        return n
+
+    def close(self) -> None:
+        self._raw.close()
+        super().close()
+
+
 def open_text(path: Path) -> IO[str]:
-    """Open a plain or .zst-compressed text file for streaming reads."""
+    """Open a plain or .zst-compressed text file for streaming reads. A
+    truncated .zst file raises IOError at its end; a damaged one raises
+    zstandard.ZstdError when its frames carry a checksum (zstd's default)."""
     if path.suffix == ".zst":
-        raw = open(path, "rb")
-        stream = zstandard.ZstdDecompressor().stream_reader(raw, closefd=True)
+        stream = io.BufferedReader(_ZstdReader(path), buffer_size=_ZstdReader.CHUNK)
         return io.TextIOWrapper(stream, encoding="utf-8", newline="")
     return open(path, encoding="utf-8", newline="")
