@@ -65,6 +65,7 @@ function PkNav.modes()
         { id = "analysis", text = _("Analysis board"), start = function() return PkNav.app:startAnalysis() end },
         -- against Stockfish or two players (chosen in the new game dialog)
         { id = "play", text = _("Play"), start = function() return PkNav.app:startGame() end },
+        { id = "games", text = _("Master games"), start = function() return require("pkgamesview").showList() end },
     }
     return modes
 end
@@ -122,13 +123,17 @@ function PkNav.quickRows(close, current)
         screen_row[#screen_row + 1] = { text = _("Settings…"), callback = function() close(); PkNav.showSettings() end }
     end
     rows[#rows + 1] = screen_row
-    local mode_row = {}
+    -- the modes, three a row (their names fit)
+    local mode_row
     for _, mode in ipairs(PkNav.modes()) do
         if mode.id ~= current then
+            if not mode_row or #mode_row == 3 then
+                mode_row = {}
+                rows[#rows + 1] = mode_row
+            end
             mode_row[#mode_row + 1] = { text = mode.text, callback = function() close(); PkNav.open(mode.id) end }
         end
     end
-    rows[#rows + 1] = mode_row
     if current ~= "home" then
         rows[#rows + 1] = {{ text = _("Home"), callback = function() close(); PkNav.home() end }}
     end
@@ -253,9 +258,9 @@ end
 --- A full-screen menu (a Paperknight screen) whose items follow the state
 -- (rating, reviews due, night mode...): `items()` builds them, and a
 -- repaint (e.g. back from a mode) rebuilds the menu if they changed.
-function PkNav.liveMenu(name, title, items_func)
+function PkNav.liveMenu(name, title, items_func, options)
     local items = items_func()
-    local menu = Menu:new{
+    local args = {
         name = name,
         title = title,
         item_table = items,
@@ -265,6 +270,8 @@ function PkNav.liveMenu(name, title, items_func)
         width = Screen:getWidth(),
         height = Screen:getHeight(),
     }
+    for k, v in pairs(options or {}) do args[k] = v end
+    local menu = Menu:new(args)
     menu._pk_key = itemsKey(items)
     local paintTo = menu.paintTo
     menu.paintTo = function(m, bb, x, y)

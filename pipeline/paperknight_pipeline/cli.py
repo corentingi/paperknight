@@ -8,7 +8,7 @@ import urllib.error
 from datetime import date
 from pathlib import Path
 
-from . import openings, puzzles, sources, studies
+from . import games, openings, puzzles, sources, studies
 
 REPO = Path(__file__).resolve().parents[2]
 DOWNLOADS = REPO / "build" / "downloads"
@@ -86,6 +86,32 @@ def cmd_openings(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_games(args: argparse.Namespace) -> int:
+    seeds = games.read_seeds(Path(args.seeds).read_text(encoding="utf-8").splitlines())
+    keys = games.opening_keys(Path(args.openings))
+    cache = DOWNLOADS / "pgnmentor"
+    try:
+        loaded = games.load(seeds, lambda name: games.fetch_source(name, cache), keys)
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        print(f"download failed: {getattr(e, 'reason', e)}", file=sys.stderr)
+        return 1
+    except ValueError as e:
+        print(e, file=sys.stderr)
+        return 1
+    analyse, close = games.stockfish_analyser(args.engine, args.depth, DOWNLOADS / "games-analysis")
+    try:
+        for i, game in enumerate(loaded, 1):
+            print(f"[{i}/{len(loaded)}] {game.seed.id}: {len(game.moves)} plies", file=sys.stderr)
+            games.analyse_game(game, analyse)
+            analyse.save()
+    finally:
+        close()
+    games.write(loaded, Path(args.output))
+    keys_found = sum(sum(g.keys) for g in loaded)
+    print(f"{args.output}: {len(loaded)} games, {keys_found} key moments")
+    return 0
+
+
 def positive_int(text: str) -> int:
     value = int(text)
     if value < 1:
@@ -122,6 +148,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--input", nargs="+", help="local TSV files instead of downloading (tests)")
     p.add_argument("--output", default=str(REPO / "plugin" / "paperknight.koplugin" / "data" / "openings.tsv"))
     p.set_defaults(func=cmd_openings)
+
+    p = sub.add_parser("games", help="master games for Guess the move (PGN Mentor moves, Stockfish analysis)")
+    p.add_argument("--seeds", default=str(REPO / "pipeline" / "data" / "master-games.tsv"))
+    p.add_argument("--openings", default=str(REPO / "plugin" / "paperknight.koplugin" / "data" / "openings.tsv"))
+    p.add_argument("--engine", required=True, help="a Stockfish binary for this computer")
+    p.add_argument("--depth", type=positive_int, default=14)
+    p.add_argument("--output", default=str(REPO / "plugin" / "paperknight.koplugin" / "data" / "games.tsv"))
+    p.set_defaults(func=cmd_games)
 
     args = parser.parse_args(argv)
     return args.func(args)

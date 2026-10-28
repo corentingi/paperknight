@@ -37,6 +37,10 @@ board is drawn and refreshed so that moves don't flash.
   strength, an optional clock), or two players face to face on one Kindle
   (Black's pieces upside down). A game in progress comes back when you open
   Play again; take back, resign, save it as a study, or analyse it.
+- **Master games**: guess the moves of 38 famous games, from the Immortal
+  Game to Kasparov's Immortal. Moves as good as the master's count too
+  (judged by Stockfish beforehand: no engine needed), key moments are
+  announced, and your best score per game is kept.
 - **Opening names** ("C50 Italian Game") everywhere a line is played.
 - **Made for e-ink**: no flashing moves, a night mode, and links in
   comments shown as QR codes to open on a phone.
@@ -77,7 +81,7 @@ study exported as PGN) to `koreader/paperknight/studies/` or
 ## Using it
 
 - The **home screen** lists the modes: Puzzles, Studies, Openings, Analysis
-  board, Play.
+  board, Play, Master games.
 - A tap on a screen's **title** opens the quick menu: frontlight, night
   mode, switching mode, home.
 - **☰** (top left) has the actions of the screen you are on: themes and

@@ -8,7 +8,7 @@ body = """
 {%- macro area(scope) -%}
 {%- if scope == "puzzles" %}Puzzles{% elif scope == "studies" %}Studies\
 {% elif scope == "openings" %}Openings{% elif scope == "analysis" %}Analysis board\
-{% elif scope == "play" %}Play{% elif scope == "board" %}Board{% elif scope == "movelist" %}Move list\
+{% elif scope == "play" %}Play{% elif scope == "games" %}Master games{% elif scope == "board" %}Board{% elif scope == "movelist" %}Move list\
 {% elif scope == "nav" %}Navigation{% elif scope == "eink" %}Screen{% elif scope == "engine" %}Engine\
 {% elif scope == "pgn" %}PGN{% elif scope == "dist" %}Install and updates{% elif scope == "stockfish" %}Stockfish\
 {% else %}{{ scope | upper_first }}{% endif -%}

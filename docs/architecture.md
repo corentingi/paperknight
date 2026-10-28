@@ -89,6 +89,8 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 | `pkplay.lua` | Play logic (ADR-0020): settings (opponent, side, Stockfish's level, face to face, clock), sides, take-back, results, PGN, the game in progress saved and restored |
 | `pkplayview.lua` | Play screen (board, panel, move list, buttons: pkboardscreen.lua): Stockfish's moves (one search at a time, stale answers dropped), clocks, ☰ resign / flip / move list / save as a study (Studies/Games), Analyse (also a tap in the move list), resumed when opened |
 | `pkplaysetup.lua` | New game dialog: radio buttons for the opponent, your side, Stockfish's strength, seats (face to face: Black's pieces upside down), clock |
+| `pkgames.lua` | Master games (`data/games.tsv`, ADR-0021) and a Guess the move session: the opening played, guesses judged (the master's move, a good move by Stockfish's scores, a miss), hints, key moments, score, saved and resumed |
+| `pkgamesview.lua` | Master games list (Continue, best scores) and the Guess the move screen (pkboardscreen.lua): verdicts, Hint / Show move / Analyse, ☰ the other side, start again, move list |
 | `pkengine.lua` | Where Stockfish is installed (`bin/stockfish`) |
 | `pkuci.lua` | UCI engine in a subprocess: one polling task, stopped and reaped on close |
 | `pktimer.lua` | Chess clocks |
@@ -102,7 +104,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 | `pkprogress.lua` | `progress.sqlite`: rating (Glicko-2) and attempts (ADR-0010), puzzle reviews (ADR-0014), liked puzzles, repertoire cards, settings; migrations |
 
 The menu entry *Paperknight* opens a submenu: *Home*, *Puzzles*, *Studies*,
-*Openings*, *Analysis board* and *Play*. Stockfish is installed apart
+*Openings*, *Analysis board*, *Play* and *Master games*. Stockfish is installed apart
 ([stockfish.md](stockfish.md), ADR-0016). Planned additions are tracked in
 [`roadmap.md`](roadmap.md).
 
@@ -110,7 +112,8 @@ The menu entry *Paperknight* opens a submenu: *Home*, *Puzzles*, *Studies*,
 
 Python package `paperknight_pipeline` (ADR-0006). One sub-command per pack:
 `python -m paperknight_pipeline puzzles …` (and `study` to download a
-Lichess study). Inputs are cached in `build/downloads/`, outputs written to
+Lichess study, `openings` for the opening names, `games` for the master
+games with Stockfish's scores: [games.md](games.md)). Inputs are cached in `build/downloads/`, outputs written to
 `build/packs/`.
 
 ## Data contract

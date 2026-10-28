@@ -39,9 +39,12 @@
 - [x] Take back, resign, save as a study, analyse; the game in progress
       comes back
 
-## Milestone 4 — Master games
-- [ ] Curated list (Wikipedia seed) → `games.sqlite` with Stockfish key moments
-- [ ] Guess-the-move mode
+## Milestone 4 — Master games (ADR-0021)
+- [x] Curated list (38 games, 1851–2013) matched in PGN Mentor's files →
+      `data/games.tsv` with Stockfish's scores and key moments
+- [x] Guess the move: the master's move, good moves by Stockfish's scores,
+      key moments, hints, score and best per game, resumed
+- [ ] More games (modern classics, women's chess, endgame masterpieces)
 
 ## Milestone 5 — Public project and updates (after making the repo public)
 Order matters: the updater reads what the releases publish.

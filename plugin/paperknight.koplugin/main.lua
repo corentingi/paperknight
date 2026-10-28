@@ -82,6 +82,11 @@ function Paperknight:addToMainMenu(menu_items)
                 text = _("Play"),
                 callback = function() PkNav.open("play") end,
             },
+            {
+                -- Guess the move in famous games
+                text = _("Master games"),
+                callback = function() PkNav.open("games") end,
+            },
         },
     }
 end

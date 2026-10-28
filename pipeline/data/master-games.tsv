@@ -1,0 +1,45 @@
+# Master games for Guess the move (python -m paperknight_pipeline games).
+# One game a line: id, PGN Mentor player file, white, black (surnames, as
+# in the file's headers, case-insensitive), year, result, round and a
+# piece of the moves (SAN, e.g. "Qxf3") when needed to tell games apart
+# (empty: any), title, our own one-line note. The moves come from the file; a line
+# that matches no game, or several, stops the build.
+id	source	white	black	year	result	round	with	title	note
+immortal	Anderssen	Anderssen	Kieseritzky	1851	1-0		Be7#	The Immortal Game	White gives up both rooks, a bishop and the queen, then mates with the minor pieces.
+evergreen	Anderssen	Anderssen	Dufresne	1852	1-0			The Evergreen Game	A queen sacrifice and a double check: the bishops mate.
+opera	Morphy	Morphy	Isouard	1858	1-0			The Opera Game	Quick development, open lines and a queen sacrifice: the model of a miniature.
+paulsen-morphy	Morphy	Paulsen	Morphy	1857	0-1		Qxf3	Morphy’s queen sacrifice	Black gives the queen for a bishop and hunts the white king with rooks and bishops.
+zukertort-blackburne	Zukertort	Zukertort	Blackburne	1883	1-0		1. c4 e6	Zukertort’s combination	A queen sacrifice starts a combination that runs across the whole board.
+lasker-bauer	Lasker	Lasker	Bauer	1889	1-0		Qxd3	Two bishops sacrificed	White gives both bishops to strip the black king, then wins material with checks.
+steinitz-bardeleben	Steinitz	Steinitz	Bardeleben	1895	1-0			Hastings 1895	A rook keeps checking from the seventh rank and the black king cannot escape.
+reti-tartakower	Reti	Reti	Tartakower	1910	1-0			Réti’s miniature	A queen sacrifice and a double check give mate in eleven moves.
+rotlewi-rubinstein	Rubinstein	Rotlewi	Rubinstein	1907	0-1		Rxc3	Rubinstein’s Immortal	Black’s bishops aim at the white king; the sacrifices come one after the other.
+levitsky-marshall	Marshall	Levitsky	Marshall	1912	0-1			The gold coins game	Black ends the game with a queen move to a square where it can be taken three ways.
+capablanca-marshall	Capablanca	Capablanca	Marshall	1918	1-0			The Marshall Attack	Black’s prepared pawn sacrifice gives a fierce attack; White defends calmly and wins.
+lasker-capablanca	Lasker	Lasker	Capablanca	1914	1-0			St Petersburg 1914	Queens come off early; then a pawn advance on the kingside cramps the black pieces.
+alekhine-reti	Alekhine	Reti	Alekhine	1925	0-1			Baden-Baden 1925	Black’s rooks and knights combine over many moves in a deep combination.
+saemisch-nimzowitsch	Nimzowitsch	Saemisch	Nimzowitsch	1923	0-1		Rxf2	The Immortal Zugzwang	White still has all the pieces but no move that does not lose something.
+capablanca-tartakower	Capablanca	Capablanca	Tartakower	1924	1-0			The rook ending	White gives pawns to activate king and rook: a lesson in rook endings.
+glucksberg-najdorf	Najdorf	Glucksberg	Najdorf	1935	0-1			The Polish Immortal	Black sacrifices piece after piece and a pawn mates the king in the middle of the board.
+euwe-alekhine	Euwe	Euwe	Alekhine	1935	1-0	26		The Pearl of Zandvoort	A pawn advanced to e6, then e7, ties Black up: a key win on the way to the world title.
+botvinnik-capablanca	Botvinnik	Botvinnik	Capablanca	1938	1-0			AVRO 1938	A bishop offer and a knight sacrifice, then the e-pawn decides: a classic Nimzo-Indian attack.
+averbakh-kotov	Kotov	Averbakh	Kotov	1953	0-1			Kotov’s queen sacrifice	Black gives the queen to drive the white king up the board into a mating net.
+byrne-fischer	Fischer	Byrne	Fischer	1956	0-1			The Game of the Century	A 13-year-old gives up the queen for a run of checks and wins with rook and minor pieces.
+polugaevsky-nezhmetdinov	Polugaevsky	Polugaevsky	Nezhmetdinov	1958	0-1			Nezhmetdinov’s queen sacrifice	Black gives the queen for a rook and the white king is hunted up the board.
+spassky-bronstein	Spassky	Spassky	Bronstein	1960	1-0			The King’s Gambit at Leningrad	An open fight in the King’s Gambit ending with a combination on the black king.
+byrne-fischer-1963	Fischer	Byrne	Fischer	1963	0-1		Nxf2	Fischer’s brilliancy	Black sacrifices a knight, then more, and White resigns while the mate is still hidden.
+tal-larsen	Tal	Tal	Larsen	1965	1-0	10		Bled 1965	A knight sacrifice on d5 against the Sicilian sets the board on fire.
+petrosian-spassky	Petrosian	Petrosian	Spassky	1966	1-0	10		Petrosian’s exchange sacrifices	An exchange sacrifice, then a queen sacrifice, decide a world championship game.
+botvinnik-portisch	Botvinnik	Botvinnik	Portisch	1968	1-0			Monte Carlo 1968	White’s rooks go into the black queenside, then knight and bishops strike at the king.
+larsen-spassky	Spassky	Larsen	Spassky	1970	0-1		Rh1	USSR v Rest of the World	A rook sacrifice and a pawn that promotes end the game in 17 moves.
+fischer-petrosian	Fischer	Fischer	Petrosian	1971	1-0	7		A knight against a bishop	White trades into a position where the knight beats Black’s bishop.
+fischer-spassky	Fischer	Fischer	Spassky	1972	1-0	6		Reykjavik, game 6	Fischer opens 1.c4 and plays a model Queen’s Gambit game.
+karpov-kasparov	Kasparov	Karpov	Kasparov	1985	0-1	16		The octopus knight	A black knight on d3 paralyses the white position.
+short-timman	Short	Short	Timman	1991	1-0	4		The king walk	The white king walks up the board to help the mating attack.
+ivanchuk-yusupov	Jussupow	Ivanchuk	Jussupow	1991	0-1	9		Brussels 1991	Black’s pieces pour in against the white king in a candidates tie-break.
+deep-blue-kasparov	Kasparov	Deep Blue	Kasparov	1997	1-0	6		Deep Blue wins the match	A knight sacrifice on e6 against the Caro-Kann ends the match in favour of the computer.
+topalov-shirov	Shirov	Topalov	Shirov	1998	0-1		Bh3	Shirov’s bishop sacrifice	In an ending with bishops of opposite colours, Black gives the bishop to let the king in.
+kasparov-topalov	Kasparov	Kasparov	Topalov	1999	1-0			Kasparov’s Immortal	A rook sacrifice on d4 and a long king hunt across the board.
+polgar-kasparov	PolgarJ	Polgar	Kasparov	2002	1-0			Russia v Rest of the World	Judit Polgar beats Kasparov in the Berlin Defence.
+carlsen-ernst	Carlsen	Carlsen	Ernst	2004	1-0			Carlsen at thirteen	A knight, a bishop and a rook sacrificed against the Caro-Kann: mate at Wijk aan Zee.
+aronian-anand	Anand	Aronian	Anand	2013	0-1			Wijk aan Zee 2013	Black sacrifices pieces from the opening on and the attack does not stop.

@@ -78,7 +78,12 @@ fixture-packs: venv ## Small deterministic packs for e2e tests (build/packs/fixt
 	$(PIPELINE) puzzles --input pipeline/tests/fixtures/lichess_puzzles_sample.csv \
 		--output $(FIXTURE_PACKS)/puzzles.sqlite --min-popularity -100 --min-plays 0 --max-rating-dev 500
 
-.PHONY: study dist notes
+.PHONY: study dist notes games
+# a Stockfish for this computer (the official stockfish-ubuntu-x86-64-avx2, unpacked there)
+STOCKFISH ?= $(BUILD)/downloads/stockfish-host/stockfish/stockfish-ubuntu-x86-64-avx2
+games: venv ## Master games with Stockfish's scores: plugin data/games.tsv (STOCKFISH=<binary>; cached)
+	nice -n 19 $(PIPELINE) games --engine $(STOCKFISH)
+
 study: venv ## Download a Lichess study: make study ID=<id or URL> (private: LICHESS_TOKEN=...)
 	@test -n "$(ID)" || { echo "usage: make study ID=<study id or URL>"; exit 2; }
 	$(PIPELINE) study "$(ID)"

@@ -24,6 +24,11 @@ committed; read it too when present).
   rebuilt). Needs `PAPERKNIGHT_DIST_URL` (`local.mk`, not committed, or the
   environment). On the Kindle `curl -fkL <url>/install.sh | sh`: it
   downloads only the parts whose version changed. docs/releasing.md.
+- `make games` — the master games (`data/games.tsv`, committed): PGN Mentor
+  moves of `pipeline/data/master-games.tsv`, Stockfish's scores (a PC
+  binary: `STOCKFISH=`, default the official avx2 build unpacked in
+  `build/downloads/stockfish-host/`); cached, an hour from scratch.
+  docs/games.md.
 - `make notes` — the next release's notes (git-cliff, `cliff.toml`: feat,
   fix and perf commits, by scope): commit subjects are what users read in
   the release and the in-app update, so write them for users.
@@ -108,7 +113,7 @@ committed; read it too when present).
   `type(scope): summary`, lowercase type, summary without a final period.
   Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`,
   `chore`. Scope optional, the area touched: `puzzles`, `studies`,
-  `openings`, `analysis`, `play`, `board`, `movelist`, `nav`, `eink`,
+  `openings`, `analysis`, `play`, `games`, `board`, `movelist`, `nav`, `eink`,
   `engine`, `pgn`, `pipeline`, `dist`, `stockfish`, `adr`, `claude`…
   A breaking change gets `!` after the type/scope (`feat(studies)!: …`) and
   a `BREAKING CHANGE:` footer.

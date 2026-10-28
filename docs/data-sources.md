@@ -29,7 +29,7 @@ an "only move").
 | Source | Content | License / terms | Use |
 |---|---|---|---|
 | [Wikipedia: List of chess games](https://en.wikipedia.org/wiki/List_of_chess_games) | ~80–90 notable games 1475–2023, nickname + significance | CC BY-SA (text) | Curation seed list; we write our own one-liners |
-| [PGN Mentor](https://www.pgnmentor.com/files.html) | Per-player, per-opening, per-event PGNs | Free download | Classic players' games |
+| [PGN Mentor](https://www.pgnmentor.com/files.html) | Per-player, per-opening, per-event PGNs | Free download | The moves of the master games (`python -m paperknight_pipeline games`, [games.md](games.md)): our own list, titles and notes; moves only |
 | [TWIC](https://theweekinchess.com) | Weekly top-level games since 1994 | Free download | Modern games |
 | [Lumbra's Gigabase](https://lumbrasgigabase.com) | 13M+ games aggregated (TWIC, PGN Mentor, …) | Free download; mixed provenance | Offline lookup to find a game's moves |
 | Lichess broadcasts export | OTB events relayed on Lichess | CC0 (to confirm) | Recent games |

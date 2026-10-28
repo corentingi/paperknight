@@ -28,3 +28,4 @@ Template: [`0000-template.md`](0000-template.md).
 | [0018](0018-du4-board-refresh.md) | The board is drawn in four greys and refreshed with DU4 | accepted |
 | [0019](0019-in-app-update-runs-the-installer.md) | The in-app update runs the release's install.sh | accepted |
 | [0020](0020-play-mode.md) | Play rewritten on the app's board screen | accepted |
+| [0021](0021-master-games.md) | Master games: a curated list, PGN Mentor moves, Stockfish scores in the plugin | accepted |

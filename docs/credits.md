@@ -12,4 +12,6 @@
 
 ## Data
 - Lichess puzzle database and chess-openings dataset — CC0, https://database.lichess.org.
+- Master games: moves from PGN Mentor's player files, https://www.pgnmentor.com;
+  scores by Stockfish (GPL-3.0); list, titles and notes ours.
 - Further sources and their terms: [`data-sources.md`](data-sources.md).
