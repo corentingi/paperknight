@@ -56,6 +56,7 @@ Order matters: the updater reads what the releases publish.
       release of its own, offered by the installer
 - [x] Version shown in the plugin (home screen, *Settings…*)
 - [x] Settings screen: screen settings, version, Stockfish, project page
+- [x] Board settings: coordinates on/off (larger squares), legal moves shown
 - [x] **In-app updater**: *Settings… → Check for updates…* runs the latest
       release's `install.sh` (`--list`, then `--yes --parts=`), Stockfish
       installed on request, then offers to restart KOReader (ADR-0019)

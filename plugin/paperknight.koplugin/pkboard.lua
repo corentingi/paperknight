@@ -66,7 +66,8 @@ local Board = FrameContainer:extend{
     face_to_face = false, -- Paperknight: the pieces of the side at the top upside down (two players across the Kindle)
     locked = false,  -- Paperknight: true ignores taps (e.g. puzzle finished, opponent thinking); set with setLocked
     show_turn = true, -- Paperknight: the corner disc shows the side to move while the board takes moves
-    coordinates = true, -- Paperknight: draw a–h / 1–8 around the board
+    coordinates = nil, -- Paperknight: draw a–h / 1–8 around the board (nil: the user's setting, pkprefs.lua)
+    legal_moves = nil, -- Paperknight: dots on the selected piece's moves (nil: the user's setting, read at each selection)
     padding = 0,
     bordersize = 0,  -- Paperknight: the grey frame is drawn around the squares only
     background = Blitbuffer.COLOR_WHITE,
@@ -95,16 +96,23 @@ function Board:init()
         return
     end
 
+    local PkPrefs = require("pkprefs")
+    if self.coordinates == nil then self.coordinates = PkPrefs.get("coordinates") end
     local margins = self:allMarginSizes()
-    self.button_size = math.min(
-        math.floor(self.width / (BOARD_SIZE + 1)) - margins.w,
-        math.floor(self.height / (BOARD_SIZE + 1)) - margins.h
-    )
+    -- with coordinates, about a square of room is kept for the labels;
+    -- without, a thin margin (the frame off the screen's edges)
+    local edge = Screen:scaleBySize(BOARD_BORDER_SIZE + 4)
+    local function squares(len)
+        if self.coordinates then return math.floor(len / (BOARD_SIZE + 1)) end
+        return math.floor((len - 2 * edge) / BOARD_SIZE)
+    end
+    self.button_size = math.min(squares(self.width) - margins.w, squares(self.height) - margins.h)
 
     self.selected = nil
     logger.dbg(string.format("Initializing board: %dx%d, button size: %d", self.width, self.height, self.button_size))
 
     self.highlighted = {}
+    self.targets = {}
     local grid = {}
     for row_idx = 0, BOARD_SIZE - 1 do
         -- Top row is rank 8 (index 7) normally, rank 1 (index 0) when flipped
@@ -248,11 +256,8 @@ function Board:handleClick(file, rank)
         elseif target and target.color == self.game.turn() then
             -- Paperknight: another piece of the side to move: select it instead
             -- (a move onto an own piece is never legal)
-            local previous = self.selected
             self.selected = square
-            self.selected_mark = square
-            self:_repaintSquare(previous)
-            self:_repaintSquare(square)
+            self:_mark(square)
         else
             -- Attempt to move the selected piece to the new square
             self:handleMove(self.selected, square)
@@ -390,7 +395,10 @@ function Board:paintTo(bb, x, y)
     if self.shapes then self:_paintShapes(bb) end
     if self.badge then self:_paintBadge(bb) end
     if self.mate_square then self:_paintMate(bb) end
-    if self.selected_mark and not self.locked then self:_paintSelection(bb) end
+    if self.selected_mark and not self.locked then
+        if next(self.targets) then self:_paintTargets(bb) end
+        self:_paintSelection(bb)
+    end
     self:_cacheRects()
     if self.turn_marker then self:_paintTurnMarker(bb) end
 end
@@ -773,14 +781,34 @@ function Board:markSelected(square)
         logger.info("Chess: Invalid square to select: " .. tostring(square))
         return
     end
-    self.selected_mark = square
-    self:_repaintSquare(square)
+    self:_mark(square)
 end
 
 function Board:unmarkSelected(square)
     if self.selected_mark == nil then return end
-    self.selected_mark = nil
-    self:_repaintSquare(square)
+    self:_mark(nil)
+end
+
+-- Paperknight: the selection frame on `square` (nil: none) and, with
+-- `legal_moves`, the dots on its moves; the squares that change are
+-- refreshed together (_refreshButton's batch).
+function Board:_mark(square)
+    local changed = {}
+    if self.selected_mark then changed[self.selected_mark] = true end
+    for sq in pairs(self.targets or {}) do changed[sq] = true end
+    self.selected_mark = square
+    self.targets = {}
+    local legal_moves = self.legal_moves
+    if legal_moves == nil then legal_moves = require("pkprefs").get("legal_moves") end
+    if square and legal_moves then
+        for _, m in ipairs(self.game.moves({ square = square, verbose = true })) do
+            self.targets[m.to] = m.captured and "capture" or "move"
+        end
+    end
+    if square then changed[square] = true end
+    for sq in pairs(self.targets) do changed[sq] = true end
+    if not next(changed) then return end
+    for sq in pairs(changed) do self:_repaintSquare(sq) end
 end
 
 -- Repaints the board and refreshes only `square` on screen (the overlays are
@@ -795,9 +823,29 @@ end
 
 --- Removes the selection (e.g. before the board is locked).
 function Board:clearSelection()
-    local square = self.selected_mark
-    self.selected, self.selected_mark = nil, nil
-    if square then self:_repaintSquare(square) end
+    self.selected = nil
+    if self.selected_mark then self:_mark(nil) end
+end
+
+-- The selected piece's moves: a dot on an empty square, a ring around a
+-- piece it takes (the shapes' grey: a DU4 grey on both square colours).
+function Board:_paintTargets(bb)
+    local color = self._shape_color
+    for sq, kind in pairs(self.targets) do
+        local r = self:_squareRect(sq)
+        if r and r.w then
+            if kind == "capture" then
+                local inset = math.floor(self.button_size / 16)
+                local w = r.w - 2 * inset
+                bb:paintBorder(r.x + inset, r.y + inset, w, w, math.max(2, math.floor(self.button_size / 12)),
+                    color, math.floor(w / 2))
+            else
+                local d = math.max(6, math.floor(self.button_size / 4))
+                bb:paintRoundedRect(r.x + math.floor((r.w - d) / 2), r.y + math.floor((r.h - d) / 2), d, d,
+                    color, math.floor(d / 2))
+            end
+        end
+    end
 end
 
 function Board:_paintSelection(bb)

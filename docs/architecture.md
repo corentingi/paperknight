@@ -30,7 +30,8 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 | `_meta.lua` | Plugin name and description for KOReader's plugin manager |
 | `main.lua` | The plugin: menu entries, dispatcher action, starting each mode |
 | `pknav.lua` | Home screen, quick settings (frontlight, night mode, modes), switching modes (ADR-0015) |
-| `pksettings.lua` | Settings screen: screen settings, version and updates, Stockfish, project page |
+| `pksettings.lua` | Settings screen: screen settings, board settings, version and updates, Stockfish, project page |
+| `pkprefs.lua` | The user's on/off preferences (board coordinates, legal moves), saved in `progress.sqlite` |
 | `pkupdate.lua` | In-app update: fetches the latest `install.sh`, shows what changed (`--list`), runs it for those parts (ADR-0019) |
 | `pkfonts.lua` | Emoji UI fallback font when Noto Emoji is installed (ADR-0017) |
 
@@ -38,7 +39,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 
 | File | Role |
 |---|---|
-| `pkboard.lua` | Board widget, shared by every mode: squares, pieces, last move (corner triangles), selection, badges, arrows and circles, the side to move (corner disc, shown while the board takes moves); DU4 refreshes of the squares an update changes (ADR-0018) |
+| `pkboard.lua` | Board widget, shared by every mode: squares, pieces, last move (corner triangles), selection (with the legal moves: dots, rings on captures), badges, arrows and circles, coordinates (a setting) and the side to move in their corner (a disc, shown while the board takes moves); DU4 refreshes of the squares an update changes (ADR-0018) |
 | `pkboardscreen.lua` | Board + text panel + buttons shared by the study view, the openings drill and Play (layout, optional move list beside the board, panel text with links, refreshes, reply timer) |
 | `pkbutton.lua` | KOReader's Button for icon buttons given as absolute paths; `no_feedback` (no tap flash) |
 | `pkrefresh.lua` | E-ink refresh policy: steps are `[partial]` (never promoted to a flash), pages a counted `partial`; see [eink-refresh.md](eink-refresh.md) |
