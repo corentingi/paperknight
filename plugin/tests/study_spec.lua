@@ -76,6 +76,15 @@ return {
         t.eq(root.children[2].comment, "Alternatively", "pre-move comment")
         t.eq(root.children[1].children[1].san, "e5", "main line resumes")
     end },
+    { "movetext: two comments before a variation's first move stay apart in a wrapped file", function(t)
+        -- wrapped at 80 columns by the tool that wrote it (lines of 70-80 characters)
+        local filler = "an introduction long enough to fill a line of the wrapped file ok"
+        local text = "{ " .. filler .. "\n" .. filler .. "\n" .. filler .. " }\n"
+            .. "1. e4 ( { First idea. } { Second idea. } 1. d4 ) 1... e5 *"
+        t.ok(PkPgn.isWrapped(text), "the file is seen as wrapped")
+        local root = PkPgn.parseMovetext(text)
+        t.eq(root.children[2].comment, "First idea.\nSecond idea.", "two comments, not one joined line")
+    end },
     { "movetext: a variation opened before any move of its line stays a sideline", function(t)
         local root = PkPgn.parseMovetext("(1. d4 d5) 1. e4 e5")
         t.eq(#root.children, 2, "two first moves")

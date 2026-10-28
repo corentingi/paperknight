@@ -276,7 +276,7 @@ function PkPgn.parseMovetext(text)
     -- `last`: node of the last move in the current line (root at start).
     -- `stack`: saved `last` of the enclosing lines when entering a variation.
     local last, stack = root, {}
-    local pending_comment -- comment before the first move of a variation
+    local pending_comment -- comments before the first move of a variation (raw, each cleaned apart)
     local at_line_start = true -- no move yet in the current line (game or variation)
     -- where the current line's first move goes among `last`'s children when a
     -- variation was opened before it (it stays first: the main line)
@@ -294,7 +294,8 @@ function PkPgn.parseMovetext(text)
             if at_line_start and #stack == 0 then
                 addComment(root, raw, wrapped) -- chapter introduction
             elseif at_line_start then
-                pending_comment = (pending_comment and pending_comment .. "\n" or "") .. raw
+                pending_comment = pending_comment or {}
+                pending_comment[#pending_comment + 1] = raw
             else
                 addComment(last, raw, wrapped)
             end
@@ -305,7 +306,8 @@ function PkPgn.parseMovetext(text)
             if at_line_start and #stack == 0 then
                 addComment(root, raw, wrapped)
             elseif at_line_start then
-                pending_comment = (pending_comment and pending_comment .. "\n" or "") .. raw
+                pending_comment = pending_comment or {}
+                pending_comment[#pending_comment + 1] = raw
             else
                 addComment(last, raw, wrapped)
             end
@@ -373,7 +375,7 @@ function PkPgn.parseMovetext(text)
                         table.insert(last.children, node)
                     end
                     if pending_comment then
-                        addComment(node, pending_comment, wrapped)
+                        for _, raw in ipairs(pending_comment) do addComment(node, raw, wrapped) end
                         pending_comment = nil
                     end
                     at_line_start = false
