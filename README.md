@@ -37,8 +37,8 @@ board is drawn and refreshed so that moves don't flash.
   strength, an optional clock), or two players face to face on one Kindle
   (Black's pieces upside down). A game in progress comes back when you open
   Play again; take back, resign, save it as a study, or analyse it.
-- **Master games**: guess the moves of 38 famous games, from the Immortal
-  Game to Kasparov's Immortal. Moves as good as the master's count too
+- **Master games**: guess the moves of 75 famous games, from the Immortal
+  Game (1851) to Ding – Gukesh (2024), women's world champions included. Moves as good as the master's count too
   (judged by Stockfish beforehand: no engine needed), key moments are
   announced, and your best score per game is kept.
 - **Opening names** ("C50 Italian Game") everywhere a line is played.

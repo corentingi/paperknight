@@ -40,11 +40,12 @@
       comes back
 
 ## Milestone 4 — Master games (ADR-0021)
-- [x] Curated list (38 games, 1851–2013) matched in PGN Mentor's files →
+- [x] Curated list (75 games, 1851–2024) matched in PGN Mentor's files →
       `data/games.tsv` with Stockfish's scores and key moments
 - [x] Guess the move: the master's move, good moves by Stockfish's scores,
       key moments, hints, score and best per game, resumed
-- [ ] More games (modern classics, women's chess, endgame masterpieces)
+- [x] More games: modern classics, world championship deciders up to 2024,
+      women's champions, endgames (75 in all)
 
 ## Milestone 5 — Public project and updates (after making the repo public)
 Order matters: the updater reads what the releases publish.

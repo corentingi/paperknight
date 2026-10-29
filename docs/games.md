@@ -27,7 +27,7 @@ You play the winner's side by default (White in a draw).
 
 `plugin/paperknight.koplugin/data/games.tsv`, built on a PC (ADR-0021):
 
-    make games STOCKFISH=/path/to/stockfish
+    make games STOCKFISH=/path/to/stockfish GAMES_THREADS=2
 
 - The list is `pipeline/data/master-games.tsv`: one line a game, with the
   players' surnames as PGN Mentor writes them, the year, the result, and,
@@ -35,12 +35,14 @@ You play the winner's side by default (White in a draw).
   the moves (`Qxf3`). Title and note are ours.
 - The moves come from PGN Mentor's player files
   (`https://www.pgnmentor.com/players/<name>.zip`, cached in
-  `build/downloads/pgnmentor/`).
+  `build/downloads/pgnmentor/`). The site refuses Python's default
+  User-Agent: the pipeline names itself, and waits between downloads.
 - Stockfish (a binary for the PC, e.g. the official
   `stockfish-ubuntu-x86-64-avx2`) scores every position after the opening at
   depth 14: its three best moves, and the master's move if it is not one of
-  them. Answers are cached in `build/downloads/games-analysis/`: a rebuild
-  after adding a game only analyses that game.
+  them (`GAMES_THREADS` threads, 2 by default: about a minute or two a game
+  on a laptop). Answers are cached in `build/downloads/games-analysis/`: a
+  rebuild after adding a game only analyses that game.
 
 The file format is described at the top of
 `pipeline/paperknight_pipeline/games.py`.

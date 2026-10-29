@@ -7,39 +7,76 @@
 id	source	white	black	year	result	round	with	title	note
 immortal	Anderssen	Anderssen	Kieseritzky	1851	1-0		Be7#	The Immortal Game	White gives up both rooks, a bishop and the queen, then mates with the minor pieces.
 evergreen	Anderssen	Anderssen	Dufresne	1852	1-0			The Evergreen Game	A queen sacrifice and a double check: the bishops mate.
-opera	Morphy	Morphy	Isouard	1858	1-0			The Opera Game	Quick development, open lines and a queen sacrifice: the model of a miniature.
 paulsen-morphy	Morphy	Paulsen	Morphy	1857	0-1		Qxf3	Morphy’s queen sacrifice	Black gives the queen for a bishop and hunts the white king with rooks and bishops.
+opera	Morphy	Morphy	Isouard	1858	1-0			The Opera Game	Quick development, open lines and a queen sacrifice: the model of a miniature.
 zukertort-blackburne	Zukertort	Zukertort	Blackburne	1883	1-0		1. c4 e6	Zukertort’s combination	A queen sacrifice starts a combination that runs across the whole board.
 lasker-bauer	Lasker	Lasker	Bauer	1889	1-0		Qxd3	Two bishops sacrificed	White gives both bishops to strip the black king, then wins material with checks.
 steinitz-bardeleben	Steinitz	Steinitz	Bardeleben	1895	1-0			Hastings 1895	A rook keeps checking from the seventh rank and the black king cannot escape.
-reti-tartakower	Reti	Reti	Tartakower	1910	1-0			Réti’s miniature	A queen sacrifice and a double check give mate in eleven moves.
+pillsbury-lasker	Pillsbury	Pillsbury	Lasker	1895	0-1	4		Lasker’s rook sacrifice	Black gives a rook on c3, then hunts the white king up the board to a bishop mate.
 rotlewi-rubinstein	Rubinstein	Rotlewi	Rubinstein	1907	0-1		Rxc3	Rubinstein’s Immortal	Black’s bishops aim at the white king; the sacrifices come one after the other.
+rubinstein-lasker	Rubinstein	Rubinstein	Lasker	1909	1-0			Rubinstein beats the champion	Steady pressure from the opening on: the world champion is outplayed down to the rook endgame.
+reti-tartakower	Reti	Reti	Tartakower	1910	1-0			Réti’s miniature	A queen sacrifice and a double check give mate in eleven moves.
 levitsky-marshall	Marshall	Levitsky	Marshall	1912	0-1			The gold coins game	Black ends the game with a queen move to a square where it can be taken three ways.
-capablanca-marshall	Capablanca	Capablanca	Marshall	1918	1-0			The Marshall Attack	Black’s prepared pawn sacrifice gives a fierce attack; White defends calmly and wins.
 lasker-capablanca	Lasker	Lasker	Capablanca	1914	1-0			St Petersburg 1914	Queens come off early; then a pawn advance on the kingside cramps the black pieces.
-alekhine-reti	Alekhine	Reti	Alekhine	1925	0-1			Baden-Baden 1925	Black’s rooks and knights combine over many moves in a deep combination.
+capablanca-marshall	Capablanca	Capablanca	Marshall	1918	1-0			The Marshall Attack	Black’s prepared pawn sacrifice gives a fierce attack; White defends calmly and wins.
+lasker-capablanca-1921	Capablanca	Lasker	Capablanca	1921	0-1	10		The isolated pawn	White plays with an isolated queen’s pawn; Black blockades it, trades pieces and wins the long endgame.
+bogoljubow-alekhine	Alekhine	Bogoljubow	Alekhine	1922	0-1			Alekhine at Hastings	Black’s pawns roll forward on the queenside; the game ends in a won king and pawn endgame.
 saemisch-nimzowitsch	Nimzowitsch	Saemisch	Nimzowitsch	1923	0-1		Rxf2	The Immortal Zugzwang	White still has all the pieces but no move that does not lose something.
 capablanca-tartakower	Capablanca	Capablanca	Tartakower	1924	1-0			The rook ending	White gives pawns to activate king and rook: a lesson in rook endings.
+reti-capablanca	Reti	Reti	Capablanca	1924	1-0			Capablanca’s first loss in eight years	Réti’s flank opening, with the bishops aimed at the centre from afar, beats the world champion.
+alekhine-reti	Alekhine	Reti	Alekhine	1925	0-1			Baden-Baden 1925	Black’s rooks and knights combine over many moves in a deep combination.
+alekhine-capablanca	Alekhine	Alekhine	Capablanca	1927	1-0	34		Alekhine takes the title	The 34th and last game: Alekhine wins a long rook endgame and becomes world champion.
 glucksberg-najdorf	Najdorf	Glucksberg	Najdorf	1935	0-1			The Polish Immortal	Black sacrifices piece after piece and a pawn mates the king in the middle of the board.
 euwe-alekhine	Euwe	Euwe	Alekhine	1935	1-0	26		The Pearl of Zandvoort	A pawn advanced to e6, then e7, ties Black up: a key win on the way to the world title.
 botvinnik-capablanca	Botvinnik	Botvinnik	Capablanca	1938	1-0			AVRO 1938	A bishop offer and a knight sacrifice, then the e-pawn decides: a classic Nimzo-Indian attack.
 averbakh-kotov	Kotov	Averbakh	Kotov	1953	0-1			Kotov’s queen sacrifice	Black gives the queen to drive the white king up the board into a mating net.
+geller-euwe	Euwe	Geller	Euwe	1953	0-1	2		Euwe’s counterattack	White storms the king; Black lets it come and wins first on the other side of the board.
 byrne-fischer	Fischer	Byrne	Fischer	1956	0-1			The Game of the Century	A 13-year-old gives up the queen for a run of checks and wins with rook and minor pieces.
 polugaevsky-nezhmetdinov	Polugaevsky	Polugaevsky	Nezhmetdinov	1958	0-1			Nezhmetdinov’s queen sacrifice	Black gives the queen for a rook and the white king is hunted up the board.
 spassky-bronstein	Spassky	Spassky	Bronstein	1960	1-0			The King’s Gambit at Leningrad	An open fight in the King’s Gambit ending with a combination on the black king.
+botvinnik-tal	Tal	Botvinnik	Tal	1960	0-1	6		Tal’s knight sacrifice	The knight goes to f4 to be taken: the game turns wild, and Tal converts the endgame.
 byrne-fischer-1963	Fischer	Byrne	Fischer	1963	0-1		Nxf2	Fischer’s brilliancy	Black sacrifices a knight, then more, and White resigns while the mate is still hidden.
 tal-larsen	Tal	Tal	Larsen	1965	1-0	10		Bled 1965	A knight sacrifice on d5 against the Sicilian sets the board on fire.
 petrosian-spassky	Petrosian	Petrosian	Spassky	1966	1-0	10		Petrosian’s exchange sacrifices	An exchange sacrifice, then a queen sacrifice, decide a world championship game.
 botvinnik-portisch	Botvinnik	Botvinnik	Portisch	1968	1-0			Monte Carlo 1968	White’s rooks go into the black queenside, then knight and bishops strike at the king.
+spassky-petrosian	Spassky	Spassky	Petrosian	1969	1-0	19		Spassky’s attack	A Sicilian kingside attack that ends the game in 24 moves, on the way to the world title.
 larsen-spassky	Spassky	Larsen	Spassky	1970	0-1		Rh1	USSR v Rest of the World	A rook sacrifice and a pawn that promotes end the game in 17 moves.
 fischer-petrosian	Fischer	Fischer	Petrosian	1971	1-0	7		A knight against a bishop	White trades into a position where the knight beats Black’s bishop.
+fischer-taimanov	Fischer	Fischer	Taimanov	1971	1-0	2		Bishop against knight	A model endgame: Fischer’s bishop outplays the knight over almost ninety moves.
+fischer-larsen	Fischer	Fischer	Larsen	1971	1-0	1		Fischer’s 6–0, game 1	The first game of Fischer’s clean sweep against Larsen in the Candidates.
 fischer-spassky	Fischer	Fischer	Spassky	1972	1-0	6		Reykjavik, game 6	Fischer opens 1.c4 and plays a model Queen’s Gambit game.
+spassky-fischer	Fischer	Spassky	Fischer	1972	0-1	13		Fischer’s pawns	Game 13: Fischer’s passed pawns overcome Spassky’s extra piece in a long endgame.
+karpov-unzicker	Karpov	Karpov	Unzicker	1974	1-0			Karpov’s squeeze	White closes the queenside in the Ruy Lopez, cramps Black and breaks through on the king.
+gaprindashvili-andersson	Gaprindashvili	Gaprindashvili	Andersson	1978	1-0			Gaprindashvili at Dortmund	The women’s world champion beats a top grandmaster with passed pawns on the queenside.
+chiburdanidze-short	Chiburdanidze	Chiburdanidze	Short	1983	1-0			Chiburdanidze’s king hunt	The women’s world champion chases the black king across the board to a4.
+kasparov-portisch	Kasparov	Kasparov	Portisch	1983	1-0			Kasparov at Niksic	A bishop sacrifice on g7 breaks the black king’s shelter, and the king is hunted out.
+karpov-kasparov-1984	Karpov	Karpov	Kasparov	1984	1-0	9		Karpov’s technique	Game 9: Black’s isolated pawn is blockaded and Karpov wins a long knight against bishop endgame.
 karpov-kasparov	Kasparov	Karpov	Kasparov	1985	0-1	16		The octopus knight	A black knight on d3 paralyses the white position.
+karpov-kasparov-1985	Kasparov	Karpov	Kasparov	1985	0-1	24		Kasparov becomes champion	Game 24: Kasparov wins with Black and takes the world title at 22.
+kasparov-karpov-1987	Kasparov	Kasparov	Karpov	1987	1-0	24		Win or lose the title	Game 24: Kasparov must win to keep his title, and grinds out a long endgame.
+portisch-chiburdanidze	Chiburdanidze	Portisch	Chiburdanidze	1988	0-1			Chiburdanidze at Linares	The women’s world champion beats Portisch: Black’s passed b-pawn decides.
+polgar-chernin	PolgarS	Polgar	Chernin	1989	1-0			Sofia Polgar in Rome	The 14-year-old Sofia Polgar attacks a top grandmaster in her famous Rome tournament.
+kasparov-karpov-1990	Kasparov	Kasparov	Karpov	1990	1-0	20		Kasparov’s Ruy Lopez	Game 20: a Zaitsev Ruy Lopez turns into a kingside attack.
 short-timman	Short	Short	Timman	1991	1-0	4		The king walk	The white king walks up the board to help the mating attack.
 ivanchuk-yusupov	Jussupow	Ivanchuk	Jussupow	1991	0-1	9		Brussels 1991	Black’s pieces pour in against the white king in a candidates tie-break.
+timman-xie	Xie	Timman	Xie	1994	0-1			Xie Jun beats Timman	The women’s world champion against one of the world’s best: Black’s attack wins.
+shirov-polgar	Shirov	Shirov	Polgar	1994	0-1	8		Judit Polgar beats Shirov	A Sicilian won with Black in 29 moves: the bishop pair takes over.
+kasparov-anand	Kasparov	Kasparov	Anand	1995	1-0	10		Kasparov’s preparation	Game 10: deep home preparation in the Open Ruy Lopez overwhelms Anand.
 deep-blue-kasparov	Kasparov	Deep Blue	Kasparov	1997	1-0	6		Deep Blue wins the match	A knight sacrifice on e6 against the Caro-Kann ends the match in favour of the computer.
 topalov-shirov	Shirov	Topalov	Shirov	1998	0-1		Bh3	Shirov’s bishop sacrifice	In an ending with bishops of opposite colours, Black gives the bishop to let the king in.
 kasparov-topalov	Kasparov	Kasparov	Topalov	1999	1-0			Kasparov’s Immortal	A rook sacrifice on d4 and a long king hunt across the board.
+polgar-anand	PolgarJ	Polgar	Anand	1999	1-0			Judit Polgar beats Anand	White attacks with the pieces and the pawns until Black gives up.
+kramnik-kasparov	Kramnik	Kramnik	Kasparov	2000	1-0	2		Kramnik’s Grünfeld endgame	Game 2: Kramnik converts a small edge on the way to taking Kasparov’s title.
 polgar-kasparov	PolgarJ	Polgar	Kasparov	2002	1-0			Russia v Rest of the World	Judit Polgar beats Kasparov in the Berlin Defence.
 carlsen-ernst	Carlsen	Carlsen	Ernst	2004	1-0			Carlsen at thirteen	A knight, a bishop and a rook sacrificed against the Caro-Kann: mate at Wijk aan Zee.
+kramnik-leko	Kramnik	Kramnik	Leko	2004	1-0	14		Kramnik keeps the title	Game 14: a must-win last game, won with White.
+kramnik-anand	Anand	Kramnik	Anand	2008	0-1	3		Anand’s Meran	Game 3: Anand plays a sharp Meran with Black and wins on the way to the title.
+topalov-anand	Anand	Topalov	Anand	2010	0-1	12		Anand keeps the title	Game 12: the last game, won with Black.
 aronian-anand	Anand	Aronian	Anand	2013	0-1			Wijk aan Zee 2013	Black sacrifices pieces from the opening on and the attack does not stop.
+carlsen-anand	Carlsen	Carlsen	Anand	2013	1-0	5	3. Nc3 c6	Carlsen’s endgame	Game 5 in Chennai: Carlsen squeezes a win out of an equal-looking rook endgame.
+anand-carlsen	Carlsen	Anand	Carlsen	2013	0-1	6		Carlsen grinds again	Game 6: a long rook endgame that Carlsen wins with Black.
+carlsen-karjakin	Carlsen	Carlsen	Karjakin	2016	1-0	4		Carlsen’s queen sacrifice	The last rapid tiebreak: 50. Qh6+ ends the match.
+hou-caruana	Hou	Hou	Caruana	2017	1-0	1.2		Hou Yifan beats Caruana	The women’s world champion beats one of the world’s best in the Ruy Lopez.
+carlsen-nepomniachtchi	Carlsen	Carlsen	Nepomniachtchi	2021	1-0	6		The longest game	Game 6, 136 moves: the longest game ever played in a world championship match.
+ding-nepomniachtchi	Ding	Ding	Nepomniachtchi	2023	1-0	6		Ding’s London	Game 6 in Astana: a quiet London System turns into a kingside attack.
+ding-gukesh	Gukesh	Ding	Gukesh	2024	0-1	14		Gukesh becomes champion	Game 14: one mistake in a drawn endgame (55. Rf2), and Gukesh, 18, takes the title.

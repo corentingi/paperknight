@@ -26,6 +26,7 @@ import hashlib
 import io
 import json
 import re
+import time
 import unicodedata
 import urllib.request
 import zipfile
@@ -38,6 +39,7 @@ import chess.engine
 import chess.pgn
 
 PGNMENTOR_URL = "https://www.pgnmentor.com/players/{}.zip"
+USER_AGENT = "paperknight-pipeline (+https://github.com/corentingi/paperknight)"
 MATE = 10000
 
 HEADER = ("# Master games for Guess the move (ADR-0021): id, title, white, black, event, site,"
@@ -144,6 +146,8 @@ def find(seed: Seed, pgn_text: str) -> chess.pgn.Game:
 
 # The source's spellings shown in English
 SPELLINGS = {"Jussupow": "Yusupov"}
+# names shown in full, as the source writes them: the Polgar sisters
+FULL_NAMES = {"Polgar, Judit": "Judit Polgar", "Polgar,Ju": "Judit Polgar", "Polgar, Sofia": "Sofia Polgar"}
 
 
 def display_name(name: str) -> str:
@@ -152,6 +156,8 @@ def display_name(name: str) -> str:
     'Deep Blue')."""
     name = " ".join(re.sub(r"\([^)]*\)", "", name).split())
     name = re.sub(r"^Comp ", "", name)
+    if name in FULL_NAMES:
+        return FULL_NAMES[name]
     if "," in name:
         name = name.split(",", 1)[0].strip()
     return SPELLINGS.get(name, name)
@@ -211,12 +217,14 @@ def analyse_game(game: Game, analyser: Analyser) -> None:
         last = move
 
 
-def stockfish_analyser(engine_path: str, depth: int, cache_dir: Path) -> tuple[Analyser, Callable[[], None]]:
-    """An analyser over a Stockfish binary (one thread: the same results each
-    run), its answers cached by position, depth and move in `cache_dir`."""
+def stockfish_analyser(engine_path: str, depth: int, cache_dir: Path,
+                       threads: int = 1) -> tuple[Analyser, Callable[[], None]]:
+    """An analyser over a Stockfish binary, its answers cached by position,
+    depth and move in `cache_dir` (with several threads a new run may score
+    differently: the cache keeps the committed data stable)."""
     import chess.engine
     engine = chess.engine.SimpleEngine.popen_uci(engine_path)
-    engine.configure({"Threads": 1, "Hash": 64})
+    engine.configure({"Threads": threads, "Hash": 64 * threads})
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = cache_dir / f"analysis-d{depth}.json"
     cache = json.loads(cache_file.read_text()) if cache_file.exists() else {}
@@ -251,8 +259,12 @@ def fetch_source(name: str, cache_dir: Path) -> str:
     cache_dir.mkdir(parents=True, exist_ok=True)
     path = cache_dir / f"{name}.zip"
     if not path.exists():
-        with urllib.request.urlopen(PGNMENTOR_URL.format(name), timeout=60) as r:
+        # the site refuses Python's default User-Agent; say who we are, and
+        # leave a pause between downloads
+        request = urllib.request.Request(PGNMENTOR_URL.format(name), headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(request, timeout=60) as r:
             path.write_bytes(r.read())
+        time.sleep(2)
     with zipfile.ZipFile(path) as z:
         member = next(n for n in z.namelist() if n.lower().endswith(".pgn"))
         return z.read(member).decode("latin-1")

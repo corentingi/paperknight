@@ -27,7 +27,8 @@ committed; read it too when present).
 - `make games` — the master games (`data/games.tsv`, committed): PGN Mentor
   moves of `pipeline/data/master-games.tsv`, Stockfish's scores (a PC
   binary: `STOCKFISH=`, default the official avx2 build unpacked in
-  `build/downloads/stockfish-host/`); cached, an hour from scratch.
+  `build/downloads/stockfish-host/`, `GAMES_THREADS=2`); cached, about two
+  hours from scratch for the 75 games.
   docs/games.md.
 - `make notes` — the next release's notes (git-cliff, `cliff.toml`: feat,
   fix and perf commits, by scope): commit subjects are what users read in

@@ -98,7 +98,8 @@ def cmd_games(args: argparse.Namespace) -> int:
     except ValueError as e:
         print(e, file=sys.stderr)
         return 1
-    analyse, close = games.stockfish_analyser(args.engine, args.depth, DOWNLOADS / "games-analysis")
+    analyse, close = games.stockfish_analyser(args.engine, args.depth, DOWNLOADS / "games-analysis",
+                                            args.threads)
     try:
         for i, game in enumerate(loaded, 1):
             print(f"[{i}/{len(loaded)}] {game.seed.id}: {len(game.moves)} plies", file=sys.stderr)
@@ -154,6 +155,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--openings", default=str(REPO / "plugin" / "paperknight.koplugin" / "data" / "openings.tsv"))
     p.add_argument("--engine", required=True, help="a Stockfish binary for this computer")
     p.add_argument("--depth", type=positive_int, default=14)
+    p.add_argument("--threads", type=positive_int, default=1,
+                   help="Stockfish's threads (the scores are cached whatever the count)")
     p.add_argument("--output", default=str(REPO / "plugin" / "paperknight.koplugin" / "data" / "games.tsv"))
     p.set_defaults(func=cmd_games)
 

@@ -84,6 +84,8 @@ def test_names_and_book():
     assert games.display_name("Deep Blue (Computer)") == "Deep Blue"
     assert games.display_name("Comp Deep Blue") == "Deep Blue"
     assert games.display_name("Jussupow, Artur") == "Yusupov"
+    assert games.display_name("Polgar, Judit") == "Judit Polgar"
+    assert games.display_name("Polgar,Ju") == "Judit Polgar"
     assert games.display_name("Duke Karl Count Isouard") == "Duke Karl Count Isouard"
     moves = [chess.Move.from_uci(m) for m in "e2e4 e7e5 g1f3 d7d6 d2d4".split()]
     from paperknight_pipeline.openings import position_key
