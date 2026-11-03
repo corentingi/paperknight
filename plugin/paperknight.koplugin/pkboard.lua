@@ -515,7 +515,9 @@ end
 -- Paperknight: move-mark badge ("!!", "?"…) on a square, like Lichess. Good
 -- marks are a filled black disc with white text, bad ones a white disc with
 -- a black ring: told apart without colours on e-ink. "✓" (puzzle solved) is
--- drawn as a tick, not as text (fonts may lack the glyph).
+-- drawn as a tick, not as text (fonts may lack the glyph). Painted in the
+-- framebuffer's own black and white: night mode inverts them with the rest
+-- of the board (a black disc would vanish on the night's black squares).
 local TICK = "✓"
 local GOOD_MARKS = { ["!"] = true, ["!!"] = true, ["!?"] = true, [TICK] = true }
 Board.TICK = TICK
@@ -535,7 +537,7 @@ function Board:_paintBadge(bb)
     local d = math.floor(self.button_size * 0.32)
     local bx, by = r.x + r.w - d, r.y
     local good = GOOD_MARKS[self.badge.text]
-    local black, white = Board.paintColor(Blitbuffer.COLOR_BLACK), Board.paintColor(Blitbuffer.COLOR_WHITE)
+    local black, white = Blitbuffer.COLOR_BLACK, Blitbuffer.COLOR_WHITE
     bb:paintRoundedRect(bx, by, d, d, good and black or white, math.floor(d / 2))
     if not good then
         bb:paintBorder(bx, by, d, d, math.max(2, math.floor(d / 10)), black, math.floor(d / 2))
@@ -548,7 +550,7 @@ function Board:_paintBadge(bb)
     end
     -- font sizes are scaled by screen DPI: convert the wanted pixel height
     -- the label is shaped once per badge (not on every board paint)
-    local key = self.badge.text .. "|" .. d .. "|" .. tostring(Screen.night_mode)
+    local key = self.badge.text .. "|" .. d
     if self._badge_key ~= key then
         if self._badge_label then self._badge_label:free() end
         local px = d * 0.62
@@ -562,15 +564,16 @@ function Board:_paintBadge(bb)
     label:paintTo(bb, bx + math.floor((d - size.w) / 2), by + math.floor((d - size.h) / 2))
 end
 
--- The mate disc: filled black with a white "#", a little larger than a badge.
+-- The mate disc: filled black with a white "#", a little larger than a badge
+-- (inverted at night, as the badges).
 function Board:_paintMate(bb)
     local r = self:_squareRect(self.mate_square)
     if not r then return end
     local d = math.floor(self.button_size * 0.36)
-    local black, white = Board.paintColor(Blitbuffer.COLOR_BLACK), Board.paintColor(Blitbuffer.COLOR_WHITE)
+    local black, white = Blitbuffer.COLOR_BLACK, Blitbuffer.COLOR_WHITE
     local x = r.x + r.w - d
     bb:paintRoundedRect(x, r.y, d, d, black, math.floor(d / 2))
-    local key = d .. "|" .. tostring(Screen.night_mode)
+    local key = d
     if self._mate_key ~= key then
         if self._mate_label then self._mate_label:free() end
         local px = d * 0.66

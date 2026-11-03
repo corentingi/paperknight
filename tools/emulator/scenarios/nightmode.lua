@@ -44,6 +44,13 @@ return function(h)
         return shown(r.x + inset + 1, r.y + math.floor(r.h / 2))
     end
     board:setShapes({ circles = { { square = circle_sq } }, arrows = {} })
+    -- a move badge on a dark square: its disc's fill, off the ring and text
+    local function badgeFill()
+        local r = rect(dark_sq)
+        local d = math.floor(board.button_size * 0.32)
+        return shown(r.x + r.w - d + math.floor(d * 0.2), r.y + math.floor(d / 2))
+    end
+    board:setBadge(dark_sq, "!")
     UIManager:setDirty("all", "full")
     h.settle()
 
@@ -58,6 +65,7 @@ return function(h)
     h.check(last_move and edge(last_move) == plainColour(last_move) and corner(last_move) == 0x00,
         ("day last move: plain square %x, black corner %x"):format(edge(last_move), corner(last_move)))
     h.check(day.ring == 0x55, ("day shape %x"):format(day.ring))
+    h.check(badgeFill() == 0x00, ("day: good badge black %x"):format(badgeFill()))
     -- a white piece's middle pixel: white whatever the mode
     local function pieceMiddle(sq)
         local r = rect(sq)
@@ -91,6 +99,13 @@ return function(h)
         h.check(background(dark_sq) == 0x00, ("night dark square shown %x"):format(background(dark_sq)))
         h.check(corner(last_move) == 0xFF, ("night last move: white corner %x"):format(corner(last_move)))
         h.check(ring() == 0xAA, ("night shape shown %x"):format(ring()))
+        -- badges inverted with the board: a black disc would vanish on the
+        -- night's black squares
+        h.check(badgeFill() == 0xFF, ("night: good badge white %x"):format(badgeFill()))
+        board:setBadge(dark_sq, "?")
+        h.settle()
+        h.check(badgeFill() == 0x00, ("night: bad badge black %x"):format(badgeFill()))
+        board:setBadge(dark_sq, "!")
         h.check(iconOn(white_piece) == PkIcons.pieces.r.b, "night: black rook icon, shown inverted")
         h.check(pieceMiddle(white_piece) == 0xFF, ("white piece shown white: %x"):format(pieceMiddle(white_piece)))
         h.check(status():find("● White to move", 1, true), "night marker swapped on toggle: " .. status())

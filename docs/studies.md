@@ -50,7 +50,8 @@ Decision record: [ADR-0011](adr/0011-studies-from-pgn.md).
   dark ring on the square, arrows drawn as thick dark lines with a head
   (brush colours are not distinguishable on e-ink; all shapes use one style).
   The move's mark (`!`, `!!`, `!?` / `?`, `??`, `?!`) is a badge in the corner
-  of its square: a black disc for good marks, a white ringed disc for bad ones.
+  of its square: a black disc for good marks, a white ringed disc for bad ones
+  (inverted in night mode, with the rest of the board).
 - Text panel: the current move (`12... Nf6!?`), the position assessment in
   words, then the comment; the chapter intro at the start; a hint when the
   next move has alternatives.
