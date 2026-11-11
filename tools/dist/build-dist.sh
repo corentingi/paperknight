@@ -2,7 +2,8 @@
 # Builds the files a release serves, in build/dist/out (docs/releasing.md):
 #   install.sh                           the installer, with the parts below baked in
 #   paperknight-plugin-<version>.tar.gz  the plugin (without packs/ and bin/)
-#   paperknight-puzzles-<date>.tar.gz    the puzzle pack (<date>: the Lichess download)
+#   paperknight-puzzles-<date>.tar.gz    the puzzle pack (<date>: the Lichess download),
+#                                        unless it is served from its own release
 #   paperknight-emoji-font-<hash>.tar.gz Noto Emoji and its licence
 #   paperknight-studies-<hash>.tar.gz    studies and repertoires, only when staged
 #   paperknight-<version>-usb.zip        the same as a koreader/ folder to copy over USB
@@ -27,6 +28,12 @@
 #   (the folder serving them, e.g. a Stockfish release) they are downloaded
 #   from there; otherwise they are copied next to the other files.
 #   PAPERKNIGHT_STOCKFISH_VERSION names them (default: their hash).
+# The puzzle pack: the stage's, packed here and versioned by the day its
+#   Lichess database was downloaded. With PAPERKNIGHT_PUZZLES_ARCHIVE (the
+#   archive of a puzzles release, downloaded), PAPERKNIGHT_PUZZLES_URL (the
+#   folder serving it) and PAPERKNIGHT_PUZZLES_VERSION, that archive is
+#   offered as it is: a plugin release then never changes the pack
+#   (ADR-0022).
 set -eu
 DIST_URL="${PAPERKNIGHT_DIST_URL:?set PAPERKNIGHT_DIST_URL to the base URL of the served files}"
 cd "$(dirname "$0")/../.."
@@ -51,7 +58,16 @@ pack() { # archive name, folder, paths...
     tar czf "$OUT/$name" --sort=name --owner=0 --group=0 --numeric-owner -C "$dir" "$@"
 }
 
-[ -f "$PACK" ] || { echo "missing $PACK (make packs, then stage it)" >&2; exit 1; }
+PUZZLES_ARCHIVE="${PAPERKNIGHT_PUZZLES_ARCHIVE:-}"
+if [ -n "$PUZZLES_ARCHIVE" ]; then
+    [ -f "$PUZZLES_ARCHIVE" ] || { echo "missing $PUZZLES_ARCHIVE" >&2; exit 1; }
+    : "${PAPERKNIGHT_PUZZLES_URL:?set PAPERKNIGHT_PUZZLES_URL to the folder serving the puzzle pack}"
+    : "${PAPERKNIGHT_PUZZLES_VERSION:?set PAPERKNIGHT_PUZZLES_VERSION to the puzzle pack's version}"
+    tar tzf "$PUZZLES_ARCHIVE" | grep -qx "$PLUGIN/packs/puzzles.sqlite" \
+        || { echo "$PUZZLES_ARCHIVE: no $PLUGIN/packs/puzzles.sqlite" >&2; exit 1; }
+else
+    [ -f "$PACK" ] || { echo "missing $PACK (make packs, then stage it)" >&2; exit 1; }
+fi
 [ -f "$STAGE/fonts/NotoEmoji.ttf" ] || { echo "missing $STAGE/fonts/NotoEmoji.ttf" >&2; exit 1; }
 rm -rf "$OUT" "$WORK"
 mkdir -p "$OUT" "$WORK/plugin/$PLUGIN"
@@ -66,16 +82,22 @@ echo "${PAPERKNIGHT_UPDATE_URL:-$DIST_URL/install.sh}" > "$WORK/plugin/$PLUGIN/u
 pack "paperknight-plugin-$VERSION.tar.gz" "$WORK/plugin" "$PLUGIN"
 add_part plugin "$VERSION" "paperknight-plugin-$VERSION.tar.gz" "$OUT/paperknight-plugin-$VERSION.tar.gz"
 
-# the puzzle pack, versioned by the day its Lichess database was downloaded
-PACK_VERSION="$(python3 - "$PACK" <<'EOF'
+# the puzzle pack: a puzzles release's archive, or the stage's pack,
+# versioned by the day its Lichess database was downloaded
+if [ -n "$PUZZLES_ARCHIVE" ]; then
+    add_part puzzles "$PAPERKNIGHT_PUZZLES_VERSION" "$PAPERKNIGHT_PUZZLES_URL/$(basename "$PUZZLES_ARCHIVE")" "$PUZZLES_ARCHIVE"
+else
+    PACK_VERSION="$(python3 - "$PACK" <<'EOF'
 import re, sqlite3, sys
 meta = dict(sqlite3.connect(sys.argv[1]).execute("SELECT key, value FROM meta"))
 day = re.search(r"downloaded (\d{4}-\d{2}-\d{2})", meta.get("source", ""))
 print(day.group(1) if day else meta.get("built_at", "unknown")[:10])
 EOF
 )"
-pack "paperknight-puzzles-$PACK_VERSION.tar.gz" "$STAGE" "$PLUGIN/packs/puzzles.sqlite"
-add_part puzzles "$PACK_VERSION" "paperknight-puzzles-$PACK_VERSION.tar.gz" "$OUT/paperknight-puzzles-$PACK_VERSION.tar.gz"
+    PUZZLES_ARCHIVE="$OUT/paperknight-puzzles-$PACK_VERSION.tar.gz"
+    pack "paperknight-puzzles-$PACK_VERSION.tar.gz" "$STAGE" "$PLUGIN/packs/puzzles.sqlite"
+    add_part puzzles "$PACK_VERSION" "paperknight-puzzles-$PACK_VERSION.tar.gz" "$PUZZLES_ARCHIVE"
+fi
 
 FONT_VERSION="$(cat "$STAGE"/fonts/* | sha256sum | cut -c1-8)"
 pack "paperknight-emoji-font-$FONT_VERSION.tar.gz" "$STAGE" fonts
@@ -139,8 +161,10 @@ echo "$PARTS" | while IFS='|' read -r name version file _ _; do
             tar xzf "$OUT/$file" -C "$USB"
             echo "$version" > "$USB/paperknight/.parts/plugin" ;;
         *)
-            tar xzf "$OUT/$file" -C "$USB"
-            { echo "$version"; tar tzf "$OUT/$file" | grep -v '/$'; } > "$USB/paperknight/.parts/$name" ;;
+            archive="$OUT/$file"
+            [ "$name" = puzzles ] && archive="$PUZZLES_ARCHIVE" # (may be served from elsewhere)
+            tar xzf "$archive" -C "$USB"
+            { echo "$version"; tar tzf "$archive" | grep -v '/$'; } > "$USB/paperknight/.parts/$name" ;;
     esac
 done
 python3 - "$WORK/usb" "$OUT/paperknight-$VERSION-usb.zip" <<'EOF'

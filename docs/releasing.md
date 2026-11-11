@@ -5,12 +5,13 @@ GitHub Actions builds and publishes everything (`.github/workflows/`):
 | Workflow | When | What |
 |---|---|---|
 | `ci.yml` | every push to `main` and pull request | `make check` (Lua specs, pytest, installer tests under busybox, headless e2e) |
-| `release.yml` | a tag `vX.Y.Z` | tests, builds the puzzle pack from the Lichess database, then the release files below, published as the release marked latest |
+| `release.yml` | a tag `vX.Y.Z` | tests, then the release files below, published as the release marked latest |
+| `puzzles.yml` | a tag `puzzles-YYYY-MM-DD` (the day it is built) | the puzzle pack from the Lichess database, published as a release of its own (not latest) |
 | `stockfish.yml` | a tag `stockfish-<sf tag>` (e.g. `stockfish-sf_18`) | Stockfish for each platform (`pw2` so far), checked under qemu, published as a release of its own (not latest) |
 | `pages.yml` | a push to `main` touching `site/` or the screenshots | the web page (`site/` + `docs/screenshots/`) on GitHub Pages |
 
-Run by hand (*Actions → workflow → Run workflow*), `release.yml` and
-`stockfish.yml` build the same files as an artifact without publishing: a
+Run by hand (*Actions → workflow → Run workflow*), `release.yml`,
+`puzzles.yml` and `stockfish.yml` build the same files as an artifact without publishing: a
 dry run.
 
 ## What a plugin release holds
@@ -21,7 +22,7 @@ dry run.
 |---|---|
 | `install.sh` | The installer, the only file with a fixed name: it lists the parts below with their versions and checksums |
 | `paperknight-plugin-<version>.tar.gz` | The plugin code (`plugins/paperknight.koplugin`, without `packs/` and `bin/`) |
-| `paperknight-puzzles-<date>.tar.gz` | The puzzle pack; `<date>`: the day its Lichess database was downloaded |
+| `paperknight-puzzles-<date>.tar.gz` | The puzzle pack; `<date>`: the day its Lichess database was downloaded. Not in a GitHub release: `install.sh` downloads it from the puzzles release |
 | `paperknight-emoji-font-<hash>.tar.gz` | Noto Emoji and its licence (`fonts/`) |
 | `paperknight-studies-<hash>.tar.gz` | Studies and repertoires: local builds only, never in a release |
 | `paperknight-<version>-usb.zip` | Everything as a `koreader/` folder to copy over USB, Stockfish included |
@@ -91,9 +92,9 @@ plugin changes, and the in-app update shows their first lines.
 
 ## A plugin release
 
-Publish the Stockfish release first (the plugin release downloads its
-binaries to describe them in `install.sh` and to put one in the USB zip),
-then:
+Publish the Stockfish and puzzles releases first (the plugin release
+downloads their files to describe them in `install.sh` and to put them in
+the USB zip), then:
 
     git tag v0.1.0 && git push origin v0.1.0
 
@@ -101,6 +102,17 @@ The plugin gets `version.txt` with the tag. The release ships no study or
 repertoire: Lichess study text has no clear licence
 (`tools/dist/stage-release.sh` stages empty folders). A local `make dist`
 bundles whatever you staged in `build/dist/all`.
+
+## A puzzles release
+
+    git tag puzzles-2026-12-01 && git push origin puzzles-2026-12-01
+
+Assets: `paperknight-puzzles-<date>.tar.gz` (the pack, at its path in the
+koreader folder) and `SHA256SUMS`. Then update `PUZZLES_RELEASE` in
+`release.yml`: the next plugin release offers that pack, and only then do
+devices download it. A plugin release never changes the pack by itself
+(ADR-0022): a new pack drops about one puzzle in ten of the previous one.
+The puzzles a user has under review or liked are kept on the device.
 
 ## A Stockfish release
 
@@ -118,7 +130,10 @@ entry in `stockfish.yml` (its qemu command) and its `uname -m` in
 `make dist` with `PAPERKNIGHT_DIST_URL` (environment or `local.mk`) builds
 the same files from your stage (`build/dist/all`, your studies included)
 and copies `build/dist/stockfish/stockfish-*.gz` (built by
-`build-stockfish.sh`) and its source next to them. Upload the whole of
+`build-stockfish.sh`) and its source next to them. The pack is the stage's;
+to offer a released one instead, set `PAPERKNIGHT_PUZZLES_ARCHIVE` (the
+downloaded archive), `PAPERKNIGHT_PUZZLES_URL` (the release's download
+folder) and `PAPERKNIGHT_PUZZLES_VERSION`. Upload the whole of
 `build/dist/out`, then on the Kindle `curl -fkL <server>/install.sh | sh`.
 
 ## To check on the device

@@ -22,7 +22,9 @@ committed; read it too when present).
   Stockfish from `build/dist/stockfish/`, a USB zip, `SHA256SUMS`. Repacks
   the current plugin with the assets staged in `build/dist/all` (not
   rebuilt). Needs `PAPERKNIGHT_DIST_URL` (`local.mk`, not committed, or the
-  environment). On the Kindle `curl -fkL <url>/install.sh | sh`: it
+  environment). Public releases take the puzzle pack from its own release
+  (`PUZZLES_RELEASE` in `release.yml`, ADR-0022): a plugin release never
+  changes it. On the Kindle `curl -fkL <url>/install.sh | sh`: it
   downloads only the parts whose version changed. docs/releasing.md.
 - `make games` — the master games (`data/games.tsv`, committed): PGN Mentor
   moves of `pipeline/data/master-games.tsv`, Stockfish's scores (a PC

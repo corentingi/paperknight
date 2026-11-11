@@ -55,6 +55,7 @@ printf '#!/bin/sh\necho "Stockfish (test)"\n' | gzip -c > "$T/sf/stockfish-pw2.g
 release() { # name, version, stage, release notes (Markdown file, optional)
     # (not the settings of the release workflow these tests may run in)
     env -u PAPERKNIGHT_UPDATE_URL -u PAPERKNIGHT_STOCKFISH_URL -u PAPERKNIGHT_STOCKFISH_VERSION \
+        -u PAPERKNIGHT_PUZZLES_ARCHIVE -u PAPERKNIGHT_PUZZLES_URL -u PAPERKNIGHT_PUZZLES_VERSION \
         PK_STAGE="$3" PK_OUT="$T/$1" SF_DIR="$T/sf" PAPERKNIGHT_VERSION="$2" PAPERKNIGHT_NOTES="${4:-}" \
         PAPERKNIGHT_DIST_URL="file://$T/$1" sh tools/dist/build-dist.sh > "$T/$1.build.log"
 }
@@ -201,6 +202,33 @@ check "list changes nothing" has "$K/$P/version.txt" v1
 run "$K" r2 --parts=stockfish -y || no "installer exit status"
 check "only Stockfish installed" test -x "$K/$P/bin/stockfish"
 check "plugin not updated" has "$K/$P/version.txt" v1
+
+echo "the puzzle pack from a release of its own (ADR-0022)"
+# r1's pack archive served from another folder; the plugin release (v3) has
+# a stage without a pack and offers that archive as it is
+mkdir -p "$T/puzzles-release" "$T/stage3/fonts"
+cp "$T/r1"/paperknight-puzzles-2026-01-01.tar.gz "$T/puzzles-release/"
+cp "$T/stage1/fonts"/* "$T/stage3/fonts/"
+env -u PAPERKNIGHT_UPDATE_URL -u PAPERKNIGHT_STOCKFISH_URL -u PAPERKNIGHT_STOCKFISH_VERSION \
+    PAPERKNIGHT_PUZZLES_ARCHIVE="$T/puzzles-release/paperknight-puzzles-2026-01-01.tar.gz" \
+    PAPERKNIGHT_PUZZLES_URL="file://$T/puzzles-release" PAPERKNIGHT_PUZZLES_VERSION=2026-01-01 \
+    PK_STAGE="$T/stage3" PK_OUT="$T/r3" SF_DIR="$T/sf" PAPERKNIGHT_VERSION=v3 PAPERKNIGHT_NOTES= \
+    PAPERKNIGHT_DIST_URL="file://$T/r3" sh tools/dist/build-dist.sh > "$T/r3.build.log"
+check "the plugin release holds no pack archive" bash -c "! ls '$T/r3' | grep -q puzzles"
+check "the installer points at the puzzles release" has "$T/r3/install.sh" "puzzles|2026-01-01|file://$T/puzzles-release/paperknight-puzzles-2026-01-01.tar.gz|"
+check "the same archive: the same checksum" test "$(grep '^puzzles|' "$T/r1/install.sh" | cut -d'|' -f4)" = "$(grep '^puzzles|' "$T/r3/install.sh" | cut -d'|' -f4)"
+K="$T/k8"
+run "$K" r3 -y || no "installer exit status"
+check "pack installed from the puzzles release" test -f "$K/$P/packs/puzzles.sqlite"
+check "pack record" has "$K/paperknight/.parts/puzzles" 2026-01-01
+python3 -c "import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "$T/r3/paperknight-v3-usb.zip" "$T/k8usb"
+check "the USB zip has the pack" test -f "$T/k8usb/koreader/$P/packs/puzzles.sqlite"
+check "and its record" has "$T/k8usb/koreader/paperknight/.parts/puzzles" "$P/packs/puzzles.sqlite"
+# a device on r1 (pack 2026-01-01) updating to v3: the plugin only
+K="$T/k1"
+run "$K" r3 -y || no "installer exit status"
+check "plugin updated" has "$K/$P/version.txt" v3
+check "pack not downloaded again" bash -c "! grep -q 'Downloading paperknight-puzzles' '$T/out.log'"
 
 if [ "$FAILS" -gt 0 ]; then
     echo "test-install: $FAILS failed (last installer output: $T/out.log)" >&2

@@ -1,8 +1,10 @@
-# Releases the plugin: on a version tag (vX.Y.Z), tests, builds the puzzle
-# pack from the Lichess database, then install.sh, one archive per part and
-# the USB zip (tools/dist/build-dist.sh), and publishes them as a GitHub
-# release. Stockfish comes from its own release (STOCKFISH_RELEASE, built by
-# stockfish.yml): install.sh downloads it from there. Run by hand
+# Releases the plugin: on a version tag (vX.Y.Z), tests, then builds
+# install.sh, one archive per part and the USB zip
+# (tools/dist/build-dist.sh), and publishes them as a GitHub release.
+# Stockfish and the puzzle pack come from releases of their own
+# (STOCKFISH_RELEASE, built by stockfish.yml; PUZZLES_RELEASE, built by
+# puzzles.yml): install.sh downloads them from there, so a plugin release
+# never changes them by itself (ADR-0022). Run by hand
 # (workflow_dispatch), it builds the same files as an artifact without
 # releasing (a dry run). docs/releasing.md.
 name: Release
@@ -17,6 +19,9 @@ permissions:
 env:
   # the Stockfish release install.sh offers (publish it first)
   STOCKFISH_RELEASE: stockfish-sf_18
+  # the puzzle pack install.sh offers (publish it first; a new pack reaches
+  # the devices when this line changes)
+  PUZZLES_RELEASE: puzzles-2026-11-03
 
 jobs:
   release:
@@ -45,15 +50,17 @@ jobs:
         run: sudo apt-get install -yq busybox
       - name: Test
         run: make check
-      - name: Cache the Lichess puzzle database (monthly)
-        id: month
-        run: echo "month=$(date +%Y-%m)" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v6
-        with:
-          path: build/downloads
-          key: lichess-puzzles-${{ steps.month.outputs.month }}
-      - name: Build the puzzle pack
-        run: make packs
+      - name: Puzzle pack from its release
+        run: |
+          mkdir -p build/puzzles
+          if ! gh release download "$PUZZLES_RELEASE" --repo "$GITHUB_REPOSITORY" \
+              --pattern 'paperknight-puzzles-*.tar.gz' --dir build/puzzles; then
+            # a release needs it; a dry run builds a pack of its own
+            case "$GITHUB_REF" in refs/tags/*) exit 1 ;; esac
+            echo "::warning::no $PUZZLES_RELEASE release: a pack built from the Lichess database"
+            make packs
+          fi
+          ls build/puzzles
       - name: Stockfish from its release
         run: |
           mkdir -p build/sf
@@ -80,6 +87,12 @@ jobs:
           PAPERKNIGHT_STOCKFISH_URL: https://github.com/${{ github.repository }}/releases/download/${{ env.STOCKFISH_RELEASE }}
         run: |
           export PAPERKNIGHT_STOCKFISH_VERSION="${STOCKFISH_RELEASE#stockfish-}"
+          archive="$(ls build/puzzles/paperknight-puzzles-*.tar.gz 2>/dev/null | head -1)"
+          if [ -n "$archive" ]; then
+            export PAPERKNIGHT_PUZZLES_ARCHIVE="$archive"
+            export PAPERKNIGHT_PUZZLES_URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$PUZZLES_RELEASE"
+            export PAPERKNIGHT_PUZZLES_VERSION="${PUZZLES_RELEASE#puzzles-}"
+          fi
           tools/dist/stage-release.sh
           tools/dist/build-dist.sh
       - uses: actions/upload-artifact@v7
@@ -104,7 +117,7 @@ jobs:
 
           Or, from Paperknight v0.3.0 on, in the app: *Settings… → Check for updates…*.
 
-          Without a terminal: unzip \`paperknight-$GITHUB_REF_NAME-usb.zip\` and copy its \`koreader\` folder onto the Kindle over USB. Stockfish (GPLv3) comes from [$STOCKFISH_RELEASE]($repo/releases/tag/$STOCKFISH_RELEASE), with its source.
+          Without a terminal: unzip \`paperknight-$GITHUB_REF_NAME-usb.zip\` and copy its \`koreader\` folder onto the Kindle over USB. Stockfish (GPLv3) comes from [$STOCKFISH_RELEASE]($repo/releases/tag/$STOCKFISH_RELEASE), with its source; the puzzle pack from [$PUZZLES_RELEASE]($repo/releases/tag/$PUZZLES_RELEASE).
           NOTES
           gh release create "$GITHUB_REF_NAME" --title "Paperknight $GITHUB_REF_NAME" \
             --notes-file notes.md --latest build/dist/out/*

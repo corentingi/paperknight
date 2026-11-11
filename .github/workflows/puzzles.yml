@@ -1,0 +1,65 @@
+# Builds the puzzle pack from the Lichess puzzle database (make packs) and,
+# on a puzzles-* tag (puzzles-YYYY-MM-DD, the day it is built), publishes it
+# as a release of its own (not marked latest: the plugin's releases are).
+# The plugin's releases offer the pack named in release.yml
+# (PUZZLES_RELEASE): a new pack reaches the devices when that line changes,
+# never by itself (ADR-0022). Run by hand, it builds the pack as an
+# artifact (a dry run).
+name: Puzzles
+on:
+  push:
+    tags: ["puzzles-*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Pipeline tests
+        run: make test-py
+      - name: Build the puzzle pack
+        run: make packs
+      - name: Archive
+        id: archive
+        run: |
+          case "$GITHUB_REF_NAME" in puzzles-*) version="${GITHUB_REF_NAME#puzzles-}" ;; *) version=dry-run ;; esac
+          plugin=plugins/paperknight.koplugin
+          mkdir -p build/puzzles/stage/$plugin/packs build/puzzles/out
+          cp build/packs/puzzles.sqlite build/puzzles/stage/$plugin/packs/
+          # paths relative to the koreader folder, as install.sh extracts them
+          tar czf "build/puzzles/out/paperknight-puzzles-$version.tar.gz" --sort=name --owner=0 --group=0 \
+            --numeric-owner -C build/puzzles/stage $plugin/packs/puzzles.sqlite
+          (cd build/puzzles/out && sha256sum -- * > SHA256SUMS && cat SHA256SUMS)
+          python3 - build/packs/puzzles.sqlite <<'EOF' | tee build/puzzles/notes.md
+          import sqlite3, sys
+          c = sqlite3.connect(sys.argv[1])
+          meta = dict(c.execute("SELECT key, value FROM meta"))
+          count = c.execute("SELECT count(*) FROM puzzles").fetchone()[0]
+          print(f"The Paperknight puzzle pack: {count} puzzles from the Lichess puzzle database (CC0).")
+          print()
+          print(f"Source: {meta.get('source', '?')}")
+          print()
+          print("The Paperknight installer offers the pack its release names; puzzles under review")
+          print("and liked puzzles are kept on the device when the pack changes.")
+          EOF
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: paperknight-puzzles-${{ steps.archive.outputs.version }}
+          path: build/puzzles/out/
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/puzzles-')
+        run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --latest=false \
+            --title "Puzzle pack ${GITHUB_REF_NAME#puzzles-}" --notes-file build/puzzles/notes.md \
+            build/puzzles/out/*
