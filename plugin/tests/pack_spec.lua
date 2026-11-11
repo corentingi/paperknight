@@ -106,6 +106,7 @@ return {
         local rating = prog:rating()
         prog.conn:exec("DELETE FROM kv WHERE key LIKE 'rating%'")
         prog.conn:exec("INSERT INTO kv (key, value) VALUES ('rating', '1350')") -- the old Elo rating
+        prog.conn:exec("PRAGMA user_version = 0") -- as a file older than the numbered steps
         prog:close()
         prog = PkProgress.open(path)
         t.eq(prog:rating(), rating, "same rating as live updates")
@@ -189,6 +190,126 @@ return {
         t.eq(prog:getReview("D").step, 1, "the ladder migration runs once")
         prog:close()
         os.remove(path)
+    end },
+    { "progress: schema changes are numbered steps, run once each", function(t)
+        local path = tmpdb()
+        local n = #PkProgress.MIGRATIONS
+        local prog = PkProgress.open(path)
+        t.eq(prog:schemaVersion(), n, "a new file is at the latest version")
+        prog:record({ puzzle_id = "A", puzzle_rating = 1500, success = false, solved = false, mistakes = 1,
+                      used_help = false, ts = 1000 }, { step = 2, due = 5, lapses = 0, missed = 1000 })
+        prog:setSetting("theme", "fork")
+        local rating = prog:rating()
+        -- the first step is not run again on a file that had it: the ladder
+        -- flag removed, the card's step stays
+        prog.conn:exec("DELETE FROM kv WHERE key = 'migration.review_ladder_3_7_21'")
+        prog:close()
+        prog = PkProgress.open(path)
+        t.eq(prog:getReview("A").step, 2, "step 1 not run twice")
+        prog:close()
+        -- a new step: run once, the version follows
+        local runs = 0
+        PkProgress.MIGRATIONS[n + 1] = function(self)
+            runs = runs + 1
+            self.conn:exec("CREATE TABLE extra (x INTEGER)")
+        end
+        local ok, err = pcall(function()
+            prog = PkProgress.open(path)
+            t.eq(runs, 1); t.eq(prog:schemaVersion(), n + 1, "the version after the new step")
+            prog.conn:exec("INSERT INTO extra VALUES (1)")
+            prog:close()
+            prog = PkProgress.open(path)
+            t.eq(runs, 1, "not run again"); t.eq(prog:schemaVersion(), n + 1)
+            prog:close()
+            -- a step that fails: rolled back with its version, the file as it was
+            PkProgress.MIGRATIONS[n + 2] = function(self)
+                self.conn:exec("DELETE FROM attempts")
+                self.conn:exec("DELETE FROM kv")
+                error("step failed")
+            end
+            local opened, open_err = pcall(PkProgress.open, path)
+            t.ok(not opened and tostring(open_err):find("step failed", 1, true), "open raises: " .. tostring(open_err))
+            PkProgress.MIGRATIONS[n + 2] = nil
+            prog = PkProgress.open(path)
+            t.eq(prog:schemaVersion(), n + 1, "the version did not move")
+            t.eq(prog:attemptCount(), 1, "attempts kept"); t.eq(prog:rating(), rating, "rating kept")
+            t.eq(prog:getSetting("theme"), "fork", "settings kept")
+            prog:close()
+            -- a file from a newer Paperknight opens (its extra steps unknown here)
+            PkProgress.MIGRATIONS[n + 1] = nil
+            prog = PkProgress.open(path)
+            t.eq(prog:schemaVersion(), n + 1); t.eq(prog:attemptCount(), 1)
+            prog:close()
+        end)
+        PkProgress.MIGRATIONS[n + 1], PkProgress.MIGRATIONS[n + 2] = nil, nil
+        os.remove(path)
+        if not ok then error(err, 0) end
+    end },
+    { "progress: a v0.6.1 file gets its version and the kept puzzles table", function(t)
+        -- every table and flag of v0.6.1, no version number, no puzzles_kept
+        local path = tmpdb()
+        local SQ3 = require("lua-ljsqlite3/init")
+        local conn = SQ3.open(path)
+        conn:exec([[
+            CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            CREATE TABLE attempts (puzzle_id TEXT NOT NULL, ts INTEGER NOT NULL, solved INTEGER NOT NULL,
+                mistakes INTEGER NOT NULL, used_help INTEGER NOT NULL, puzzle_rating INTEGER NOT NULL,
+                rating_before INTEGER NOT NULL, rating_after INTEGER NOT NULL,
+                review INTEGER NOT NULL DEFAULT 0);
+            CREATE INDEX attempts_puzzle_ts ON attempts (puzzle_id, ts);
+            CREATE TABLE puzzle_reviews (puzzle_id TEXT PRIMARY KEY, due INTEGER NOT NULL,
+                step INTEGER NOT NULL, lapses INTEGER NOT NULL, missed INTEGER NOT NULL);
+            CREATE TABLE puzzle_likes (puzzle_id TEXT PRIMARY KEY, ts INTEGER NOT NULL);
+            INSERT INTO attempts VALUES ('A', 1000, 0, 1, 0, 1200, 1200, 1180, 0);
+            INSERT INTO puzzle_reviews VALUES ('A', 10, 2, 1, 1000);
+            INSERT INTO puzzle_likes VALUES ('L', 2000);
+            INSERT INTO kv VALUES ('migration.review_ladder_3_7_21', '1'), ('rating', '1433.5'),
+                ('rating.rd', '120'), ('rating.vol', '0.06'), ('rating.ts', '1000'),
+                ('setting.theme', 'pin'), ('setting.pref.legal_moves', '1');]])
+        conn:close()
+        local prog = PkProgress.open(path)
+        t.eq(prog:schemaVersion(), #PkProgress.MIGRATIONS)
+        t.eq(prog:rating(), 1434, "the rating is not replayed"); t.eq(prog:ratingState().rd, 120)
+        t.eq(prog:getReview("A").step, 2, "the ladder is not shifted again")
+        t.eq(prog:attemptCount(), 1); t.ok(prog:isLiked("L"))
+        t.eq(prog:getSetting("theme"), "pin"); t.eq(prog:getSetting("pref.legal_moves"), "1")
+        t.eq(prog:keptPuzzle("A"), nil, "the kept puzzles table is there, empty")
+        prog:close()
+        os.remove(path)
+    end },
+    { "progress: one shared handle for the app, the settings through it", function(t)
+        local path = tmpdb()
+        local default = PkProgress.defaultPath
+        PkProgress.closeShared()
+        PkProgress.defaultPath = function() return path end
+        local open, opens = PkProgress.open, 0
+        PkProgress.open = function(...) opens = opens + 1; return open(...) end
+        local ok, err = pcall(function()
+            local a = PkProgress.shared()
+            t.ok(a == PkProgress.shared(), "the same handle")
+            PkProgress.writeSetting("play.current", "e2e4")
+            t.eq(PkProgress.readSetting("play.current"), "e2e4")
+            t.eq(a:getSetting("play.current"), "e2e4", "the handle's own settings")
+            a:close() -- a screen closing the handle it was given
+            t.ok(a.conn ~= nil and PkProgress.shared() == a, "close() leaves the shared handle open")
+            PkProgress.writeSetting("play.current", nil)
+            t.eq(PkProgress.readSetting("play.current"), nil, "nil removes a setting")
+            for i = 1, 20 do PkProgress.writeSetting("k" .. i, i); PkProgress.readSetting("k" .. i) end
+            t.eq(opens, 1, "the file opened once")
+            -- another handle on the file can write: nothing is left locked
+            local other = open(path)
+            other:setSetting("from.other", "1")
+            other:close()
+            t.eq(PkProgress.readSetting("from.other"), "1")
+            PkProgress.closeShared()
+            t.eq(a.conn, nil, "closeShared closes it")
+            t.eq(PkProgress.readSetting("k7"), "7", "opened again on the next use")
+            t.eq(opens, 2)
+        end)
+        PkProgress.closeShared()
+        PkProgress.open, PkProgress.defaultPath = open, default
+        os.remove(path)
+        if not ok then error(err, 0) end
     end },
     { "progress: a failed transaction is rolled back and leaves the connection usable", function(t)
         local path = tmpdb()

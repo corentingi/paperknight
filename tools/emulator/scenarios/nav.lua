@@ -42,21 +42,26 @@ return function(h)
         "puzzle status: " .. tostring(home.item_table[1].mandatory))
     h.check(menuItem(home, "Night mode: off"), "night mode item")
     h.shot("nav-home")
-    -- repaints don't reopen the progress database (the status is cached
-    -- until the puzzle screen closes)
+    -- repaints don't read the progress database (the status is cached
+    -- until the puzzle screen closes), and nothing opens the file twice:
+    -- the screens share one handle
     local PkProgress = require("pkprogress")
-    local open, opens = PkProgress.open, 0
-    PkProgress.open = function(...) opens = opens + 1; return open(...) end
+    local handle = PkProgress.shared()
+    local open, file_opens = PkProgress.open, 0
+    PkProgress.open = function(...) file_opens = file_opens + 1; return open(...) end
+    local rating, opens = handle.rating, 0
+    handle.rating = function(...) opens = opens + 1; return rating(...) end
     for _ = 1, 3 do
         require("ui/uimanager"):setDirty(home, "ui")
         h.settle()
     end
-    h.check(opens == 0, "home repaints: no database open (" .. opens .. ")")
+    h.check(opens == 0, "home repaints: no database read (" .. opens .. ")")
     PkNav.statusChanged()
     require("ui/uimanager"):setDirty(home, "ui")
     h.settle()
-    PkProgress.open = open
+    handle.rating = nil
     h.check(opens == 1, "status recomputed once after a change (" .. opens .. ")")
+    h.check(PkProgress.shared() == handle, "one handle for the session")
 
     -- 2. A mode opens above the home screen.
     h.tapWidget(puzzles)
@@ -152,4 +157,7 @@ return function(h)
     home:onClose()
     h.settle()
     h.check(names() == "", "nothing left: " .. names())
+    -- puzzles, studies, openings and the settings went through the shared handle
+    PkProgress.open = open
+    h.check(file_opens == 0, "the progress file was not opened again (" .. file_opens .. ")")
 end

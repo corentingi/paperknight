@@ -33,8 +33,9 @@ function PkOpenings.dir()
     return PkStudies.dataDir("repertoires", "PAPERKNIGHT_REPERTOIRES_DIR")
 end
 
+-- The app's progress handle (shared, never closed here), or nil and the error.
 local function openProgress()
-    local ok, progress = pcall(PkProgress.open, PkProgress.defaultPath())
+    local ok, progress = pcall(PkProgress.shared)
     if ok then return progress end
     logger.warn("Paperknight: cannot open progress database:", progress)
     return nil, progress
@@ -252,7 +253,6 @@ function PkOpenings.toggleFlip(path, chapter)
     local ok = pcall(function()
         progress:setSetting(key, progress:getSetting(key) ~= "1" and "1" or nil)
     end)
-    progress:close()
     return ok
 end
 
@@ -279,7 +279,6 @@ function PkOpenings.openRepertoire(path)
     local progress, db_err = openProgress()
     local rep, err = PkOpenings.load(path, progress)
     if not rep then
-        if progress then progress:close() end
         UIManager:show(InfoMessage:new{ text = T(_("Cannot open %1:\n%2"), util.fixUtf8(name, "?"), err) })
         return nil
     end
@@ -288,13 +287,12 @@ function PkOpenings.openRepertoire(path)
             drill = newDrill(rep, progress),
             title = (rep.study.name or name),
             on_flip = function(chapter)
-                -- after the view closed (and its database handle with it)
+                -- after the view closed
                 UIManager:nextTick(function()
                     if PkOpenings.toggleFlip(path, chapter) then PkOpenings.openRepertoire(path) end
                 end)
             end,
             on_close = function()
-                if progress then progress:close() end
                 PkOpenings.view = nil
                 if PkOpenings.list then PkOpenings.refreshList() end
             end,
@@ -302,7 +300,6 @@ function PkOpenings.openRepertoire(path)
     end)
     if not ok then
         logger.warn("Paperknight: cannot start the drill:", view)
-        if progress then progress:close() end
         UIManager:show(InfoMessage:new{ text = T(_("Cannot open %1:\n%2"), util.fixUtf8(name, "?"), tostring(view)) })
         return nil
     end
@@ -354,7 +351,6 @@ local function listItems(dir)
         end
         if loading then UIManager:close(loading) end
     end)
-    if progress then progress:close() end
     if not ok then error(err, 0) end
     if #items == 0 then
         items[1] = { text = T(_("No repertoires in %1"), dir), callback = function() end }

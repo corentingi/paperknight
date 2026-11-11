@@ -66,6 +66,14 @@ committed; read it too when present).
 - In a ButtonTable, icon buttons are taller than text ones: size the icons
   to the text row, or the board moves when the bar is swapped.
 
+## The progress file (pkprogress.lua)
+- One handle for the session: `PkProgress.shared()` (never `open` on the
+  default path); settings with `PkProgress.readSetting`/`writeSetting`.
+  `close()` leaves the shared handle open. Reset a statement after its
+  last `step()`: an open read blocks every other writer.
+- A schema change is a new numbered step in `PkProgress.MIGRATIONS`, with a
+  spec; never edit a step that was released.
+
 ## E-ink refreshes (pkrefresh.lua, docs/eink-refresh.md)
 - PW2 is a REAGL Kindle: `partial`/`[partial]` = REAGL (no flash), `ui` =
   GC16_FAST (flickers changed pixels), `fast` = DU (black and white, crushes

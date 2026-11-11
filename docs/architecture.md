@@ -102,7 +102,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 
 | File | Role |
 |---|---|
-| `pkprogress.lua` | `progress.sqlite`: rating (Glicko-2) and attempts (ADR-0010), puzzle reviews (ADR-0014), liked puzzles, the puzzles kept with them (ADR-0022), repertoire cards, settings; migrations |
+| `pkprogress.lua` | `progress.sqlite`: rating (Glicko-2) and attempts (ADR-0010), puzzle reviews (ADR-0014), liked puzzles, the puzzles kept with them (ADR-0022), repertoire cards, settings. One handle shared by the screens for the session (`PkProgress.shared`; `readSetting`/`writeSetting` go through it); schema changes are numbered steps (`MIGRATIONS`, `PRAGMA user_version`) |
 
 The menu entry *Paperknight* opens a submenu: *Home*, *Puzzles*, *Studies*,
 *Openings*, *Analysis board*, *Play* and *Master games*. Stockfish is installed apart

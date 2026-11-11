@@ -124,15 +124,15 @@ local ERRORS = {
     not_pgn = _("This file is not a PGN file."),
 }
 
--- Runs fn(progress) with the progress database (nil if it cannot be opened).
+-- Runs fn(progress) with the app's progress handle (nil if the file cannot
+-- be opened).
 local function withProgress(fn)
-    local ok, progress = pcall(PkProgress.open, PkProgress.defaultPath())
+    local ok, progress = pcall(PkProgress.shared)
     if not ok then
         logger.warn("Paperknight: cannot open progress database:", progress)
         progress = nil
     end
     local res_ok, res = pcall(fn, progress)
-    if progress then progress:close() end
     if not res_ok then
         logger.warn("Paperknight:", res)
         return nil

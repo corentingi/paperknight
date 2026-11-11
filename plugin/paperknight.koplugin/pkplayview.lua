@@ -40,8 +40,6 @@ local PkPlayView = InputContainer:extend{
 require("pkboardscreen").mixin(PkPlayView)
 
 -- Remembered choices and the game in progress (progress.sqlite)
-PkPlayView._setting = PkProgress.readSetting
-PkPlayView._saveSetting = PkProgress.writeSetting
 
 --- Opens Play: the game in progress if there is one, else a new game with
 -- the last settings and the new game dialog over it. `opts`: { engine_path }.
@@ -63,7 +61,7 @@ function PkPlayView:init()
     self.has_engine = PkEngine.installed(self.engine_path)
     -- the board takes the whole width, as in puzzles: the moves in the
     -- panel; the move list beside the board on request (☰, remembered)
-    self.list_shown = PkPlayView._setting("play.movelist") == "1"
+    self.list_shown = PkProgress.readSetting("play.movelist") == "1"
     self.title_bar = TitleBar:new{
         fullscreen = true,
         title = _("Play"),
@@ -88,14 +86,14 @@ function PkPlayView:init()
     local panel_min = Screen:scaleBySize(80)
     self.board_size = math.min(self.dimen.w, free_h - panel_min - 3 * Size.padding.default)
     self.text_h = free_h - self.board_size - 3 * Size.padding.default
-    local saved, times = PkPlay.restore(PkPlayView._setting("play.current"), { engine = self.has_engine })
+    local saved, times = PkPlay.restore(PkProgress.readSetting("play.current"), { engine = self.has_engine })
     self.resumed = saved ~= nil
     self:startGame(saved or PkPlay.new(self:settings(), { engine = self.has_engine }), times)
 end
 
 --- The settings of the last new game (pkplay.lua).
 function PkPlayView:settings()
-    return PkPlay.loadSettings(PkPlayView._setting)
+    return PkPlay.loadSettings(PkProgress.readSetting)
 end
 
 ---------------------------------------------------------------------------
@@ -140,7 +138,7 @@ function PkPlayView:showSetup()
         has_engine = self.has_engine,
         on_start = function(settings)
             self.setup = nil
-            PkPlay.saveSettings(settings, PkPlayView._saveSetting)
+            PkPlay.saveSettings(settings, PkProgress.writeSetting)
             if self.engine then self.engine.send("ucinewgame") end
             self:startGame(PkPlay.new(settings, { engine = self.has_engine }))
         end,
@@ -230,14 +228,14 @@ end
 function PkPlayView:_save()
     local play = self.play
     if play.result or #self.game.history() == 0 then
-        PkPlayView._saveSetting("play.current", nil)
+        PkProgress.writeSetting("play.current", nil)
         return
     end
     local times = self.timer and {
         w = self.timer:getRemainingTime("w"),
         b = self.timer:getRemainingTime("b"),
     } or nil
-    PkPlayView._saveSetting("play.current", play:serialize(times))
+    PkProgress.writeSetting("play.current", play:serialize(times))
 end
 
 ---------------------------------------------------------------------------
@@ -502,7 +500,7 @@ end
 
 function PkPlayView:toggleList()
     self.list_shown = not self.list_shown
-    PkPlayView._saveSetting("play.movelist", self.list_shown and "1" or "0")
+    PkProgress.writeSetting("play.movelist", self.list_shown and "1" or "0")
     self:_build(self.board.flipped)
     self:refresh(true)
 end

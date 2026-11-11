@@ -197,17 +197,14 @@ function PkNav.statusChanged()
 end
 
 local function computePuzzlesStatus()
-    local progress
     local ok, text = pcall(function()
-        local PkProgress = require("pkprogress")
         local PkSrs = require("pksrs")
-        progress = PkProgress.open(PkProgress.defaultPath())
+        local progress = require("pkprogress").shared()
         local rating, due = progress:rating(), progress:reviewDueCount(PkSrs.today())
         local s = T(_("Rating: %1"), math.floor(rating + 0.5))
         if due > 0 then s = s .. " · " .. T(_("%1 to review"), due) end
         return s
     end)
-    if progress then pcall(progress.close, progress) end -- also after an error
     if not ok then logger.warn("Paperknight: home status:", text) end
     return ok and text or nil
 end

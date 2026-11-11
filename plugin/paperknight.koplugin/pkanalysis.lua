@@ -100,18 +100,16 @@ function PkAnalysis:init()
     self.game = Chess:new()
     -- the move list and the engine as they were last left (the engine off
     -- the first time); Stockfish starts when the engine is on
-    self.list_shown = PkAnalysis._setting("analysis.movelist") ~= "0"
+    self.list_shown = PkProgress.readSetting("analysis.movelist") ~= "0"
     self.engine_on = false
     local lfs = require("libs/libkoreader-lfs")
     self.engine_missing = lfs.attributes(self:_enginePath(), "mode") ~= "file"
     self:_updateEngineButton()
     if not self:setLine(self.fen or START_FEN, self.moves, self.pos) then self:setPosition(START_FEN) end
-    if not self.engine_missing and PkAnalysis._setting("analysis.engine") == "1" then self:toggleEngine(true) end
+    if not self.engine_missing and PkProgress.readSetting("analysis.engine") == "1" then self:toggleEngine(true) end
 end
 
 -- Remembered choices (progress.sqlite)
-PkAnalysis._setting = PkProgress.readSetting
-PkAnalysis._saveSetting = PkProgress.writeSetting
 
 -- The engine button: its icon says whether the engine is on; greyed
 -- without Stockfish (a tap then says how to install it).
@@ -189,7 +187,7 @@ end
 --- Shows or hides the move list.
 function PkAnalysis:toggleList()
     self.list_shown = not self.list_shown
-    PkAnalysis._saveSetting("analysis.movelist", self.list_shown and "1" or "0")
+    PkProgress.writeSetting("analysis.movelist", self.list_shown and "1" or "0")
     self:_build()
     self:_update(true)
 end
@@ -620,7 +618,7 @@ function PkAnalysis:toggleEngine(restoring)
         return
     end
     self.engine_on = not self.engine_on
-    if not restoring then PkAnalysis._saveSetting("analysis.engine", self.engine_on and "1" or "0") end
+    if not restoring then PkProgress.writeSetting("analysis.engine", self.engine_on and "1" or "0") end
     -- started the first time; afterwards kept (idle) until the board closes,
     -- so that turning it on again is immediate
     if self.engine_on and not self.engine then self:_startEngine() end

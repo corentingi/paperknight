@@ -1,5 +1,8 @@
 -- User puzzle rating (Glicko-2) and attempt history (ADR-0010), in a writable SQLite file
 -- kept apart from the read-only packs so packs can be replaced freely.
+-- The app's screens share one handle on it (PkProgress.shared), open for
+-- the session; the settings (readSetting, writeSetting) go through it.
+-- Its schema changes are numbered steps (MIGRATIONS, PRAGMA user_version).
 local SQ3 = require("lua-ljsqlite3/init")
 local PkGlicko = require("pkglicko")
 
@@ -94,13 +97,15 @@ function PkProgress.open(path)
         -- write (slow flash); syncing stays the default (FULL): no corruption
         -- on a power cut
         conn:exec("PRAGMA journal_mode=TRUNCATE")
-        conn:exec(SCHEMA)
         self:_migrate()
         self.insert_stmt = conn:prepare("INSERT INTO attempts (puzzle_id, ts, solved, mistakes, used_help,"
             .. " puzzle_rating, rating_before, rating_after, review) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
         self.recent_stmt = conn:prepare("SELECT 1 FROM attempts WHERE puzzle_id = ? AND ts >= ? LIMIT 1")
         self.review_stmt = conn:prepare("SELECT puzzle_id, due, step, lapses, missed FROM puzzle_reviews"
             .. " WHERE puzzle_id = ?")
+        self.get_setting_stmt = conn:prepare("SELECT value FROM kv WHERE key = ?")
+        self.set_setting_stmt = conn:prepare("INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)")
+        self.del_setting_stmt = conn:prepare("DELETE FROM kv WHERE key = ?")
     end)
     if not ok then
         self:close()
@@ -109,30 +114,60 @@ function PkProgress.open(path)
     return self
 end
 
--- Schema changes of existing files.
---  * attempts.review: 1 for a review of a missed puzzle (recordReview): not
---    rated, not in the stats, but it marks the puzzle as seen.
---  * The review ladder changed on 2026-10-14 (3, 7, 21 days instead of 1, 3,
---    7, 21, ADR-0014): a card's step k waited for the old k-th interval, the
---    new step k-1 (one-time shift).
-function PkProgress:_migrate()
-    local has_review = false
-    local info = self.conn:prepare("PRAGMA table_info(attempts)")
-    for row in info:rows() do
-        if row[2] == "review" then has_review = true end
-    end
-    info:close()
-    if not has_review then
-        self.conn:exec("ALTER TABLE attempts ADD COLUMN review INTEGER NOT NULL DEFAULT 0")
-    end
-    if not self.conn:rowexec("SELECT value FROM kv WHERE key = 'migration.review_ladder_3_7_21'") then
-        self:_tx(function()
+-- Schema changes, in order: step n brings a file from version n - 1 to n
+-- (PRAGMA user_version), in a transaction of its own. Never change a step
+-- that was released: add one.
+--  1. The tables, and what files older than the numbering may lack (they
+--     are at version 0, as a new file; every part of the step looks before
+--     it changes):
+--     * attempts.review: 1 for a review of a missed puzzle (recordReview):
+--       not rated, not in the stats, but it marks the puzzle as seen.
+--     * The review ladder changed on 2026-10-14 (3, 7, 21 days instead of
+--       1, 3, 7, 21, ADR-0014): a card's step k waited for the old k-th
+--       interval, the new step k-1 (one-time shift, behind a kv flag).
+--     * The Glicko-2 state (the rating was Elo until 2026-10-15), replayed
+--       from the attempts.
+PkProgress.MIGRATIONS = {
+    function(self)
+        self.conn:exec(SCHEMA)
+        local has_review = false
+        local info = self.conn:prepare("PRAGMA table_info(attempts)")
+        for row in info:rows() do
+            if row[2] == "review" then has_review = true end
+        end
+        info:close()
+        if not has_review then
+            self.conn:exec("ALTER TABLE attempts ADD COLUMN review INTEGER NOT NULL DEFAULT 0")
+        end
+        if not self.conn:rowexec("SELECT value FROM kv WHERE key = 'migration.review_ladder_3_7_21'") then
             self.conn:exec("UPDATE puzzle_reviews SET step = step - 1 WHERE step > 0")
             self.conn:exec("INSERT OR REPLACE INTO kv (key, value) VALUES ('migration.review_ladder_3_7_21', '1')")
+        end
+        if not self.conn:rowexec("SELECT value FROM kv WHERE key = 'rating.rd'") then
+            self:_saveState(self:_replayedState())
+        end
+    end,
+}
+
+--- The file's schema version (0: new, or older than the numbering).
+function PkProgress:schemaVersion()
+    return tonumber(self.conn:rowexec("PRAGMA user_version")) or 0
+end
+
+-- Runs the steps the file has not had. A step that fails is rolled back
+-- with its version: the file stays as it was and open() raises. A file
+-- from a newer Paperknight (a version this one does not know) is used as
+-- it is.
+function PkProgress:_migrate()
+    local version = self:schemaVersion()
+    for n = version + 1, #PkProgress.MIGRATIONS do
+        self:_tx(function()
+            PkProgress.MIGRATIONS[n](self)
+            self.conn:exec("PRAGMA user_version = " .. n)
         end)
     end
-    if not self.conn:rowexec("SELECT value FROM kv WHERE key = 'rating.rd'") then
-        self:_tx(function() self:_saveState(self:_replayedState()) end)
+    if version > #PkProgress.MIGRATIONS then
+        require("logger").warn("Paperknight: progress file from a newer version:", version)
     end
 end
 
@@ -193,35 +228,51 @@ function PkProgress:rating()
     return round(tonumber(v) or PkGlicko.START.rating)
 end
 
---- A setting read from the default progress file, opened and closed for
--- it (screens that keep no progress handle); nil if unset or unreadable.
+local shared -- the session's handle on the default file
+
+--- The app's handle on the default progress file: opened on first use and
+-- kept for the session, so that no screen and no setting opens the file
+-- again (close() leaves it open). Raises if the file cannot be opened; the
+-- next call tries again.
+function PkProgress.shared()
+    local path = PkProgress.defaultPath()
+    if shared and shared.path ~= path then PkProgress.closeShared() end
+    if not shared then
+        shared = PkProgress.open(path)
+        shared.is_shared = true
+    end
+    return shared
+end
+
+--- Closes the shared handle (tests; the next shared() opens the file again).
+function PkProgress.closeShared()
+    if not shared then return end
+    local handle = shared
+    shared = nil
+    handle.is_shared = nil
+    handle:close()
+end
+
+--- A setting of the app (the shared handle's getSetting); nil if unset or
+-- unreadable.
 function PkProgress.readSetting(key)
-    local ok, value = pcall(function()
-        local progress = PkProgress.open(PkProgress.defaultPath())
-        local v = progress:getSetting(key)
-        progress:close()
-        return v
-    end)
+    local ok, value = pcall(function() return PkProgress.shared():getSetting(key) end)
     if not ok then require("logger").warn("Paperknight: cannot read", key, value) end
     return ok and value or nil
 end
 
 --- Saves a setting the same way (nil removes it); errors are logged.
 function PkProgress.writeSetting(key, value)
-    local ok, err = pcall(function()
-        local progress = PkProgress.open(PkProgress.defaultPath())
-        progress:setSetting(key, value)
-        progress:close()
-    end)
+    local ok, err = pcall(function() PkProgress.shared():setSetting(key, value) end)
     if not ok then require("logger").warn("Paperknight: cannot save", key, err) end
 end
 
 --- Small settings stored next to the progress (e.g. the chosen puzzle theme).
 function PkProgress:getSetting(key)
-    local stmt = self.conn:prepare("SELECT value FROM kv WHERE key = ?")
-    local row = stmt:reset():bind("setting." .. key):step()
-    stmt:close()
-    return row and row[1] or nil
+    local row = self.get_setting_stmt:reset():bind("setting." .. key):step()
+    local value = row and row[1] or nil
+    self.get_setting_stmt:reset() -- don't keep a read transaction open between calls
+    return value
 end
 
 --- Keys (without the "setting." prefix) of settings starting with `prefix`.
@@ -238,15 +289,13 @@ function PkProgress:settingKeys(prefix)
 end
 
 function PkProgress:setSetting(key, value)
-    local stmt
     if value == nil then
-        stmt = self.conn:prepare("DELETE FROM kv WHERE key = ?")
-        stmt:reset():bind("setting." .. key):step()
+        self.del_setting_stmt:reset():bind("setting." .. key):step()
+        self.del_setting_stmt:reset()
     else
-        stmt = self.conn:prepare("INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)")
-        stmt:reset():bind("setting." .. key, tostring(value)):step()
+        self.set_setting_stmt:reset():bind("setting." .. key, tostring(value)):step()
+        self.set_setting_stmt:reset()
     end
-    stmt:close()
 end
 
 --- Rated attempts (first attempts; reviews are not rated).
@@ -545,9 +594,13 @@ function PkProgress:seedReviews(now, days)
     return #ids
 end
 
+--- Closes the file. The shared handle stays open (see PkProgress.shared):
+-- the screens close the handle they were given, whichever it is.
 function PkProgress:close()
+    if self.is_shared then return end
     if self.conn then
-        for _, k in ipairs({ "insert_stmt", "recent_stmt", "review_stmt" }) do
+        for _, k in ipairs({ "insert_stmt", "recent_stmt", "review_stmt", "get_setting_stmt",
+                             "set_setting_stmt", "del_setting_stmt" }) do
             if self[k] then self[k]:close() end
         end
         self.conn:close()

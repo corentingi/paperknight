@@ -96,9 +96,9 @@ function PkStudyView:init()
     self.board_size = math.min(self.dimen.w, math.floor(free_h * 0.68))
     self.text_h = free_h - self.board_size - 3 * Size.padding.default
     if not self.progress then
-        local ok, progress = pcall(PkProgress.open, PkProgress.defaultPath())
+        local ok, progress = pcall(PkProgress.shared)
         if ok then
-            self.progress, self._own_progress = progress, true
+            self.progress = progress
         else
             logger.warn("Paperknight: no progress database, flips are not remembered:", progress)
         end
@@ -757,10 +757,6 @@ end
 
 function PkStudyView:onCloseWidget()
     self:_cancelReply()
-    if self._own_progress and self.progress then
-        self.progress:close()
-        self.progress = nil
-    end
     if self.board then self.board:free() end
     if self.text then self.text:free() end
 end

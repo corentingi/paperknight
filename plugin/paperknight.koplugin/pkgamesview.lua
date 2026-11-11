@@ -36,15 +36,13 @@ local PkGamesView = InputContainer:extend{
 }
 require("pkboardscreen").mixin(PkGamesView)
 
-PkGamesView._setting = PkProgress.readSetting
-PkGamesView._saveSetting = PkProgress.writeSetting
 
 ---------------------------------------------------------------------------
 -- The list
 
 --- The best score of a game: "80%", or nil.
 function PkGamesView.best(id)
-    local s = PkGamesView._setting("games.best." .. id)
+    local s = PkProgress.readSetting("games.best." .. id)
     local got, max = (s or ""):match("^(%d+)/(%d+)$")
     if not got or tonumber(max) == 0 then return nil end
     return math.floor(100 * tonumber(got) / tonumber(max) + 0.5)
@@ -52,7 +50,7 @@ end
 
 local function listItems()
     local items = {}
-    local current = PkGames.restore(PkGamesView._setting("games.current"))
+    local current = PkGames.restore(PkProgress.readSetting("games.current"))
     if current then
         items[#items + 1] = {
             text = T(_("Continue: %1"), current.game.title),
@@ -102,7 +100,7 @@ function PkGamesView:init()
     end
     PkNav.tapTitle(self, function() return self.title_bar end, "games")
     PkSide.followNight(self, function(v) if v.raw_text then v:_setText(PkSide.swap(v.raw_text)) end end)
-    self.list_shown = PkGamesView._setting("games.movelist") == "1"
+    self.list_shown = PkProgress.readSetting("games.movelist") == "1"
     self.title_bar = TitleBar:new{
         fullscreen = true,
         title = self.session.game.title,
@@ -265,10 +263,10 @@ end
 function PkGamesView:_finished()
     local s = self.session
     local got, max = s:points()
-    local best = PkGamesView._setting("games.best." .. s.game.id)
+    local best = PkProgress.readSetting("games.best." .. s.game.id)
     local old_got, old_max = (best or ""):match("^(%d+)/(%d+)$")
     if max > 0 and (not old_got or got / max > tonumber(old_got) / math.max(1, tonumber(old_max))) then
-        PkGamesView._saveSetting("games.best." .. s.game.id, got .. "/" .. max)
+        PkProgress.writeSetting("games.best." .. s.game.id, got .. "/" .. max)
     end
 end
 
@@ -301,7 +299,7 @@ end
 -- The session in progress kept (none once the game is over).
 function PkGamesView:_save()
     local s = self.session
-    PkGamesView._saveSetting("games.current", (not s:over()) and s:serialize() or nil)
+    PkProgress.writeSetting("games.current", (not s:over()) and s:serialize() or nil)
 end
 
 ---------------------------------------------------------------------------
@@ -429,7 +427,7 @@ end
 
 function PkGamesView:toggleList()
     self.list_shown = not self.list_shown
-    PkGamesView._saveSetting("games.movelist", self.list_shown and "1" or "0")
+    PkProgress.writeSetting("games.movelist", self.list_shown and "1" or "0")
     self:_build(self.board.flipped)
     self:refresh(true)
 end

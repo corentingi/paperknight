@@ -118,7 +118,7 @@ function Paperknight:startPuzzles()
         UIManager:show(infoMessage:new{ text = _("The puzzle pack is empty.") })
         return nil
     end
-    local ok, progress = pcall(PkProgress.open, PkProgress.defaultPath())
+    local ok, progress = pcall(PkProgress.shared)
     if not ok then
         pack:close()
         Logger.warn("Paperknight: cannot open progress database:", progress)
