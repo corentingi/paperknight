@@ -192,7 +192,7 @@ function PkGamesView:onBoardMove(move)
     self.board:updateBoard()
     self:_afterStep()
     if verdict == "found" or verdict == "hinted" then
-        self.board:setBadge(self.session:history()[ply].to, ChessBoard.TICK)
+        self.board:setBadge(self.session.record[ply].to, ChessBoard.TICK)
     end
 end
 
@@ -308,7 +308,7 @@ end
 -- Display
 
 function PkGamesView:_lineText()
-    local sans = self.game.history()
+    local sans = self.session:sans()
     if #sans == 0 then return nil end
     local first = math.max(1, #sans - LINE_PLIES + 1)
     local parts = first > 1 and { "…" } or {}
@@ -354,8 +354,7 @@ function PkGamesView:refresh(page)
         board:unmarkSelected(board.selected)
         board.selected = nil
     end
-    local history = s:history()
-    local last = history[#history]
+    local last = s:last()
     board:setHighlights(last and { last.from, last.to } or {})
     board:setBadge(nil)
     board:setShapes(nil)
@@ -368,21 +367,10 @@ function PkGamesView:refresh(page)
         local line = self:_lineText()
         if line then lines[#lines + 1] = line end
     end
-    local fens = {}
-    do
-        local probe = require("pkchess"):new()
-        probe.reset()
-        fens[1] = probe.fen()
-        for _, m in ipairs(history) do
-            probe.move({ from = m.from, to = m.to, promotion = m.promotion })
-            fens[#fens + 1] = probe.fen()
-        end
-    end
-    local opening = PkOpeningNames.latest(fens)
+    local opening = PkOpeningNames.latest(s.fens)
     if opening then lines[#lines + 1] = opening end
     self:_setText(table.concat(lines, "\n"))
-    local sans = {}
-    for i, m in ipairs(history) do sans[i] = m.san end
+    local sans = s:sans()
     self:_setListMoves(sans, #sans, 1, false)
     PkRefresh.enable(self, self.buttons:getButtonById("hint"), s:guessing())
     local show = self.buttons:getButtonById("show")

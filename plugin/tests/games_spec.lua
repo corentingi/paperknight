@@ -112,6 +112,38 @@ return {
         t.eq(PkGames.restore("v1|gone|w|0|0|0|0|0|0|"), nil, "the game is gone")
         t.eq(PkGames.restore("garbage"), nil); t.eq(PkGames.restore(nil), nil)
     end },
+    { "the game so far is kept as it is played, not rebuilt", function(t)
+        local game = PkGames.get("opera")
+        local s = PkGames.session(game)
+        -- the rules engine's history() replays the whole game: never on
+        -- the way of a guess
+        local calls, history = 0, s.chess.history
+        s.chess.history = function(...) calls = calls + 1; return history(...) end
+        while not s:over() do
+            if s:guessing() then
+                s:keyMoment(); s:hint()
+                s:guess(mv(game.moves[s:ply() + 1]))
+                s:serialize(); s:scoreText(); s:last(); s:sans()
+            else
+                s:reply()
+            end
+        end
+        t.eq(calls, 0, "history() calls while playing the game")
+        local engine = history({ verbose = true })
+        local kept = s:history()
+        t.eq(#kept, #game.moves); t.eq(#kept, #engine); t.eq(s:ply(), #engine)
+        for i, m in ipairs(engine) do
+            t.eq(kept[i].san, m.san, "ply " .. i); t.eq(kept[i].from .. kept[i].to, m.from .. m.to)
+        end
+        t.eq(table.concat(s:sans(), " "), table.concat(history(), " "))
+        t.eq(s:last().san, "Rd8#")
+        t.eq(#s.fens, #game.moves + 1); t.eq(s.fens[#s.fens], s.chess.fen(), "the positions passed")
+        kept[1] = nil
+        t.eq(#s:history(), #game.moves, "history() is a copy")
+        -- resumed: the record is rebuilt with the moves replayed
+        local r = PkGames.session(game, "w", { ply = 12 })
+        t.eq(r:ply(), 12); t.eq(#r.fens, 13); t.eq(r:last().san, history()[12])
+    end },
     { "winning chances", function(t)
         t.eq(PkGames.win(0), 50)
         t.ok(PkGames.win(10000) > 99 and PkGames.win(-10000) < 1)

@@ -125,8 +125,14 @@ function PkGames.session(game, side, state)
         game = game, side = side, chess = Chess:new(),
         found = 0, good = 0, asked = 0, keys = 0, keys_found = 0,
         verdicts = {}, -- per ply guessed: "found", "good", "hinted", "miss", "shown"
+        -- the game so far, kept as the moves are played (the rules engine's
+        -- history() replays the whole game at each call: seconds in a long
+        -- game on the Kindle): the moves as the engine returns them, and
+        -- the position before the first move and after each one
+        record = {}, fens = {},
     }, Session)
     self.chess.reset()
+    self.fens[1] = self.chess.fen()
     local start = math.min(game.book, #game.moves)
     if state then
         start = math.min(state.ply, #game.moves)
@@ -138,7 +144,7 @@ function PkGames.session(game, side, state)
     return self
 end
 
-function Session:ply() return #self.chess.history() end
+function Session:ply() return #self.record end
 
 function Session:over() return self:ply() >= #self.game.moves end
 
@@ -166,6 +172,8 @@ end
 function Session:_playMaster(i)
     local move = self.chess.move(toMove(self.game.moves[i]))
     assert(move, "illegal move in the master game " .. self.game.id .. " at ply " .. i)
+    self.record[i] = move
+    self.fens[i + 1] = self.chess.fen()
     return move
 end
 
@@ -264,9 +272,24 @@ function Session:scoreText()
     return s
 end
 
---- The game's moves played so far, verbose (pkchess history).
+--- The game's moves played so far ({ from, to, san, … } as the rules
+-- engine returns them): a copy, the caller's to keep.
 function Session:history()
-    return self.chess.history({ verbose = true })
+    local out = {}
+    for i, m in ipairs(self.record) do out[i] = m end
+    return out
+end
+
+--- The last move played, nil before the first.
+function Session:last()
+    return self.record[#self.record]
+end
+
+--- The moves played so far, in SAN.
+function Session:sans()
+    local out = {}
+    for i, m in ipairs(self.record) do out[i] = m.san end
+    return out
 end
 
 -- Saved state: "v1|id|side|ply|found|good|asked|keys|keys_found|verdicts"
