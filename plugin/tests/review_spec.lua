@@ -13,7 +13,51 @@ local function db()
     return p, function() p:close(); os.remove(path) end
 end
 
+local function puzzle(id)
+    return { id = id, fen = "6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1", moves = "g8h8 d1d8", solver = "w",
+             rating = 1234, themes = "mate backRankMate", opening = "", game_url = "https://lichess.org/x",
+             rating_dev = 77 }
+end
+
 return {
+    { "puzzles under review or liked are kept, whatever the pack (ADR-0022)", function(t)
+        local p, done = db()
+        local card = PkPuzzleReview.missed(nil, NOW)
+        p:record({ puzzle_id = "aaaaa", puzzle_rating = 1234, success = false, solved = false, mistakes = 1,
+                   ts = NOW, puzzle = puzzle("aaaaa") }, card)
+        local kept = p:keptPuzzle("aaaaa")
+        t.ok(kept, "kept with its review card")
+        t.eq(kept.fen, puzzle("aaaaa").fen); t.eq(kept.moves, "g8h8 d1d8"); t.eq(kept.solver, "w")
+        t.eq(kept.rating, 1234); t.eq(kept.rating_dev, 77); t.eq(kept.themes, "mate backRankMate")
+        t.eq(p:keptPuzzle("zzzzz"), nil)
+        -- a clean attempt (no card) keeps nothing
+        p:record({ puzzle_id = "bbbbb", puzzle_rating = 1200, success = true, solved = true, mistakes = 0,
+                   ts = NOW, puzzle = puzzle("bbbbb") })
+        t.eq(p:keptPuzzle("bbbbb"), nil, "no card: not kept")
+        -- liked: kept; liked and under review: kept until both are gone
+        p:setLiked("bbbbb", true, NOW, puzzle("bbbbb"))
+        t.ok(p:keptPuzzle("bbbbb"), "kept with the like")
+        p:setLiked("aaaaa", true, NOW, puzzle("aaaaa"))
+        p:recordReview("aaaaa", true, 1234, nil, NOW) -- mastered: the card removed
+        t.ok(p:keptPuzzle("aaaaa"), "still liked: kept")
+        p:setLiked("aaaaa", false)
+        t.eq(p:keptPuzzle("aaaaa"), nil, "neither under review nor liked: forgotten")
+        p:setLiked("bbbbb", false)
+        t.eq(p:keptPuzzle("bbbbb"), nil)
+        -- cards and likes made before: kept from the pack at hand
+        p:saveReview("ccccc", card); p:saveReview("ddddd", card); p:setLiked("eeeee", true, NOW)
+        local asked = {}
+        local n = p:keepMissing(function(id)
+            asked[#asked + 1] = id
+            if id ~= "ddddd" then return puzzle(id) end -- ddddd: not in this pack
+        end)
+        table.sort(asked)
+        t.eq(table.concat(asked, " "), "ccccc ddddd eeeee"); t.eq(n, 2)
+        t.ok(p:keptPuzzle("ccccc") and p:keptPuzzle("eeeee")); t.eq(p:keptPuzzle("ddddd"), nil)
+        t.eq(p:keepMissing(function(id) asked[#asked + 1] = id end), 0)
+        t.eq(#asked, 4, "only the ones still missing are looked up again")
+        done()
+    end },
     { "a miss comes back in 3 days, then 7, 21, then mastered", function(t)
         local today = PkSrs.today(NOW)
         local c = PkPuzzleReview.missed(nil, NOW)

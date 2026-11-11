@@ -47,6 +47,19 @@ CREATE TABLE IF NOT EXISTS puzzle_likes (
     puzzle_id TEXT PRIMARY KEY,
     ts        INTEGER NOT NULL   -- when it was liked
 );
+-- The puzzles under review or liked, as the pack had them (ADR-0022): a new
+-- pack drops puzzles, these stay.
+CREATE TABLE IF NOT EXISTS puzzles_kept (
+    id         TEXT PRIMARY KEY,
+    fen        TEXT NOT NULL,
+    moves      TEXT NOT NULL,
+    solver     TEXT,
+    rating     INTEGER,
+    themes     TEXT,
+    opening    TEXT,
+    game_url   TEXT,
+    rating_dev INTEGER
+);
 ]]
 
 --- Pure rating update (Glicko-2, ADR-0010): the player state { rating, rd,
@@ -289,7 +302,8 @@ end
 
 --- Records a finished attempt and updates the rating; `review_card`, when
 -- given, is saved in the same transaction (a missed puzzle's review).
--- @param result { puzzle_id, puzzle_rating, puzzle_rd, success, solved, mistakes, used_help, ts }
+-- @param result { puzzle_id, puzzle_rating, puzzle_rd, success, solved, mistakes, used_help, ts,
+--                 puzzle (the pack's puzzle: kept with a review card) }
 -- @return rating_before, rating_after (rounded)
 function PkProgress:record(result, review_card)
     local ts = result.ts or os.time()
@@ -301,7 +315,10 @@ function PkProgress:record(result, review_card)
             result.solved and 1 or 0, result.mistakes or 0, result.used_help and 1 or 0,
             result.puzzle_rating, before, after, 0):step()
         self:_saveState(new)
-        if review_card then self:saveReview(result.puzzle_id, review_card) end
+        if review_card then
+            self:saveReview(result.puzzle_id, review_card)
+            if result.puzzle then self:keepPuzzle(result.puzzle) end
+        end
     end)
     return before, after
 end
@@ -382,6 +399,68 @@ function PkProgress:removeReview(puzzle_id)
     local stmt = self.conn:prepare("DELETE FROM puzzle_reviews WHERE puzzle_id = ?")
     stmt:reset():bind(puzzle_id):step()
     stmt:close()
+    self:_dropKept(puzzle_id)
+end
+
+----------------------------------------------------------------------------
+-- Kept puzzles (ADR-0022): a copy of each puzzle under review or liked, so
+-- that it can still be played once a new pack no longer has it.
+----------------------------------------------------------------------------
+
+--- Keeps `puzzle` (a pack's puzzle: pkpuzzlepack's fields).
+function PkProgress:keepPuzzle(puzzle)
+    local stmt = self.conn:prepare("INSERT OR REPLACE INTO puzzles_kept"
+        .. " (id, fen, moves, solver, rating, themes, opening, game_url, rating_dev)"
+        .. " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    stmt:reset():bind(puzzle.id, puzzle.fen, puzzle.moves, puzzle.solver, puzzle.rating, puzzle.themes,
+        puzzle.opening, puzzle.game_url, puzzle.rating_dev):step()
+    stmt:close()
+end
+
+--- The kept puzzle `id` (as pkpuzzlepack's get), or nil.
+function PkProgress:keptPuzzle(id)
+    local stmt = self.conn:prepare("SELECT id, fen, moves, solver, rating, themes, opening, game_url,"
+        .. " rating_dev FROM puzzles_kept WHERE id = ?")
+    local row = stmt:reset():bind(id):step()
+    local puzzle = row and {
+        id = row[1], fen = row[2], moves = row[3], solver = row[4], rating = tonumber(row[5]),
+        themes = row[6], opening = row[7], game_url = row[8], rating_dev = tonumber(row[9]),
+    } or nil
+    stmt:close()
+    return puzzle
+end
+
+--- Keeps the puzzles under review or liked that are not kept yet (cards
+-- made before ADR-0022, or seeded): `lookup(id)` gives the pack's puzzle,
+-- nil if it has none. Returns how many were kept.
+function PkProgress:keepMissing(lookup)
+    local ids = {}
+    local stmt = self.conn:prepare("SELECT puzzle_id FROM puzzle_reviews WHERE puzzle_id NOT IN"
+        .. " (SELECT id FROM puzzles_kept) UNION SELECT puzzle_id FROM puzzle_likes WHERE puzzle_id NOT IN"
+        .. " (SELECT id FROM puzzles_kept)")
+    for row in stmt:rows() do ids[#ids + 1] = row[1] end
+    stmt:close()
+    if #ids == 0 then return 0 end
+    local kept = 0
+    self:_tx(function()
+        for _, id in ipairs(ids) do
+            local puzzle = lookup(id)
+            if puzzle then
+                self:keepPuzzle(puzzle)
+                kept = kept + 1
+            end
+        end
+    end)
+    return kept
+end
+
+-- Forgets the kept puzzle `id` once it is neither under review nor liked.
+function PkProgress:_dropKept(id)
+    local stmt = self.conn:prepare("DELETE FROM puzzles_kept WHERE id = ?1"
+        .. " AND NOT EXISTS (SELECT 1 FROM puzzle_reviews WHERE puzzle_id = ?1)"
+        .. " AND NOT EXISTS (SELECT 1 FROM puzzle_likes WHERE puzzle_id = ?1)")
+    stmt:reset():bind(id):step()
+    stmt:close()
 end
 
 --- Liked puzzles (to come back to them, from the puzzle screen's menu).
@@ -392,7 +471,8 @@ function PkProgress:isLiked(puzzle_id)
     return row ~= nil
 end
 
-function PkProgress:setLiked(puzzle_id, liked, ts)
+--- `puzzle`: the pack's puzzle, kept with the like (see keepPuzzle).
+function PkProgress:setLiked(puzzle_id, liked, ts, puzzle)
     local stmt
     if liked then
         stmt = self.conn:prepare("INSERT OR IGNORE INTO puzzle_likes VALUES (?, ?)")
@@ -402,6 +482,11 @@ function PkProgress:setLiked(puzzle_id, liked, ts)
         stmt:reset():bind(puzzle_id):step()
     end
     stmt:close()
+    if liked then
+        if puzzle then self:keepPuzzle(puzzle) end
+    else
+        self:_dropKept(puzzle_id)
+    end
 end
 
 --- The liked puzzle ids, the latest liked first.

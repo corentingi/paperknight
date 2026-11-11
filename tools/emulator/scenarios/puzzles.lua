@@ -59,6 +59,9 @@ return function(h)
     local today = PkSrs.today()
     local card = view.progress:getReview("004JD")
     h.check(card and card.due == today + 3 and card.step == 0, "missed puzzle scheduled in 3 days")
+    local kept = view.progress:keptPuzzle("004JD")
+    h.check(kept and kept.fen == view.puzzle.fen and kept.moves == view.puzzle.moves,
+        "the missed puzzle is kept with its card (ADR-0022)")
     h.shot("puzzle-1-solved")
 
     -- 2. Mate in two for White: correct move, opponent replies, finishing move.
@@ -395,6 +398,36 @@ return function(h)
     view:nextPuzzle() -- skipped without a move
     h.check(view.puzzle.id ~= "004JD" and not view.review, "an untouched review is not served twice")
     h.check(view.progress:getReview("004JD").due == today, "and stays due")
+
+    -- 7b. A new pack without the puzzle (ADR-0022): its review is still
+    -- served, from the copy kept with the card; a puzzle known nowhere
+    -- loses its card.
+    do
+        local pack = view.pack
+        -- (the card above was saved by this scenario, without its puzzle:
+        -- kept from the pack as when the screen opens)
+        h.check(view.progress:keepMissing(function(id) return pack:get(id) end) == 1
+            and view.progress:keptPuzzle("004JD"), "a card without its puzzle's copy: kept from the pack")
+        view.pack = setmetatable({
+            get = function(_self, id) if id ~= "004JD" then return pack:get(id) end end,
+            themesOf = function(_self, id) if id ~= "004JD" then return pack:themesOf(id) end end,
+        }, { __index = pack })
+        view._skipped, view.review = {}, nil
+        h.check(view:_servableReviewCount() == 1, "the review of a puzzle gone from the pack still counts")
+        h.check(view:nextPuzzle() and view.puzzle.id == "004JD" and view.review,
+            "the review of a puzzle gone from the pack is served")
+        h.check(view.puzzle.themes and view.puzzle.rating, "with its themes and rating")
+        h.check(view.progress:getReview("004JD"), "its card is kept")
+        h.check(view:openPuzzle("004JD"), "and it opens by its id")
+        view.progress:saveReview("zzzzz", { step = 0, due = today, lapses = 0, missed = os.time() })
+        view._skipped, view.review = { ["004JD"] = true }, nil
+        view:_nextReview()
+        h.check(not view.progress:getReview("zzzzz"), "a card whose puzzle is known nowhere is dropped")
+        view.pack = pack
+        view._skipped, view.review = { ["004JD"] = true }, nil
+        view:nextPuzzle()
+        h.settle()
+    end
 
     -- 8. A theme that runs out never serves the same puzzle twice in a row:
     -- unplayed ones first, then repeats (announced), alternating.

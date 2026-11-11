@@ -146,6 +146,14 @@ function PkPuzzleView:init()
     self._served = {}  -- puzzles already shown this session (no repeat until all were)
     local ok, err = pcall(self.progress.seedReviews, self.progress, os.time(), SEED_DAYS)
     if not ok then logger.warn("Paperknight: cannot seed puzzle reviews:", err) end
+    -- cards and likes without their puzzle's copy (older than ADR-0022, or
+    -- seeded): taken from this pack while it has them
+    local k_ok, kept = pcall(self.progress.keepMissing, self.progress, function(id) return self.pack:get(id) end)
+    if not k_ok then
+        logger.warn("Paperknight: cannot keep the puzzles under review:", kept)
+    elseif kept > 0 then
+        logger.info("Paperknight: kept", kept, "puzzles under review or liked")
+    end
     self:nextPuzzle()
 end
 
@@ -289,8 +297,25 @@ end
 
 local MAX_LOAD_TRIES = 5
 
+--- Puzzle `id`: the pack's, else the copy kept with its review or like
+-- (ADR-0022: a new pack drops puzzles); nil if neither has it.
+function PkPuzzleView:_find(id)
+    local ok, puzzle = pcall(self.pack.get, self.pack, id)
+    if ok and puzzle then return puzzle end
+    local k_ok, kept = pcall(self.progress.keptPuzzle, self.progress, id)
+    return k_ok and kept or nil
+end
+
+-- Its theme tags, nil if it is not known.
+function PkPuzzleView:_themesOf(id)
+    local themes = self.pack:themesOf(id)
+    if themes then return themes end
+    local ok, kept = pcall(self.progress.keptPuzzle, self.progress, id)
+    return ok and kept and kept.themes or nil
+end
+
 -- First due review not shown yet this session (and of the chosen theme),
--- with its pack row. Reviews of puzzles gone from the pack are dropped.
+-- with its puzzle.
 -- Due reviews this session can still serve: of the chosen theme, not
 -- skipped or broken (what "Reviews: N" counts; _nextReview picks among them).
 function PkPuzzleView:_servableReviewCount()
@@ -298,7 +323,7 @@ function PkPuzzleView:_servableReviewCount()
     for _, card in ipairs(self.progress:dueReviews(PkSrs.today())) do
         local id = card.puzzle_id
         if not self._skipped[id] and not self._bad[id] then
-            local tags = not self.theme or self.pack:themesOf(id)
+            local tags = not self.theme or self:_themesOf(id)
             if tags == true or (tags and (" " .. tags .. " "):find(" " .. self.theme .. " ", 1, true)) then
                 n = n + 1
             end
@@ -311,9 +336,11 @@ function PkPuzzleView:_nextReview()
     for _, card in ipairs(self.progress:dueReviews(PkSrs.today())) do
         local id = card.puzzle_id
         if not self._skipped[id] and not self._bad[id] then
-            local puzzle = self.pack:get(id)
+            local puzzle = self:_find(id)
             if not puzzle then
-                self.progress:removeReview(id) -- the pack was replaced
+                -- neither in the pack nor kept (a card older than ADR-0022
+                -- whose puzzle a new pack dropped)
+                self.progress:removeReview(id)
             elseif not self.theme or (" " .. (puzzle.themes or "") .. " "):find(" " .. self.theme .. " ", 1, true) then
                 return card, puzzle
             end
@@ -451,6 +478,7 @@ function PkPuzzleView:_finishAttempt(reason)
         solved = s.state == "solved",
         mistakes = s.mistakes,
         used_help = s.used_help,
+        puzzle = self.puzzle, -- kept with the card: a new pack may drop it
     }, card)
     if not ok then
         logger.warn("Paperknight: cannot save the attempt:", before)
@@ -636,7 +664,7 @@ function PkPuzzleView:toggleLike()
     local id = self.puzzle.id
     local ok, err = pcall(function()
         local liked = self.progress:isLiked(id)
-        self.progress:setLiked(id, not liked)
+        self.progress:setLiked(id, not liked, nil, self.puzzle)
         UIManager:show(Notification:new{
             text = liked and T(_("Puzzle %1: no longer liked."), id) or T(_("Puzzle %1 liked."), id),
         })
@@ -644,10 +672,11 @@ function PkPuzzleView:toggleLike()
     if not ok then logger.warn("Paperknight: cannot save the like:", err) end
 end
 
---- Opens puzzle `id` of the pack (not rated). False if it is not in the pack.
+--- Opens puzzle `id` (not rated): the pack's, or a kept one. False if it
+-- is not known.
 function PkPuzzleView:openPuzzle(id)
-    local ok, puzzle = pcall(self.pack.get, self.pack, id)
-    if not ok or not puzzle then return false end
+    local puzzle = self:_find(id)
+    if not puzzle then return false end
     local l_ok, err = pcall(self.loadPuzzle, self, puzzle, nil, false, true)
     if not l_ok then self:_broken(err) end
     return true
@@ -714,8 +743,7 @@ function PkPuzzleView:showLiked()
     end
     local items = {}
     for _i, id in ipairs(ids) do
-        local g_ok, puzzle = pcall(self.pack.get, self.pack, id)
-        puzzle = g_ok and puzzle or nil
+        local puzzle = self:_find(id)
         local item = { callback = function()
             close()
             if not self:openPuzzle(id) then self:_notInPack(id) end
@@ -786,7 +814,7 @@ function PkPuzzleView:showStats()
         self._themes_cache = self._themes_cache or {}
         local cache = self._themes_cache
         local function themesOf(id)
-            if cache[id] == nil then cache[id] = self.pack:themesOf(id) or false end
+            if cache[id] == nil then cache[id] = self:_themesOf(id) or false end
             return cache[id] or nil
         end
         local ok, stats = pcall(function() return PkPuzzleStats.compute(self.progress:attempts(), themesOf) end)
