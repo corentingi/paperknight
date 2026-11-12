@@ -404,6 +404,15 @@ function PkProgress:attempts()
     return out
 end
 
+--- The rating after each rated attempt, oldest first: { rating, ... }.
+function PkProgress:ratingHistory()
+    local out = {}
+    local stmt = self.conn:prepare("SELECT rating_after FROM attempts WHERE review = 0 ORDER BY ts, rowid")
+    for row in stmt:rows() do out[#out + 1] = tonumber(row[1]) end
+    stmt:close()
+    return out
+end
+
 --- Ids of the puzzles attempted (reviews included) since `since_ts`: a set.
 function PkProgress:attemptedSince(since_ts)
     local set = {}

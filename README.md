@@ -25,7 +25,7 @@ tested on the Paperwhite 2: if you try it on another one,
 - **Puzzles** from the Lichess puzzle database, fully offline: a Glicko-2
   rating, puzzles picked around your level, a theme filter (forks, mates in
   2…), hints and solutions, and missed puzzles that come back after 3, 7
-  and 21 days. A stats page shows your results per theme, weakest first.
+  and 21 days. A stats page shows your rating over time and your results per theme, weakest first.
   Like a puzzle to come back to it later, or open any puzzle of the pack by
   its Lichess id.
 - **Studies**: any PGN or Lichess study, with chapters, variations,

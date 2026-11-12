@@ -826,9 +826,11 @@ function PkPuzzleView:showStats()
         end
     end
     local stats = self._stats or { total = { n = 0 }, themes = {} }
+    local r_ok, ratings = pcall(self.progress.ratingHistory, self.progress)
     self.stats_view = PkStatsView:new{
         stats = stats,
         rating = ratingOr(self.progress, "?"),
+        ratings = r_ok and ratings or nil,
         on_pick = function(theme) self:setTheme(theme) end,
     }
     self.stats_view.onCloseWidget = function() self.stats_view = nil end

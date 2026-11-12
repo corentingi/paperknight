@@ -502,6 +502,24 @@ return function(h)
     h.check(px(d.x + d.w - 4, mid_y) == 0xBB, ("missed part grey: %x"):format(px(d.x + d.w - 4, mid_y)))
     local cut = d.x + math.floor(d.w * clean / #attempts)
     h.check(px(cut - 3, mid_y) == 0x00 and px(cut + 3, mid_y) == 0xBB, "split at the clean share")
+    -- the rating over time, above the rows of the first page
+    local ratings = view.progress:ratingHistory()
+    h.check(#ratings >= 2 and sv.series and sv.series.n == #ratings and sv.series.last == ratings[#ratings],
+        "the rating chart: " .. tostring(sv.series and sv.series.n) .. " of " .. #ratings)
+    local function chartOf(w)
+        if type(w) ~= "table" then return nil end
+        if w.series and w.paintTo and w.width then return w end
+        for _, c in ipairs(w) do local found = chartOf(c); if found then return found end end
+    end
+    local chart = chartOf(sv.chart)
+    h.check(chart and chart.dimen, "the chart is drawn")
+    -- the last column: black where the curve is, white elsewhere
+    local cd = chart.dimen
+    local col_x = cd.x + cd.w - 3
+    local black = 0
+    for yy = cd.y + 2, cd.y + cd.h - 3 do if px(col_x, yy) == 0x00 then black = black + 1 end end
+    h.check(black >= 2 and black < cd.h / 2, "the curve crosses the last column: " .. black .. " px")
+    h.check(sv.first_page == sv.per_page - 4, "four rows give way to the chart")
     h.shot("puzzle-stats")
     -- night mode toggled while the page is open: the legend follows
     local NScreen = require("device").screen
@@ -516,7 +534,7 @@ return function(h)
     h.check(sv.title_bar.subtitle_widget.text:find("black: clean", 1, true), "day legend back")
     if sv.pages > 1 then
         h.tapWidget(sv.footer:getButtonById("next"))
-        h.check(sv.page == 2 and sv.rows[1].entry == sv.entries[sv.per_page + 1], "next page")
+        h.check(sv.page == 2 and sv.rows[1].entry == sv.entries[sv.first_page + 1], "next page")
         h.swipe(sv.dimen.w / 2, sv.dimen.h / 2, "east")
         h.check(sv.page == 1, "swipe back to the first page")
         h.settle()

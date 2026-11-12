@@ -51,6 +51,52 @@ function Bar:paintTo(bb, x, y)
     bb:paintBorder(x, y, self.width, self.height, Size.border.thin, Blitbuffer.COLOR_BLACK)
 end
 
+-- The rating over time (PkPuzzleStats.ratingSeries): a black line in a thin
+-- frame, its highest and lowest values in the corners. Black and white
+-- only (night mode inverts it with the page).
+local Chart = Widget:extend{
+    width = 0,
+    height = 0,
+    series = nil,
+    face = nil,
+}
+
+function Chart:getSize()
+    return Geometry:new{ w = self.width, h = self.height }
+end
+
+function Chart:paintTo(bb, x, y)
+    self.dimen = Geometry:new{ x = x, y = y, w = self.width, h = self.height }
+    local s = self.series
+    local border = Size.border.thin
+    bb:paintBorder(x, y, self.width, self.height, border, Blitbuffer.COLOR_DARK_GRAY)
+    local inner_x, inner_w = x + border, self.width - 2 * border
+    local inner_y, inner_h = y + border, self.height - 2 * border
+    local t = math.max(2, Screen:scaleBySize(2)) -- the line's thickness
+    local function yOf(r)
+        local f = (r - s.low) / (s.high - s.low)
+        return inner_y + math.floor((1 - f) * (inner_h - t) + 0.5)
+    end
+    local cols = #s.columns
+    local prev
+    for c = 1, cols do
+        local x0 = inner_x + math.floor((c - 1) * inner_w / cols)
+        local x1 = inner_x + math.floor(c * inner_w / cols)
+        local cy = yOf(s.columns[c])
+        bb:paintRect(x0, cy, math.max(1, x1 - x0), t, Blitbuffer.COLOR_BLACK)
+        if prev and prev ~= cy then -- the step from the previous column
+            bb:paintRect(x0, math.min(prev, cy), t, math.abs(prev - cy) + t, Blitbuffer.COLOR_BLACK)
+        end
+        prev = cy
+    end
+    for _, corner in ipairs({ { s.high, inner_y + border }, { s.low, nil } }) do
+        local label = TextWidget:new{ text = tostring(corner[1]), face = self.face, fgcolor = Blitbuffer.COLOR_DARK_GRAY }
+        local size = label:getSize()
+        label:paintTo(bb, inner_x + Size.padding.small, corner[2] or (inner_y + inner_h - size.h - border))
+        label:free()
+    end
+end
+
 -- A tappable row; `on_tap` runs on a tap anywhere in it.
 local Row = InputContainer:extend{
     on_tap = nil,
@@ -72,6 +118,7 @@ local PkStatsView = InputContainer:extend{
     covers_fullscreen = true,
     stats = nil,   -- PkPuzzleStats.compute result
     rating = nil,  -- the user's rating, for the subtitle
+    ratings = nil, -- the rating after each rated attempt (the chart; fewer than 2: none)
     on_pick = nil, -- function(theme): a row was tapped (theme nil: all themes)
 }
 
@@ -172,6 +219,32 @@ function PkStatsView:_row(entry)
     }
 end
 
+-- The chart of the first page: a caption and the curve, CHART_ROWS rows high.
+local CHART_ROWS = 4
+
+function PkStatsView:_chart()
+    local PkPuzzleStats = require("pkpuzzlestats")
+    local pad = Size.padding.large
+    local w = self.dimen.w - 2 * pad
+    local s = PkPuzzleStats.ratingSeries(self.ratings or {}, w)
+    if not s then return nil end
+    self.series = s
+    local caption = TextWidget:new{
+        text = T(_("Rating over %1 puzzles: %2 → %3 · best %4"), s.n, s.first, s.last, s.best),
+        face = self.figures_face, max_width = w,
+    }
+    local chart_h = CHART_ROWS * self.row_h - caption:getSize().h - 2 * Size.padding.default
+    return VerticalGroup:new{
+        align = "left",
+        HorizontalGroup:new{ HorizontalSpan:new{ width = pad }, caption },
+        HorizontalGroup:new{
+            HorizontalSpan:new{ width = pad },
+            Chart:new{ width = w, height = chart_h, series = s, face = Font:getFace("cfont", 12) },
+        },
+        LineWidget:new{ dimen = Geometry:new{ w = self.dimen.w, h = Size.padding.default }, background = Blitbuffer.COLOR_WHITE },
+    }
+end
+
 -- (Re)builds the screen for the current page.
 function PkStatsView:_build()
     if not self.footer_h then -- measured once (the same height on every page)
@@ -181,10 +254,19 @@ function PkStatsView:_build()
     end
     local list_h = self.dimen.h - self.title_bar:getHeight() - self.footer_h
     self.per_page = math.max(1, math.floor(list_h / self.row_h))
-    self.pages = math.max(1, math.ceil(#self.entries / self.per_page))
+    -- the first page starts with the chart, in place of CHART_ROWS rows
+    local chart_rows = (#(self.ratings or {}) >= 2 and self.per_page > CHART_ROWS + 1) and CHART_ROWS or 0
+    local first_page = self.per_page - chart_rows
+    self.first_page = first_page -- (rows on the first page)
+    self.pages = math.max(1, 1 + math.ceil(math.max(0, #self.entries - first_page) / self.per_page))
     self.page = math.max(1, math.min(self.page, self.pages))
     local list = VerticalGroup:new{ align = "left" }
     self.rows = {}
+    self.chart = nil
+    if self.page == 1 and chart_rows > 0 then
+        self.chart = self:_chart()
+        if self.chart then list[1] = self.chart end
+    end
     if #self.entries == 0 then
         list[1] = LeftContainer:new{
             dimen = Geometry:new{ w = self.dimen.w, h = self.row_h },
@@ -194,8 +276,9 @@ function PkStatsView:_build()
             },
         }
     end
-    local first = (self.page - 1) * self.per_page + 1
-    for i = first, math.min(#self.entries, first + self.per_page - 1) do
+    local first = self.page == 1 and 1 or (first_page + (self.page - 2) * self.per_page + 1)
+    local last = first + (self.page == 1 and first_page or self.per_page) - 1
+    for i = first, math.min(#self.entries, last) do
         local row = self:_row(self.entries[i])
         self.rows[#self.rows + 1] = row
         list[#list + 1] = row

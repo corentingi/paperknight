@@ -20,6 +20,35 @@ local function add(group, attempt)
     group.rating_sum = group.rating_sum + attempt.puzzle_rating
 end
 
+--- The rating over time for a chart `width` columns wide: { first, last,
+-- best, low, high, n, columns = { rating per column } } (each column the
+-- rating after the attempts it stands for: the last of them), nil with
+-- fewer than 2 ratings. `low` and `high` frame the curve with a margin, at
+-- least 100 points apart (a flat start does not fill the chart).
+function PkPuzzleStats.ratingSeries(ratings, width)
+    local n = #ratings
+    if n < 2 or width < 2 then return nil end
+    local s = { first = ratings[1], last = ratings[n], best = ratings[1], n = n, columns = {} }
+    local lo, hi = ratings[1], ratings[1]
+    for _, r in ipairs(ratings) do
+        if r > s.best then s.best = r end
+        if r < lo then lo = r end
+        if r > hi then hi = r end
+    end
+    local pad = math.max(10, math.floor((hi - lo) * 0.1))
+    s.low, s.high = lo - pad, hi + pad
+    if s.high - s.low < 100 then
+        local mid = (s.high + s.low) / 2
+        s.low, s.high = math.floor(mid - 50), math.ceil(mid + 50)
+    end
+    local cols = math.min(width, n)
+    for c = 1, cols do
+        -- column c stands for the attempts up to this one
+        s.columns[c] = ratings[math.max(1, math.floor(c * n / cols + 0.5))]
+    end
+    return s
+end
+
 --- Groups `attempts` ({ {puzzle_id, clean, puzzle_rating} }, PkProgress:attempts)
 -- by theme. `themesOf(puzzle_id)` returns the puzzle's tags ("fork pin ..."),
 -- nil when the pack no longer has it (counted in the total only).

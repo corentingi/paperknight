@@ -49,4 +49,19 @@ return {
         local stats = PkPuzzleStats.compute({}, themesOf)
         t.eq(stats.total.n, 0, "empty"); t.ok(stats.total.perf == nil, "no performance"); t.eq(#stats.themes, 0, "no themes")
     end },
+    { "the rating over time, for a chart", function(t)
+        t.eq(PkPuzzleStats.ratingSeries({ 1200 }, 100), nil, "one rating: no chart")
+        local ratings = {}
+        for i = 1, 500 do ratings[i] = 1200 + i end
+        ratings[300] = 1900
+        local s = PkPuzzleStats.ratingSeries(ratings, 200)
+        t.eq(s.first, 1201); t.eq(s.last, 1700); t.eq(s.best, 1900); t.eq(s.n, 500)
+        t.eq(#s.columns, 200, "one value a column")
+        t.eq(s.columns[200], 1700, "the last column: the rating now")
+        t.ok(s.low < 1201 and s.high > 1900, "framed with a margin: " .. s.low .. "–" .. s.high)
+        local few = PkPuzzleStats.ratingSeries({ 1200, 1215, 1208 }, 200)
+        t.eq(#few.columns, 3, "fewer ratings than columns: one a rating")
+        t.eq(few.columns[3], 1208)
+        t.ok(few.high - few.low >= 100, "a flat curve is not stretched to the full height")
+    end },
 }

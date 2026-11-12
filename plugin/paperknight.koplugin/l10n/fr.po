@@ -177,7 +177,7 @@ msgstr "Réessayez."
 msgid "Not the move. Try again."
 msgstr "Ce n’est pas le coup. Réessayez."
 
-#: pkdrillview.lua:224 pkpuzzleview.lua:860 pkstudyview.lua:743
+#: pkdrillview.lua:224 pkpuzzleview.lua:862 pkstudyview.lua:743
 msgid "Hint: move the piece on %1."
 msgstr "Indice : jouez la pièce en %1."
 
@@ -809,7 +809,7 @@ msgstr "Problème %1 (pas dans le pack)"
 msgid "Liked puzzles: %1"
 msgstr "Problèmes aimés : %1"
 
-#: pkpuzzleview.lua:777 pkpuzzleview.lua:788 pkstatsview.lua:99
+#: pkpuzzleview.lua:777 pkpuzzleview.lua:788 pkstatsview.lua:146
 msgid "All themes"
 msgstr "Tous les thèmes"
 
@@ -817,27 +817,27 @@ msgstr "Tous les thèmes"
 msgid "Puzzle theme: %1"
 msgstr "Thème des problèmes : %1"
 
-#: pkpuzzleview.lua:872
+#: pkpuzzleview.lua:874
 msgid "Solution shown."
 msgstr "Solution affichée."
 
-#: pkpuzzleview.lua:878
+#: pkpuzzleview.lua:880
 msgid "Solution: %1 (move %2/%3)."
 msgstr "Solution : %1 (coup %2/%3)."
 
-#: pkpuzzleview.lua:902
+#: pkpuzzleview.lua:904
 msgid "Themes: %1"
 msgstr "Thèmes : %1"
 
-#: pkpuzzleview.lua:938
+#: pkpuzzleview.lua:940
 msgid "Before the puzzle: %1 to move."
 msgstr "Avant le problème : au tour des %1."
 
-#: pkpuzzleview.lua:940
+#: pkpuzzleview.lua:942
 msgid "Puzzle position, after %1."
 msgstr "Position du problème, après %1."
 
-#: pkpuzzleview.lua:942
+#: pkpuzzleview.lua:944
 msgid "Move %1/%2: %3"
 msgstr "Coup %1/%2 : %3"
 
@@ -925,23 +925,27 @@ msgstr "Page du projet…"
 msgid "Settings"
 msgstr "Paramètres"
 
-#: pkstatsview.lua:81
+#: pkstatsview.lua:128
 msgid "Your rating %1 · white: clean, grey: missed"
 msgstr "Votre classement %1 · blanc : réussi, gris : manqué"
 
-#: pkstatsview.lua:82
+#: pkstatsview.lua:129
 msgid "Your rating %1 · black: clean, grey: missed"
 msgstr "Votre classement %1 · noir : réussi, gris : manqué"
 
-#: pkstatsview.lua:108
+#: pkstatsview.lua:155
 msgid "Puzzle stats"
 msgstr "Statistiques des problèmes"
 
-#: pkstatsview.lua:127
+#: pkstatsview.lua:174
 msgid "Page %1 of %2"
 msgstr "Page %1 sur %2"
 
-#: pkstatsview.lua:193
+#: pkstatsview.lua:233
+msgid "Rating over %1 puzzles: %2 → %3 · best %4"
+msgstr "Classement sur %1 problèmes : %2 → %3 · meilleur %4"
+
+#: pkstatsview.lua:275
 msgid "No puzzles played yet."
 msgstr "Aucun problème joué pour l’instant."
 
@@ -1537,30 +1541,30 @@ msgstr "Nouveautés de %1 :"
 msgid "This device could not check the download's certificate (its curl is too old): it is downloaded without that check."
 msgstr "Cet appareil n’a pas pu vérifier le certificat du téléchargement (son curl est trop ancien) : il est téléchargé sans cette vérification."
 
-#: pkupdate.lua:361
+#: pkupdate.lua:362
 msgid "Update"
 msgstr "Mettre à jour"
 
-#: pkupdate.lua:365
+#: pkupdate.lua:366
 msgid "Update and install Stockfish (%1)"
 msgstr "Mettre à jour et installer Stockfish (%1)"
 
-#: pkupdate.lua:369
+#: pkupdate.lua:370
 msgid "Paperknight is up to date (%1).\n\nStockfish is not installed (%2): install it?"
 msgstr "Paperknight est à jour (%1).\n\nStockfish n’est pas installé (%2) : l’installer ?"
 
-#: pkupdate.lua:371
+#: pkupdate.lua:372
 msgid "Install"
 msgstr "Installer"
 
-#: pkupdate.lua:418
+#: pkupdate.lua:419
 msgid "Checking for updates…"
 msgstr "Recherche de mises à jour…"
 
-#: pkupdate.lua:426
+#: pkupdate.lua:427
 msgid "GitHub's certificate could not be checked, though it could before on this device. Not updating: try again later."
 msgstr "Le certificat de GitHub n’a pas pu être vérifié, alors qu’il avait pu l’être sur cet appareil. Pas de mise à jour : réessayez plus tard."
 
-#: pkupdate.lua:428
+#: pkupdate.lua:430
 msgid "Could not check for updates."
 msgstr "Impossible de rechercher des mises à jour."

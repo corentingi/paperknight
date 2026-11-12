@@ -78,7 +78,7 @@ From [the project review](reviews/2026-11-11-project-review.md).
       KOReader on a Kobo and a PocketBook, device reports asked for
       (an issue form)
 - [ ] Stockfish for 64-bit e-readers (`aarch64`), if device reports ask
-- [ ] The rating over time on the puzzle stats page
+- [x] The rating over time on the puzzle stats page
 - [ ] Authenticate the installer (ADR-0019: pin or sign `install.sh`)
 
 ## Later / undecided
