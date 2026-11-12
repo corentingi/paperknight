@@ -44,7 +44,10 @@ installer skips it.
 
 (`latest/download` redirects to the latest release's asset; the installer
 downloads the parts from its own release.) It shows what is installed and
-what it would change, then:
+what it would change (it looks for KOReader in `/mnt/us/koreader` on a
+Kindle, `/mnt/onboard/.adds/koreader` on a Kobo,
+`/mnt/ext1/applications/koreader` on a PocketBook; `KOREADER_DIR`
+overrides), then:
 
 - installs or updates the plugin, the font and studies without asking;
 - installs the puzzle pack if missing, and asks before updating it (10 MB);

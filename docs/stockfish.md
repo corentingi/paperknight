@@ -34,7 +34,10 @@ zip of a release has it already. Restart KOReader.
   positions; the patch never loads the big one and evaluates every position
   with the small one. Stockfish 19 has no small network any more.
 - ARMv7 + NEON (Cortex-A9), static, against musl: no system library, runs on
-  the PW2's kernel 3.0.
+  the PW2's kernel 3.0. Being static, it should run on most other ARMv7
+  e-readers with NEON (other Kindles, Kobo, PocketBook): the installer
+  offers it for any `armv7*` device and says so if it does not start there.
+  64-bit devices (`aarch64`) get no build yet.
 - ~5 MB on disk; a few tens of MB of RAM with its 16 MB hash table, where
   Stockfish 19 needed about 130 MB (under qemu, which adds its own
   overhead: 80 MB searching against 265 MB just loaded). The PW2 has

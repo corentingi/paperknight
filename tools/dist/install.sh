@@ -8,9 +8,12 @@
 # --parts=plugin,puzzles,... only these parts; --list prints, for each part
 # offered, `part|installed version|offered version|size` and changes
 # nothing (the in-app updater, pkupdate.lua, reads it).
-# Environment: KOREADER_DIR (default /mnt/us/koreader), SF_PLATFORM (the
-# Stockfish build, default from `uname -m`), PK_TTY (where answers are read,
-# default /dev/tty: under `curl | sh` the script itself is on stdin).
+# Environment: KOREADER_DIR (default: the first KOReader folder found, on a
+# Kindle /mnt/us/koreader, a Kobo /mnt/onboard/.adds/koreader, a PocketBook
+# /mnt/ext1/applications/koreader), SF_PLATFORM (the Stockfish build,
+# default from `uname -m`), PK_TTY (where answers are read, default
+# /dev/tty: under `curl | sh` the script itself is on stdin). PK_ROOT
+# prefixes the folders looked for (tests).
 #
 # The parts (PARTS below, filled in by build-dist.sh, docs/releasing.md):
 # the plugin, the puzzle pack, the emoji font, studies (local builds only)
@@ -108,13 +111,24 @@ ask() { # question, default (y or n); true for yes
     esac
 }
 
+# KOReader's folder on the e-readers it runs on, the first one there
+KOREADER_PLACES='/mnt/us/koreader /mnt/onboard/.adds/koreader /mnt/ext1/applications/koreader'
+find_koreader() {
+    for place in $KOREADER_PLACES; do
+        if [ -d "${PK_ROOT:-}$place" ]; then
+            echo "${PK_ROOT:-}$place"
+            return
+        fi
+    done
+}
+
 platform() {
     if [ -n "${SF_PLATFORM:-}" ]; then
         echo "$SF_PLATFORM"
         return
     fi
     case "$(uname -m)" in
-        armv7*) echo pw2 ;; # Stockfish for the PW2's Cortex-A9 (NEON)
+        armv7*) echo pw2 ;; # Stockfish for the PW2's Cortex-A9 (NEON, static: most ARMv7 e-readers)
     esac
 }
 
@@ -303,7 +317,8 @@ main() {
         esac
     done
     [ "$DRY" = 1 ] || [ "$LIST" = 1 ] && YES=1 # the plan with the default answers
-    KOREADER_DIR=${KOREADER_DIR:-/mnt/us/koreader}
+    KOREADER_DIR=${KOREADER_DIR:-$(find_koreader)}
+    [ -n "$KOREADER_DIR" ] || fail "KOReader not found (looked in: $KOREADER_PLACES). Set KOREADER_DIR to its folder."
     PK_TTY=${PK_TTY:-/dev/tty}
     # answers are read on fd 3; no terminal to ask on (run by a script):
     # the default answers

@@ -72,10 +72,12 @@ From [the project review](reviews/2026-11-11-project-review.md).
 - [x] A daily copy of the progress file, restored from *Settings…*
 - [x] Updates that lose the network give up instead of hanging
 - [x] Licence and credits in the release archives
-- [ ] Play: the same game record as Master games (long games)
+- [x] Play, the analysis board and puzzles: the moves kept, not replayed
 - [x] Translations: French first (docs/translations.md)
-- [ ] Other KOReader devices (Kobo): say so, find KOReader there, ask for
-      device reports
+- [x] Other KOReader devices: said in the README, the installer finds
+      KOReader on a Kobo and a PocketBook, device reports asked for
+      (an issue form)
+- [ ] Stockfish for 64-bit e-readers (`aarch64`), if device reports ask
 - [ ] The rating over time on the puzzle stats page
 - [ ] Authenticate the installer (ADR-0019: pin or sign `install.sh`)
 

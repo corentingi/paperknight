@@ -225,6 +225,22 @@ run "$T/k9b" r1 -y || no "installer exit status"
 check "with sha256sum: not said" bash -c "! grep -q 'No sha256sum' '$T/out.log'"
 check "the downloads give up when they stall" grep -q -- "--speed-limit 1024 --speed-time 60" "$T/r1/install.sh"
 
+echo "KOReader found on a Kobo and a PocketBook, or said missing"
+for place in mnt/onboard/.adds/koreader mnt/ext1/applications/koreader; do
+    R="$T/root-${place%%/*}-$(echo "$place" | tr / _)"
+    mkdir -p "$R/$place"
+    env -u KOREADER_DIR PK_ROOT="$R" SF_PLATFORM=pw2 PK_TTY=/nonexistent PATH="$T/bb:$PATH" \
+        "$SH" "$T/r1/install.sh" -y > "$T/out.log" 2>&1 || no "installer exit status ($place)"
+    check "found in /$place" has "$T/out.log" "KOReader: $R/$place"
+    check "installed in /$place" test -f "$R/$place/$P/main.lua"
+done
+R="$T/root-none"
+mkdir -p "$R"
+if env -u KOREADER_DIR PK_ROOT="$R" PK_TTY=/nonexistent PATH="$T/bb:$PATH" "$SH" "$T/r1/install.sh" -y > "$T/out.log" 2>&1; then
+    no "no KOReader: the installer should fail"
+fi
+check "no KOReader: said where it looked" has "$T/out.log" "KOReader not found (looked in: /mnt/us/koreader /mnt/onboard/.adds/koreader"
+
 echo "the puzzle pack from a release of its own (ADR-0022)"
 # r1's pack archive served from another folder; the plugin release (v3) has
 # a stage without a pack and offers that archive as it is

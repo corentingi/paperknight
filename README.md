@@ -1,13 +1,16 @@
 # Paperknight
 
 **Offline chess training for e-ink readers.** Paperknight is a
-[KOReader](https://koreader.rocks) plugin that turns a jailbroken Kindle into
+[KOReader](https://koreader.rocks) plugin that turns an e-reader into
 a chess trainer: rated tactics puzzles, Lichess studies, your own opening
 repertoire with spaced repetition, an analysis board and Stockfish, all on
 the e-ink screen and without a network connection.
 
 It is designed for the **Kindle Paperwhite 2** and its 6" e-ink screen: the
-board is drawn and refreshed so that moves don't flash.
+board is drawn and refreshed so that moves don't flash. It should run on any
+e-reader with KOReader (other Kindles, Kobo, PocketBook), but has only been
+tested on the Paperwhite 2: if you try it on another one,
+[say how it went](https://github.com/corentingi/paperknight/issues/new/choose).
 
 | Puzzles | Studies | Openings |
 |---|---|---|
@@ -55,26 +58,30 @@ how it runs on your e-reader: *Settings… → Report a problem…*, or
 
 ## Install
 
-You need a jailbroken Kindle with [KOReader](https://koreader.rocks)
-installed (tested on a Kindle Paperwhite 2 with KOReader 2026.07).
+You need an e-reader with [KOReader](https://koreader.rocks) installed (a
+jailbroken Kindle, a Kobo, a PocketBook…; tested on a Kindle Paperwhite 2
+with KOReader 2026.07). KOReader's folder is `koreader` at the root of a
+Kindle, `.adds/koreader` on a Kobo, `applications/koreader` on a PocketBook.
 
 **Over USB** (no terminal needed):
 
 1. Download `paperknight-<version>-usb.zip` from the
    [latest release](https://github.com/corentingi/paperknight/releases/latest).
-2. Unzip it, connect the Kindle over USB, and copy **what is inside** the
+2. Unzip it, connect the e-reader over USB, and copy **what is inside** the
    zip's `koreader` folder (`plugins`, `fonts`, `paperknight`) into the
-   Kindle's `koreader` folder. Don't replace the Kindle's `koreader` folder
-   itself (on a Mac, Finder would delete KOReader's own files).
+   device's KOReader folder. Don't replace that folder itself (on a Mac,
+   Finder would delete KOReader's own files).
 3. Restart KOReader: **Paperknight** is in the **Tools** menu (KOReader's
    gesture settings can also open it with one tap, *Paperknight* action).
 
 The zip holds everything: the plugin, the puzzle pack, an emoji font and
 **Stockfish**, the engine behind the analysis board and *Play* against the
-engine (Stockfish 18 built for the Paperwhite 2, about 3 MB,
-[details](docs/stockfish.md)).
+engine (Stockfish 18 built for the Paperwhite 2's ARMv7 processor, about
+3 MB, [details](docs/stockfish.md); it should run on most ARMv7 e-readers,
+and the installer checks that it starts).
 
-**In a terminal** on the Kindle (kterm or SSH):
+**In a terminal** on the e-reader (kterm or SSH; the installer finds
+KOReader on a Kindle, a Kobo or a PocketBook):
 
     curl -fkL https://github.com/corentingi/paperknight/releases/latest/download/install.sh | sh
 
