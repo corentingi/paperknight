@@ -10,6 +10,10 @@ GitHub Actions builds and publishes everything (`.github/workflows/`):
 | `stockfish.yml` | a tag `stockfish-<sf tag>` (e.g. `stockfish-sf_18`) | Stockfish for each platform (`pw2` so far), checked under qemu, published as a release of its own (not latest) |
 | `pages.yml` | a push to `main` touching `site/` or the screenshots | the web page (`site/` + `docs/screenshots/`) on GitHub Pages |
 
+The workflows pin each action by its commit (the tag in a comment): a
+moved tag cannot change what a release runs. To update one, look up the
+new tag's commit (`gh api repos/actions/checkout/git/ref/tags/v8`).
+
 Run by hand (*Actions → workflow → Run workflow*), `release.yml`,
 `puzzles.yml` and `stockfish.yml` build the same files as an artifact without publishing: a
 dry run.
@@ -21,7 +25,7 @@ dry run.
 | File | Contents |
 |---|---|
 | `install.sh` | The installer, the only file with a fixed name: it lists the parts below with their versions and checksums |
-| `paperknight-plugin-<version>.tar.gz` | The plugin code (`plugins/paperknight.koplugin`, without `packs/` and `bin/`) |
+| `paperknight-plugin-<version>.tar.gz` | The plugin code (`plugins/paperknight.koplugin`, without `packs/` and `bin/`), with `LICENSE` and `CREDITS.md`; its `version.txt` and `_meta.lua` carry the tag |
 | `paperknight-puzzles-<date>.tar.gz` | The puzzle pack; `<date>`: the day its Lichess database was downloaded. Not in a GitHub release: `install.sh` downloads it from the puzzles release |
 | `paperknight-emoji-font-<hash>.tar.gz` | Noto Emoji and its licence (`fonts/`) |
 | `paperknight-studies-<hash>.tar.gz` | Studies and repertoires: local builds only, never in a release |

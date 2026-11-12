@@ -88,6 +88,9 @@ printf 'n\ny\n' > "$T/answers"
 ANSWERS="$T/answers" run "$K" r1 || no "installer exit status"
 check "plugin installed" test -f "$K/$P/main.lua"
 check "version.txt" has "$K/$P/version.txt" v1
+check "_meta.lua version from the tag" has "$K/$P/_meta.lua" 'version = "1",'
+check "licence" has "$K/$P/LICENSE" "GNU GENERAL PUBLIC LICENSE"
+check "credits" has "$K/$P/CREDITS.md" "Kochess"
 check "update-url.txt" has "$K/$P/update-url.txt" "file://$T/r1/install.sh"
 check "puzzle pack" test -f "$K/$P/packs/puzzles.sqlite"
 check "font" test -f "$K/fonts/NotoEmoji.ttf"
@@ -178,6 +181,7 @@ mkdir -p "$K"
 python3 -c "import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "$T/r1/paperknight-v1-usb.zip" "$T/k5usb"
 cp -r "$T/k5usb/koreader/." "$K/"
 check "zip has Stockfish" test -f "$K/$P/bin/stockfish"
+check "zip has the licence" test -f "$K/$P/LICENSE"
 run "$K" r1 -y || no "installer exit status"
 check "everything up to date after a USB copy" has "$T/out.log" "Everything is up to date."
 

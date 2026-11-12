@@ -78,6 +78,12 @@ rsync -a --exclude pkchesslib/spec/ --exclude pkchesslib/perft.lua --exclude pkc
     --exclude .travis.yml --exclude .gitignore --exclude .gitkeep --exclude /bin/ --exclude /packs/ \
     plugin/paperknight.koplugin/ "$WORK/plugin/$PLUGIN/"
 echo "$VERSION" > "$WORK/plugin/$PLUGIN/version.txt"
+# the version KOReader's plugin metadata shows (the tag, without its v)
+sed -i "s/^    version = \"dev\".*/    version = \"${VERSION#v}\",/" "$WORK/plugin/$PLUGIN/_meta.lua"
+grep -q "version = \"${VERSION#v}\"" "$WORK/plugin/$PLUGIN/_meta.lua" || { echo "_meta.lua: version not written" >&2; exit 1; }
+# the licence and credits go with every copy (GPL)
+cp LICENSE "$WORK/plugin/$PLUGIN/LICENSE"
+cp docs/credits.md "$WORK/plugin/$PLUGIN/CREDITS.md"
 echo "${PAPERKNIGHT_UPDATE_URL:-$DIST_URL/install.sh}" > "$WORK/plugin/$PLUGIN/update-url.txt"
 pack "paperknight-plugin-$VERSION.tar.gz" "$WORK/plugin" "$PLUGIN"
 add_part plugin "$VERSION" "paperknight-plugin-$VERSION.tar.gz" "$OUT/paperknight-plugin-$VERSION.tar.gz"
