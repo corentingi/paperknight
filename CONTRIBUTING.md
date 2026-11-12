@@ -1,8 +1,10 @@
 # Contributing to Paperknight
 
-Thanks for helping. Bug reports from real devices are the most useful
-thing you can send: say which e-reader, its KOReader version and
-Paperknight's (*Settings…* shows it), and what you did.
+Thanks for helping. Reports from real devices are the most useful thing
+you can send: [open an issue](https://github.com/corentingi/paperknight/issues/new/choose)
+(*Settings… → Report a problem…* in Paperknight shows its address as a QR
+code, with the versions it asks for). There is a form for a problem and
+one to say how Paperknight runs on your e-reader.
 
 ## Working on the code
 

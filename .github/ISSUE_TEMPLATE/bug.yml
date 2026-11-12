@@ -1,0 +1,34 @@
+name: Something does not work
+description: A crash, a wrong move, a screen that looks broken, an update that fails…
+labels: [bug]
+body:
+  - type: input
+    id: device
+    attributes:
+      label: E-reader
+      description: The model, e.g. Kindle Paperwhite 2, Kobo Clara HD.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Paperknight's version (*Settings…* in Paperknight) and KOReader's (*Help → Version* in KOReader).
+      placeholder: Paperknight v0.7.0, KOReader 2026.07
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you saw instead. A photo of the screen helps.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: KOReader's log (optional)
+      description: >-
+        The lines around the problem from `koreader/crash.log` on the device
+        (copy it over USB). Lines with "Paperknight" are the useful ones.
+      render: text

@@ -187,7 +187,16 @@ esac
     UIManager:close(top())
     h.settle()
 
-    -- 6. The project page, and the settings from the quick settings.
+    -- 6. Report a problem: the issue forms as a QR code, the versions to copy.
+    h.tapWidget(menuItem(settings, "Report a problem…"))
+    h.settle()
+    h.check(top().text == "https://github.com/corentingi/paperknight/issues/new/choose", "report QR: " .. tostring(top().text))
+    local caption = tostring(top().caption)
+    h.check(caption:find("^Paperknight development · KOReader [%d.]+ · ") ~= nil, "the versions shown: " .. caption)
+    UIManager:close(top())
+    h.settle()
+
+    -- 6b. The project page, and the settings from the quick settings.
     h.tapWidget(menuItem(settings, "Project page…"))
     h.settle()
     h.check(top().text == "https://github.com/corentingi/paperknight", "project QR code: " .. tostring(top().text))

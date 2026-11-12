@@ -1,0 +1,43 @@
+name: It works on my device
+description: Paperknight is tested on a Kindle Paperwhite 2; tell us how it runs on yours.
+labels: [device report]
+body:
+  - type: input
+    id: device
+    attributes:
+      label: E-reader
+      description: The model, e.g. Kobo Libra 2, PocketBook Era, Kindle Oasis 3.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: Paperknight v0.7.0, KOReader 2026.07
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How you installed it
+      options: [USB zip, install.sh in a terminal, other]
+    validations:
+      required: true
+  - type: checkboxes
+    id: works
+    attributes:
+      label: What works
+      options:
+        - label: Puzzles
+        - label: Studies
+        - label: Openings
+        - label: Analysis board with Stockfish
+        - label: Play against Stockfish
+        - label: Master games
+        - label: Moves without flashing (e-ink refreshes)
+        - label: Night mode
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything odd
+      description: Slow screens, flashing, wrong sizes, what does not work.

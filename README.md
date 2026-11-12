@@ -49,7 +49,9 @@ board is drawn and refreshed so that moves don't flash.
 
 Everything runs on the device: no account, no tracking, no network needed
 once installed. In English and French (KOReader's language);
-[other languages](docs/translations.md) are welcome.
+[other languages](docs/translations.md) are welcome. A problem, or news of
+how it runs on your e-reader: *Settings… → Report a problem…*, or
+[an issue](https://github.com/corentingi/paperknight/issues/new/choose).
 
 ## Install
 

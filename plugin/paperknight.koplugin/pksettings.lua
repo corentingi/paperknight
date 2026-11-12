@@ -8,6 +8,7 @@ local PkUpdate = require("pkupdate")
 
 local PkSettings = {
     PROJECT_URL = "https://github.com/corentingi/paperknight",
+    REPORT_URL = "https://github.com/corentingi/paperknight/issues/new/choose",
 }
 
 local function stockfishItem()
@@ -91,12 +92,37 @@ function PkSettings.items()
         end,
     }
     items[#items + 1] = {
+        text = _("Report a problem…"),
+        callback = function()
+            local T = require("ffi/util").template
+            require("pklinks").showQR({
+                url = PkSettings.REPORT_URL,
+                -- what the report asks for, to copy from the screen
+                caption = T(_("Paperknight %1 · KOReader %2 · %3"), PkUpdate.version() or _("development"),
+                    PkSettings.koreaderVersion(), PkSettings.deviceName()),
+            })
+        end,
+    }
+    items[#items + 1] = {
         text = _("Project page…"),
         callback = function()
             require("pklinks").showQR({ url = PkSettings.PROJECT_URL })
         end,
     }
     return items
+end
+
+--- KOReader's version ("2026.07"), "?" if unknown.
+function PkSettings.koreaderVersion()
+    local ok, Version = pcall(require, "version")
+    local v = ok and Version.getCurrentRevision and Version:getCurrentRevision()
+    return v and (v:match("^v?([%d.]+)") or v) or "?"
+end
+
+--- The device's model as KOReader names it ("KindlePaperWhite2").
+function PkSettings.deviceName()
+    local ok, Device = pcall(require, "device")
+    return ok and Device.model or "?"
 end
 
 function PkSettings.show()

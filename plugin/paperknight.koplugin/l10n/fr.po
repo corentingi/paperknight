@@ -481,7 +481,7 @@ msgstr "Nouvelle partie"
 msgid "Opponent"
 msgstr "Adversaire"
 
-#: pkplaysetup.lua:95 pksettings.lua:16 pkupdate.lua:74
+#: pkplaysetup.lua:95 pksettings.lua:17 pkupdate.lua:74
 msgid "Stockfish"
 msgstr "Stockfish"
 
@@ -841,79 +841,87 @@ msgstr "Position du problème, après %1."
 msgid "Move %1/%2: %3"
 msgstr "Coup %1/%2 : %3"
 
-#: pksettings.lua:16
+#: pksettings.lua:17
 msgid "installed"
 msgstr "installé"
 
-#: pksettings.lua:19
+#: pksettings.lua:20
 msgid "Stockfish: install…"
 msgstr "Stockfish : installer…"
 
-#: pksettings.lua:19
+#: pksettings.lua:20
 msgid "not installed"
 msgstr "non installé"
 
-#: pksettings.lua:22
+#: pksettings.lua:23
 msgid "on"
 msgstr "activé"
 
-#: pksettings.lua:22
+#: pksettings.lua:23
 msgid "off"
 msgstr "désactivé"
 
-#: pksettings.lua:28
+#: pksettings.lua:29
 msgid "Board coordinates"
 msgstr "Coordonnées de l’échiquier"
 
-#: pksettings.lua:33
+#: pksettings.lua:34
 msgid "Show legal moves"
 msgstr "Afficher les coups possibles"
 
-#: pksettings.lua:49
+#: pksettings.lua:50
 msgid "Your progress file cannot be opened."
 msgstr "Votre fichier de progression ne peut pas être ouvert."
 
-#: pksettings.lua:52
+#: pksettings.lua:53
 msgid "There is no copy of it yet: a copy is made once a day."
 msgstr "Il n’en existe pas encore de copie : une copie est faite une fois par jour."
 
-#: pksettings.lua:57
+#: pksettings.lua:58
 msgid "Put back the copy of your progress made on %1?\nWhat you did since then is lost."
 msgstr "Remettre la copie de votre progression faite le %1 ?\nCe que vous avez fait depuis sera perdu."
 
-#: pksettings.lua:59
+#: pksettings.lua:60
 msgid "Restore"
 msgstr "Restaurer"
 
-#: pksettings.lua:63
+#: pksettings.lua:64
 msgid "Your progress is restored."
 msgstr "Votre progression est restaurée."
 
-#: pksettings.lua:63
+#: pksettings.lua:64
 msgid "The copy cannot be restored:"
 msgstr "La copie ne peut pas être restaurée :"
 
-#: pksettings.lua:78
+#: pksettings.lua:79
 msgid "Check for updates…"
 msgstr "Rechercher des mises à jour…"
 
-#: pksettings.lua:79
+#: pksettings.lua:80 pksettings.lua:101
 msgid "development"
 msgstr "développement"
 
-#: pksettings.lua:85
+#: pksettings.lua:86
 msgid "Restore progress from its copy…"
 msgstr "Restaurer la progression depuis sa copie…"
 
-#: pksettings.lua:86
+#: pksettings.lua:87
 msgid "none yet"
 msgstr "aucune pour l’instant"
 
-#: pksettings.lua:94
+#: pksettings.lua:95
+msgid "Report a problem…"
+msgstr "Signaler un problème…"
+
+#: pksettings.lua:101
+msgid "Paperknight %1 · KOReader %2 · %3"
+msgstr "Paperknight %1 · KOReader %2 · %3"
+
+#: pksettings.lua:107
 msgid "Project page…"
 msgstr "Page du projet…"
 
-#: pksettings.lua:103
+#: pksettings.lua:129
 msgid "Settings"
 msgstr "Paramètres"
 
