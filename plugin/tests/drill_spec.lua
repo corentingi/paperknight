@@ -207,7 +207,7 @@ return {
     { "cap of zero: nothing new; day rollover resets the count; cards from the database", function(t)
         local d = setup{ new_per_day = 0 }
         t.eq(d:nextLine(), nil, "no new card allowed, none due")
-        local d2, saved, rep = setup{ new_per_day = 1, introduced_today = 1, now = NOON + 15 * 3600 }
+        local d2, _, rep = setup{ new_per_day = 1, introduced_today = 1, now = NOON + 15 * 3600 }
         t.eq(d2:nextLine(), nil, "cap reached at 3 am")
         d2.clock = function() return NOON + 17 * 3600 end -- 5 am: a new day
         t.ok(d2:nextLine(), "new day: one new move allowed again")

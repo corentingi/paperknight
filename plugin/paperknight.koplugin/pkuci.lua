@@ -1,4 +1,3 @@
-local Logger = require("logger")
 local UIManager = require("ui/uimanager")
 local Utils = require("pkutils")
 
@@ -139,7 +138,7 @@ function UCIEngine.spawn(cmd, args)
   -- descriptor (its number can be reused by another file)
   self._reader = function() if not self.stopped then return read() end return 0 end
   local write = Utils.writer(self.fd_write, true, "Paperknight DBG UCI")
-  self.send = function(cmd) if not self.stopped then write(cmd) end end
+  self.send = function(line) if not self.stopped then write(line) end end
   return self
 end
 

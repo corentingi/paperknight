@@ -23,7 +23,7 @@ local function newVolatility(phi, vol, v, delta, tau)
         local d = phi * phi + v + ex
         return ex * (delta * delta - phi * phi - v - ex) / (2 * d * d) - (x - a) / (tau * tau)
     end
-    local A, B = a, nil
+    local A, B = a
     if delta * delta > phi * phi + v then
         B = math.log(delta * delta - phi * phi - v)
     else

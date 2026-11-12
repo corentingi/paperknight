@@ -87,7 +87,7 @@ return {
         local move, label = s:replayTo(4)
         t.eq(PkPuzzle.uciOf(move), "d1d8", "last move"); t.eq(label, "26. Rxd8#", "label")
         t.ok(game.in_checkmate(), "mate at the end")
-        move, label = s:replayTo(3)
+        label = select(2, s:replayTo(3))
         t.eq(label, "25… Qxd8", "black move label"); t.eq(s.pos, 3, "position")
         move = s:replayTo(0)
         t.eq(move, nil, "no move at the start"); t.eq(game.fen(), MATE2.fen, "puzzle FEN")

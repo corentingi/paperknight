@@ -64,7 +64,7 @@ return {
         t.eq(c.due, today + 3, "in 3 days"); t.eq(c.step, 0, "step"); t.eq(c.missed, NOW, "first miss kept")
         t.ok(not PkPuzzleReview.isDue(c, today + 2), "not before")
         t.ok(PkPuzzleReview.isDue(c, today + 3), "due in 3 days")
-        local now, days = NOW + 3 * DAY, nil
+        local now, days = NOW + 3 * DAY
         for _, expect in ipairs({ 7, 21 }) do
             c, days = PkPuzzleReview.solved(c, now)
             t.eq(days, expect, "interval"); t.eq(c.due, PkSrs.today(now) + expect, "due")

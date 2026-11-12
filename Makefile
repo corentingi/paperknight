@@ -50,14 +50,24 @@ e2e: koreader fixture-packs ## Headless end-to-end scenarios (screenshots in bui
 emulator: koreader ## Desktop KOReader window with the plugin loaded (needs a display)
 	tools/emulator/run.sh window
 
+# luacheck: the official release binary (linux x86-64), its digest checked
+LUACHECK_VERSION := v1.2.0
+LUACHECK_SHA256  := d68da17fca0697d9e2fb04201f3884abd259fa558b3a449bccaed47f1390defc
+LUACHECK := $(BUILD)/downloads/luacheck-$(LUACHECK_VERSION)/luacheck
+
+$(LUACHECK):
+	@mkdir -p $(dir $@)
+	curl -fsSL -o $@.part https://github.com/lunarmodules/luacheck/releases/download/$(LUACHECK_VERSION)/luacheck
+	echo "$(LUACHECK_SHA256)  $@.part" | sha256sum -c - || { rm -f $@.part; exit 1; }
+	chmod +x $@.part && mv $@.part $@
+
 .PHONY: test test-lua test-py test-dist check lint
-lint: venv ## Linters: ruff on the pipeline, the translations' check (the Lua: luacheck, when installed)
-	cd pipeline && .venv/bin/ruff check .
-	cd pipeline && .venv/bin/ruff check ../tools/l10n
-	python3 tools/l10n/l10n.py check > build/l10n-check.txt || { cat build/l10n-check.txt; exit 1; }
-	@head -n 1 build/l10n-check.txt
-	@if command -v luacheck >/dev/null; then luacheck --quiet plugin/paperknight.koplugin tools/emulator; \
-	else echo "lint: luacheck not installed, the Lua is not linted"; fi
+lint: venv $(LUACHECK) ## Linters: luacheck on the Lua (.luacheckrc), ruff on the Python, the translations' check
+	$(LUACHECK) --quiet --no-color --codes plugin/paperknight.koplugin tools/emulator plugin/tests
+	cd pipeline && .venv/bin/ruff check . ../tools/l10n
+	@mkdir -p $(BUILD)
+	python3 tools/l10n/l10n.py check > $(BUILD)/l10n-check.txt || { cat $(BUILD)/l10n-check.txt; exit 1; }
+	@head -n 1 $(BUILD)/l10n-check.txt
 
 test-lua: koreader fixture-packs ## Lua unit tests (KOReader's LuaJIT and environment)
 	cd $(KO_ASSETS) && timeout 600 ./luajit $(abspath plugin/tests/run.lua)

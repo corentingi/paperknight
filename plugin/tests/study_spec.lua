@@ -92,9 +92,9 @@ return {
         t.eq(root.children[1].children[1].san, "e5", "main line continues")
         t.eq(root.children[2].san, "d4", "the variation is an alternative to 1. e4")
         local e4 = PkPgn.parseMovetext("1. e4 e5 ( ( 1... e6 ) 1... c5 ) 2. Nf3").children[1]
-        local sans = {}
-        for i, c in ipairs(e4.children) do sans[i] = c.san end
-        t.eq(table.concat(sans, " "), "e5 c5 e6", "nested at a line start: alternatives to 1... c5")
+        local got = {}
+        for i, c in ipairs(e4.children) do got[i] = c.san end
+        t.eq(table.concat(got, " "), "e5 c5 e6", "nested at a line start: alternatives to 1... c5")
         t.eq(e4.children[1].children[1].san, "Nf3", "main line resumes")
     end },
     { "hasMoves / countedChapters without parsing trees; releaseTrees", function(t)

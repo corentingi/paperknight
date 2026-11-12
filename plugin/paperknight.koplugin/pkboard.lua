@@ -308,7 +308,8 @@ function Board:handleMove(from, to)
 
     if is_pawn_promotion and self.onPromotionNeeded then
         -- a promotion: the view asks for the piece (onPromotionNeeded), then plays the move
-        logger.dbg(string.format("Pawn promotion detected: %s pawn from %s to %s. Triggering promotion dialog.", piece.color, from, to))
+        logger.dbg(string.format("Pawn promotion detected: %s pawn from %s to %s. Triggering promotion dialog.",
+            piece.color, from, to))
         self.onPromotionNeeded(from, to, piece.color)
     else
         -- If not a promotion, or no promotion callback provided, proceed with a normal move.
@@ -722,7 +723,7 @@ end
 -- sent after painting, since separate refreshes run one after the other on
 -- the e-ink controller. REAGL redraws every pixel of the region: the text
 -- below the board is refreshed apart (docs/eink-refresh.md).
-function Board:_refreshButton(button, rect)
+function Board:_refreshButton(_button, rect)
     if not rect then return UIManager:setDirty(self.show_parent or self, self.square_refresh) end
     if self._batch then
         self._batch = self._batch:combine(rect)
@@ -787,7 +788,7 @@ function Board:markSelected(square)
     self:_mark(square)
 end
 
-function Board:unmarkSelected(square)
+function Board:unmarkSelected(_square)
     if self.selected_mark == nil then return end
     self:_mark(nil)
 end

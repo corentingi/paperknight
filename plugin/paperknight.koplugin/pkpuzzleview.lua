@@ -750,7 +750,8 @@ function PkPuzzleView:showLiked()
         end }
         if puzzle then
             local labels = PkThemes.shown(puzzle.themes)
-            item.text = T(_("Puzzle %1"), id) .. (labels[1] and (" · " .. table.concat(labels, ", ", 1, math.min(2, #labels))) or "")
+            local shown = labels[1] and (" · " .. table.concat(labels, ", ", 1, math.min(2, #labels))) or ""
+            item.text = T(_("Puzzle %1"), id) .. shown
             item.mandatory = tostring(puzzle.rating)
         else
             item.text = T(_("Puzzle %1 (not in the puzzle pack)"), id)

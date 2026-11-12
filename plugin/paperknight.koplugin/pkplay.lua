@@ -92,7 +92,8 @@ function PkPlay.new(settings, opts)
         self.chess.set_human(self.engine_side, false)
     end
     for move in (opts.moves or ""):gmatch("%S+") do
-        if not self:play({ from = move:sub(1, 2), to = move:sub(3, 4), promotion = move:sub(5, 5) ~= "" and move:sub(5, 5) or nil }, true) then
+        local promotion = move:sub(5, 5) ~= "" and move:sub(5, 5) or nil
+        if not self:play({ from = move:sub(1, 2), to = move:sub(3, 4), promotion = promotion }, true) then
             break
         end
     end

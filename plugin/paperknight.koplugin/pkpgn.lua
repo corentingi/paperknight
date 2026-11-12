@@ -75,8 +75,8 @@ function PkPgn.index(text)
                 state = "tags"
             end
             for _, tag in ipairs(tags) do current.tags[tag[1]] = tag[2] end
-        elseif line:sub(1, 1) == "%" and not in_comment then -- PGN escape line
-            -- ignored
+        elseif line:sub(1, 1) == "%" and not in_comment then -- luacheck: ignore 542
+            -- a PGN escape line: ignored
         elseif blank and not in_comment then
             if state == "tags" then state = "moves" end
         else

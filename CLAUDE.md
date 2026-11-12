@@ -16,8 +16,9 @@ committed; read it too when present).
   (a path, not a bare name). Scenarios run 2 at a time (`PK_JOBS`), each in
   its own home, within `PK_TIMEOUT` s (default 120).
 - `make koreader` once if `build/koreader` is missing.
-- `make lint` — ruff on the pipeline; luacheck on the Lua when installed.
-  Part of `make check`.
+- `make lint` — luacheck on the Lua (`.luacheckrc`; the pinned release
+  binary, downloaded once), ruff on the Python, the translations' check.
+  Part of `make check`. A `_`-prefixed name marks an unused one on purpose.
 - The `engine` scenario runs the real Stockfish of `make games` (`STOCKFISH`)
   when it is there, and is skipped otherwise (as in CI).
 - `make dist` — device files in `build/dist/out/` (`tools/dist/build-dist.sh`):

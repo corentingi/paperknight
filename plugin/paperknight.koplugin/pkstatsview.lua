@@ -20,7 +20,6 @@ local Screen = require("device").screen
 local Size = require("ui/size")
 local TextWidget = require("ui/widget/textwidget")
 local TitleBar = require("ui/widget/titlebar")
-local UIManager = require("ui/uimanager")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local Widget = require("ui/widget/widget")
 local _ = require("pkgettext")

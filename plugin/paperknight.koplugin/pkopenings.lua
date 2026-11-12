@@ -132,8 +132,8 @@ local function writeSummary(file, stamp, summary, err)
         out[2], out[3] = "error", (tostring(err):gsub("\n", " "))
     end
     out[#out + 1] = ""
-    local ok, err = PkResCache.write(cachePath(file, ".sum"), table.concat(out, "\n"))
-    if not ok then logger.warn("Paperknight: cannot write the repertoire cache:", err) end
+    local ok, write_err = PkResCache.write(cachePath(file, ".sum"), table.concat(out, "\n"))
+    if not ok then logger.warn("Paperknight: cannot write the repertoire cache:", write_err) end
 end
 
 local function readSummary(file, stamp)
