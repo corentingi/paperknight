@@ -343,8 +343,11 @@ end
 function PkUpdate.offer(parts, release, notes, unverified)
     local ConfirmBox = require("ui/widget/confirmbox")
     local changes, stockfish = PkUpdate.plan(parts)
+    local unchecked = _("This device could not check the download's certificate"
+        .. " (its curl is too old): it is downloaded without that check.")
     if #changes == 0 and not stockfish then
-        info(T(_("Paperknight is up to date (%1)."), release or "?"))
+        -- said here too: a check with nothing to install still tells whether it was checked
+        info(T(_("Paperknight is up to date (%1)."), release or "?") .. (unverified and ("\n\n" .. unchecked) or ""))
         return
     end
     local lines = {}
@@ -355,10 +358,7 @@ function PkUpdate.offer(parts, release, notes, unverified)
         if notes and changes[1].part == "plugin" then
             text = text .. "\n\n" .. T(_("What's new in %1:"), release or "?") .. "\n" .. notes
         end
-        if unverified then
-            text = text .. "\n\n" .. _("This device could not check the download's certificate"
-                .. " (its curl is too old): it is downloaded without that check.")
-        end
+        if unverified then text = text .. "\n\n" .. unchecked end
         ok_text = _("Update")
         if stockfish then
             local with = { stockfish }
