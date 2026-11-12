@@ -10,136 +10,78 @@ local M = {}
 local UCIEngine = {}
 UCIEngine.__index = UCIEngine
 
-local function parse_uci_line(line, state)
-  line = line:match("^%s*(.-)%s*$")
-  local eng = state._engine
-
-  if line == "kill" then
-      state.to_uciok = -1
-  elseif line == "uciok" then
-    state.uciok = true
-    eng:_trigger("uciok")
-  elseif line:match("^Stockfish") and not state.id_name then
-    -- Some builds print a banner like "Stockfish 15.1 by ..." before the
-    -- standard UCI handshake: only a friendly engine name fallback. The
-    -- engine is ready on the real "uciok" line, once its options are parsed
-    -- (triggering it here too ran the uciok handlers twice).
-    state.id_name = line
-    eng:_trigger("id_name", state.id_name)
-  elseif line:find("^id name") then
-    state.id_name = line:match("^id name%s+(.+)$")
-    eng:_trigger("id_name", state.id_name)
-  elseif line:find("^id author") then
-    state.id_author = line:match("^id author%s+(.+)$")
-    eng:_trigger("id_author", state.id_author)
-  elseif line:find("^option") then
-    -- Robust parsing for option lines, handling names with spaces and min/max
-    local parts = {}
-    for part in line:gmatch("[^%s]+") do
-      table.insert(parts, part)
+-- An option line: "option name Skill Level type spin default 20 min 0 max
+-- 20" -> "Skill Level", { type, default, min, max, value } (value: the
+-- default until setOption). The name may have spaces; it ends at "type".
+local function parseOption(line)
+    local name, rest = line:match("^option%s+name%s+(.-)%s+type%s+(.*)$")
+    if not name then return nil end
+    local words = {}
+    for word in rest:gmatch("%S+") do words[#words + 1] = word end
+    local opt = { type = words[1] }
+    for i = 2, #words - 1 do
+        local key = words[i]
+        if (key == "default" or key == "min" or key == "max") and opt[key] == nil then opt[key] = words[i + 1] end
     end
-
-    local name_start_idx
-    for i = 1, #parts do
-      if parts[i] == "name" then
-        name_start_idx = i + 1
-        break
-      end
-    end
-
-    if name_start_idx then
-      local name_parts = {}
-      local type_start_idx
-      for i = name_start_idx, #parts do
-        if parts[i] == "type" then
-          type_start_idx = i
-          break
-        end
-        table.insert(name_parts, parts[i])
-      end
-      local name = table.concat(name_parts, " ")
-
-      if type_start_idx then
-        local typ = parts[type_start_idx + 1]
-        local def = nil
-        local min_val = nil
-        local max_val = nil
-        local current_value = nil
-
-        -- Iterate through the rest of the parts to find default, min, max
-        for i = type_start_idx + 2, #parts do -- Start after 'type <value>'
-          if parts[i] == "default" then
-            def = parts[i+1]
-            current_value = def -- Initialize current_value with default
-          elseif parts[i] == "min" then
-            min_val = parts[i+1]
-          elseif parts[i] == "max" then
-            max_val = parts[i+1]
-          end
-        end
-
-        -- Store the option's properties including min and max
-        state.options[name] = {
-          type = typ,
-          default = def,
-          value = current_value, -- Last set value (initially default)
-          min = min_val,
-          max = max_val,
-        }
-        eng:_trigger("option", name, typ, def, min_val, max_val) -- Trigger with min/max
-      end
-    end
-  elseif line == "readyok" then
-    state.readyok = true
-    eng:_trigger("readyok")
-  elseif line:find("^info") then
-    eng:_trigger("info", line) -- (not kept: a search prints thousands)
-  elseif line:find("^bestmove") then
-    local mv, p = line:match("^bestmove%s+(%S+)%s*ponder%s*(%S*)$")
-    if not p then mv = line:match("^bestmove%s+(%S+)") end
-    state.bestmove = mv
-    state.ponder = (p ~= "" and p) or nil
-    eng:_trigger("bestmove", mv, state.ponder)
-  end
+    opt.value = opt.default
+    return name, opt
 end
 
+-- One line from the engine: its state updated, the events triggered
+-- ("uciok", "readyok", "bestmove", "info"; "line" is triggered for every
+-- line by the reader).
+local function parse_uci_line(line, state)
+    line = line:match("^%s*(.-)%s*$")
+    local eng = state._engine
+    if line == "kill" then -- written by the child when exec failed (pkutils)
+        state.to_uciok = -1
+    elseif line == "uciok" then
+        state.uciok = true
+        eng:_trigger("uciok")
+    elseif line:match("^Stockfish") and not state.id_name then
+        -- a banner some builds print before the handshake: a name until "id name"
+        state.id_name = line
+    elseif line:find("^id name%s") then
+        state.id_name = line:match("^id name%s+(.+)$")
+    elseif line:find("^id author%s") then
+        state.id_author = line:match("^id author%s+(.+)$")
+    elseif line:find("^option%s") then
+        local name, opt = parseOption(line)
+        if name then state.options[name] = opt end
+    elseif line == "readyok" then
+        state.readyok = true
+        eng:_trigger("readyok")
+    elseif line:find("^info%s") then
+        eng:_trigger("info", line) -- (not kept: a search prints thousands)
+    elseif line:find("^bestmove%s") then
+        local move, ponder = line:match("^bestmove%s+(%S+)%s+ponder%s+(%S+)$")
+        state.bestmove = move or line:match("^bestmove%s+(%S+)")
+        state.ponder = ponder
+        eng:_trigger("bestmove", state.bestmove, state.ponder)
+    end
+end
+
+--- Starts the engine `cmd` (argv `args`): the engine, or nil and an error.
 function UCIEngine.spawn(cmd, args)
-  local pid, rfd, wfd_or_err = Utils.execInSubProcess(cmd, args, true, false)
-  if not pid then return nil, rfd end
-
-  local self = setmetatable({}, UCIEngine)
-  self.pid = pid
-  self.fd_read = rfd
-  self.fd_write = wfd_or_err
-  self.callbacks = {}
-
-  self.state = {
-    uciok = false,
-    id_name = nil,
-    id_author = nil,
-    options = {}, -- This will store detailed info about options, including min/max
-    readyok = false,
-    bestmove = nil,
-    ponder = nil,
-    _engine = self,
-  }
-
-  local read = Utils.reader(self.fd_read,
-                              function(line)
-                                parse_uci_line(line, self.state)
-                                self:_trigger("line", line)
-                              end,
-                              "Paperknight DBG UCI",
-                              function() -- the engine exited
-                                self.state.to_uciok = -1
-                                self:_trigger("eof")
-                              end)
-  -- the polling loops may run once more after stop(): never read a closed
-  -- descriptor (its number can be reused by another file)
-  self._reader = function() if not self.stopped then return read() end return 0 end
-  local write = Utils.writer(self.fd_write, true, "Paperknight DBG UCI")
-  self.send = function(line) if not self.stopped then write(line) end end
-  return self
+    local pid, rfd, wfd_or_err = Utils.execInSubProcess(cmd, args, true, false)
+    if not pid then return nil, rfd end
+    local self = setmetatable({ pid = pid, fd_read = rfd, fd_write = wfd_or_err, callbacks = {} }, UCIEngine)
+    -- what the engine said: uciok, readyok, id_name, id_author, options
+    -- (name -> { type, default, min, max, value }), bestmove, ponder
+    self.state = { uciok = false, readyok = false, options = {}, _engine = self }
+    local read = Utils.reader(self.fd_read, function(line)
+        parse_uci_line(line, self.state)
+        self:_trigger("line", line)
+    end, "Paperknight DBG UCI", function() -- the engine exited
+        self.state.to_uciok = -1
+        self:_trigger("eof")
+    end)
+    -- the polling loops may run once more after stop(): never read a closed
+    -- descriptor (its number can be reused by another file)
+    self._reader = function() if not self.stopped then return read() end return 0 end
+    local write = Utils.writer(self.fd_write, true, "Paperknight DBG UCI")
+    self.send = function(line) if not self.stopped then write(line) end end
+    return self
 end
 
 function UCIEngine:on(event, fn)
@@ -157,87 +99,57 @@ function UCIEngine:_trigger(event, ...)
     end
 end
 
+--- Starts a UCI session ("uci"): the state starts over.
 function UCIEngine:uci()
-  -- Reset relevant state for a new UCI session
-  for k in pairs(self.state) do self.state[k] = nil end
-  self.state.options = {}
-  self.state.uciok = false
-  self.state.to_uciok = 10
-  self.state.readyok = false
-  self.state._engine = self
-
-  self.send("uci")
-  self:_startPolling()
+    self.state = { uciok = false, readyok = false, options = {}, to_uciok = 10, _engine = self }
+    self.send("uci")
+    self:_startPolling()
 end
 
 function UCIEngine:_startPolling()
-  if self._poll or self.stopped then return end
-  self._poll = function()
-    if self.stopped then return end
-    for _ = 1, 64 do -- all that is available, in 4 KB reads
-      if self._reader() <= 0 then break end
+    if self._poll or self.stopped then return end
+    self._poll = function()
+        if self.stopped then return end
+        for _ = 1, 64 do -- all that is available, in 4 KB reads
+            if self._reader() <= 0 then break end
+        end
+        if not self.stopped then UIManager:scheduleIn(POLL, self._poll) end
     end
-    if not self.stopped then UIManager:scheduleIn(POLL, self._poll) end
-  end
-  UIManager:scheduleIn(0, self._poll)
+    UIManager:scheduleIn(0, self._poll)
 end
 
 function UCIEngine:isready()
-  self.state.readyok = false
-  self.send("isready")
+    self.state.readyok = false
+    self.send("isready")
 end
 
--- New setOption method
+--- Sets an engine option (`value` nil: a button).
 function UCIEngine:setOption(name, value)
-  assert(type(name) == "string", "setOption: 'name' must be a string")
-  local cmd = "setoption name " .. name
-  if value ~= nil then
-    cmd = cmd .. " value " .. tostring(value)
-  end
-  self.send(cmd)
-
-  -- Update the internal state of options to reflect the new setting
-  if not self.state.options[name] then
-    -- If the option wasn't advertised by the engine, create a basic entry for it
-    self.state.options[name] = { value = value }
-  else
-    -- If it was advertised, update its current value
-    self.state.options[name].value = value
-  end
-  -- Trigger an event for external listeners that an option has been set
-  self:_trigger("option_set", name, value)
+    assert(type(name) == "string", "setOption: 'name' must be a string")
+    self.send("setoption name " .. name .. (value ~= nil and (" value " .. tostring(value)) or ""))
+    local opt = self.state.options[name] or {}
+    opt.value = value
+    self.state.options[name] = opt
 end
 
+--- "position": `spec` { fen = FEN or "startpos" (default), moves = "e2e4 e7e5" }.
 function UCIEngine:position(spec)
-  assert(type(spec) == "table", "position: expected a table")
-  local cmd = "position"
-
-  if spec.fen then
-    assert(type(spec.fen) == "string", "position: 'fen' must be a string")
-    cmd = cmd .. (spec.fen == "startpos" and " startpos" or " fen " .. spec.fen)
-  else
-    cmd = cmd .. " startpos"
-  end
-
-  if spec.moves then
-    assert(type(spec.moves) == "string", "position: 'moves' must be a string")
-    local moves = spec.moves:match("^%s*(.-)%s*$")
-    if #moves > 0 then
-      cmd = cmd .. " moves " .. moves
-    end
-  end
-
-  self.send(cmd)
+    assert(type(spec) == "table", "position: expected a table")
+    local fen = spec.fen or "startpos"
+    assert(type(fen) == "string", "position: 'fen' must be a string")
+    local cmd = "position " .. (fen == "startpos" and "startpos" or ("fen " .. fen))
+    local moves = spec.moves and spec.moves:match("^%s*(.-)%s*$") or ""
+    if #moves > 0 then cmd = cmd .. " moves " .. moves end
+    self.send(cmd)
 end
 
+--- "go" with `opts` ({ movetime = 1000 }…); the bestmove comes as an event.
 function UCIEngine:go(opts)
-  local cmd = "go"
-  for k, v in pairs(opts or {}) do
-    cmd = cmd .. " " .. k .. " " .. tostring(v)
-  end
-  self.state.bestmove = nil
-  self.send(cmd)
-  self:_startPolling()
+    local cmd = "go"
+    for k, v in pairs(opts or {}) do cmd = cmd .. " " .. k .. " " .. tostring(v) end
+    self.state.bestmove = nil
+    self.send(cmd)
+    self:_startPolling()
 end
 
 --- Stops the engine for good: ends the polling loops, asks it to quit (even
