@@ -925,57 +925,19 @@ function Board:updateBoard(no_refresh)
     if not no_refresh then self:_syncTurnMarker() end
 end
 
--- Utility functions for square conversions
---- Board.toId(file, rank)
--- Converts 0-indexed file and rank to a unique linear ID.
--- @param file Number, 0-indexed file (0-7 for 'a'-'h').
--- @param rank Number, 0-indexed rank (0-7 for '1'-'8').
--- @return Number, unique ID.
-function Board.toId(file, rank)
-    return file * BOARD_SIZE + rank
-end
+-- Square names and ids (pksquares.lua)
+local PkSquares = require("pksquares")
+Board.toId = PkSquares.toId
+Board.chessToId = PkSquares.chessToId
+Board.idToPosition = PkSquares.idToPosition
 
---- Board.chessToId(position)
--- Converts chess algebraic notation (e.g., "e4") to a linear ID.
--- @param position String, algebraic notation.
--- @return id or nil
-function Board.chessToId(position)
-    if type(position) == "string" and #position == 2 then
-        local file_char = position:sub(1, 1)
-        local rank_char = position:sub(2, 2)
-        if 'a' <= file_char and file_char <= 'h' and '1' <= rank_char and rank_char <= '8' then
-            local file_idx = string.byte(file_char) - string.byte('a')
-            local rank_idx = tonumber(rank_char) - 1
-            return Board.toId(file_idx, rank_idx)
-        end
-    end
-    return nil
-end
-
---- Board.idToPosition(id)
--- Converts a linear ID back to chess algebraic notation.
--- @param id Number, the linear ID.
--- @return position or nil
-function Board.idToPosition(id)
-    if type(id) == "number" and id >= 0 and id < BOARD_SIZE * BOARD_SIZE then
-        local file_idx = math.floor(id / BOARD_SIZE)
-        local rank_idx = id % BOARD_SIZE
-        local file_char = string.char(file_idx + string.byte('a'))
-        local rank_char = tostring(rank_idx + 1) -- Convert 0-indexed rank to 1-indexed chess rank
-        return file_char .. rank_char
-    end
-    return nil
-end
-
---- Board.positionToColor(position)
--- Determines the background color of a square based on its algebraic position.
--- @param position String, algebraic notation (e.g., "e4").
--- @return the light or dark square colour of the current palette.
+--- Board.positionToColor(position): the light or dark square colour of the
+-- current palette, nil if `position` is not a square.
 function Board.positionToColor(position)
-    local id = Board.chessToId(position)
-    if not id then return nil end
+    local light = PkSquares.isLight(position)
+    if light == nil then return nil end
     local palette = Board.palette()
-    return (math.floor(id / BOARD_SIZE) + id % BOARD_SIZE) % 2 == 1 and palette.light or palette.dark
+    return light and palette.light or palette.dark
 end
 
 function Board:allMarginSizes()

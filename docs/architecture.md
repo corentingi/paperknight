@@ -31,6 +31,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 | `main.lua` | The plugin: menu entries, dispatcher action, starting each mode |
 | `pknav.lua` | Home screen, quick settings (frontlight, night mode, modes), switching modes (ADR-0015) |
 | `pksettings.lua` | Settings screen: screen settings, board settings, version and updates, Stockfish, project page |
+| `pksquares.lua` | Square names and ids (`e4` ↔ file × 8 + rank), light and dark squares: pure, re-exported by `pkboard.lua` |
 | `pkprefs.lua` | The user's on/off preferences (board coordinates, legal moves), saved in `progress.sqlite` |
 | `pkupdate.lua` | In-app update: fetches the latest `install.sh`, shows what changed (`--list`), runs it for those parts (ADR-0019) |
 | `pkfonts.lua` | Emoji UI fallback font when Noto Emoji is installed (ADR-0017) |

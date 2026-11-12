@@ -254,4 +254,5 @@ function UCIEngine:stop()
 end
 
 M.UCIEngine = UCIEngine
+M._parseLine = parse_uci_line -- (specs)
 return M
