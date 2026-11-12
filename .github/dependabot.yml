@@ -1,0 +1,15 @@
+# The GitHub Actions of the workflows, pinned by commit (docs/releasing.md):
+# once a month, every update in one pull request; CI runs make check on it.
+# The other pins (KOReader, luacheck, Stockfish, the font, the pipeline's
+# Python packages) are updated by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci

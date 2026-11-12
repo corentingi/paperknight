@@ -13,6 +13,8 @@ GitHub Actions builds and publishes everything (`.github/workflows/`):
 The workflows pin each action by its commit (the tag in a comment): a
 moved tag cannot change what a release runs. To update one, look up the
 new tag's commit (`gh api repos/actions/checkout/git/ref/tags/v8`).
+Dependabot does it once a month (`.github/dependabot.yml`): one pull
+request with every update, tested by CI.
 
 Run by hand (*Actions → workflow → Run workflow*), `release.yml`,
 `puzzles.yml` and `stockfish.yml` build the same files as an artifact without publishing: a
