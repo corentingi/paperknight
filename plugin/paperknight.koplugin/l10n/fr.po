@@ -575,11 +575,11 @@ msgstr "À vous de jouer."
 
 #: pkplayview.lua:340
 msgid "Check. %1 to move."
-msgstr "Échec. Au tour des %1."
+msgstr "Échec. Trait aux %1."
 
 #: pkplayview.lua:340
 msgid "%1 to move."
-msgstr "Au tour des %1."
+msgstr "Trait aux %1."
 
 #: pkplayview.lua:344
 msgid "The clock starts with the next move."
@@ -655,7 +655,7 @@ msgstr "Problème %1"
 
 #: pkpuzzleview.lua:252
 msgid "%1 to move. Find the best move."
-msgstr "Au tour des %1. Trouvez le meilleur coup."
+msgstr "Trait aux %1. Trouvez le meilleur coup."
 
 #: pkpuzzleview.lua:254
 msgid "Review: you missed this puzzle on %1."
@@ -831,7 +831,7 @@ msgstr "Thèmes : %1"
 
 #: pkpuzzleview.lua:940
 msgid "Before the puzzle: %1 to move."
-msgstr "Avant le problème : au tour des %1."
+msgstr "Avant le problème : trait aux %1."
 
 #: pkpuzzleview.lua:942
 msgid "Puzzle position, after %1."

@@ -28,7 +28,8 @@ return function(h)
         h.shot("french-home")
         local view = pk:startPuzzles()
         h.settle()
-        h.check(view and view.status.text:find("Trouvez le meilleur coup.", 1, true), "a puzzle: " .. tostring(view and view.status.text))
+        h.check(view and view.status.text:find("Trait aux", 1, true) and view.status.text:find("Trouvez le meilleur coup.", 1, true),
+            "a puzzle, its side to move as chess books say it: " .. tostring(view and view.status.text))
         h.check(view.buttons:getButtonById("hint").text == "Indice", "its buttons")
         -- the theme names (made when pkthemes loads: KOReader's language is
         -- set before the plugin loads, here it changed after)
