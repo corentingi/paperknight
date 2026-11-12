@@ -39,6 +39,34 @@ end
 
 local menu
 
+--- Offers to put back the daily copy of the progress file (pkprogress.lua):
+-- `problem`, why (nil: asked from the settings); `after()` once restored.
+-- Says so when there is no copy.
+function PkSettings.offerRestore(problem, after)
+    local T = require("ffi/util").template
+    local PkProgress = require("pkprogress")
+    local made = PkProgress.backupTime()
+    local intro = problem and (_("Your progress file cannot be opened.") .. "\n" .. problem .. "\n\n") or ""
+    if not made then
+        UIManager:show(require("ui/widget/infomessage"):new{
+            text = intro .. _("There is no copy of it yet: a copy is made once a day."),
+        })
+        return
+    end
+    UIManager:show(require("ui/widget/confirmbox"):new{
+        text = intro .. T(_("Put back the copy of your progress made on %1?\nWhat you did since then is lost."),
+            os.date("%Y-%m-%d %H:%M", made)),
+        ok_text = _("Restore"),
+        ok_callback = function()
+            local ok, err = pcall(PkProgress.restoreBackup)
+            UIManager:show(require("ui/widget/infomessage"):new{
+                text = ok and _("Your progress is restored.") or (_("The copy cannot be restored:") .. "\n" .. tostring(err)),
+            })
+            if ok and after then after() end
+        end,
+    })
+end
+
 function PkSettings.items()
     local items = PkNav.screenItems({})
     items[#items].separator = true
@@ -52,6 +80,16 @@ function PkSettings.items()
         callback = PkUpdate.check,
     }
     items[#items + 1] = stockfishItem()
+    local made = require("pkprogress").backupTime()
+    items[#items + 1] = {
+        text = _("Restore progress from its copy…"),
+        mandatory = made and os.date("%Y-%m-%d", made) or _("none yet"),
+        callback = function()
+            PkSettings.offerRestore(nil, function()
+                if menu then menu:switchItemTable(nil, PkSettings.items()) end
+            end)
+        end,
+    }
     items[#items + 1] = {
         text = _("Project page…"),
         callback = function()

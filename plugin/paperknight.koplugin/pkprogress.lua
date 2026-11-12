@@ -3,6 +3,8 @@
 -- The app's screens share one handle on it (PkProgress.shared), open for
 -- the session; the settings (readSetting, writeSetting) go through it.
 -- Its schema changes are numbered steps (MIGRATIONS, PRAGMA user_version).
+-- A copy is made once a day (progress.sqlite.bak), from a file that passes
+-- SQLite's check, and can be restored when the file is damaged.
 local SQ3 = require("lua-ljsqlite3/init")
 local PkGlicko = require("pkglicko")
 
@@ -240,8 +242,88 @@ function PkProgress.shared()
     if not shared then
         shared = PkProgress.open(path)
         shared.is_shared = true
+        local ok, err = pcall(shared.backupIfDue, shared)
+        if not ok then require("logger").warn("Paperknight: no copy of the progress file:", err) end
     end
     return shared
+end
+
+----------------------------------------------------------------------------
+-- The daily copy
+----------------------------------------------------------------------------
+
+PkProgress.BACKUP_AGE = 23 * 3600 -- a new copy after this (a daily habit at the same hour still gets one)
+
+function PkProgress.backupPath(path)
+    return (path or PkProgress.defaultPath()) .. ".bak"
+end
+
+--- When the copy of the file at `path` was made (a timestamp), nil if none.
+function PkProgress.backupTime(path)
+    local lfs = require("libs/libkoreader-lfs")
+    return lfs.attributes(PkProgress.backupPath(path), "modification")
+end
+
+--- Whether the file passes SQLite's own check.
+function PkProgress:healthy()
+    local ok, result = pcall(self.conn.rowexec, self.conn, "PRAGMA quick_check")
+    return ok and result == "ok"
+end
+
+--- Copies the file to its backup path (written beside it, then renamed: a
+-- copy cut short never replaces the previous one). A file that fails
+-- SQLite's check is not copied: the good copy stays. Returns true if copied.
+function PkProgress:backup()
+    if not self:healthy() then
+        require("logger").warn("Paperknight: the progress file fails its check: no copy made")
+        return false
+    end
+    local target = PkProgress.backupPath(self.path)
+    local part = target .. ".part"
+    os.remove(part)
+    local stmt = self.conn:prepare("VACUUM INTO ?")
+    stmt:reset():bind(part):step()
+    stmt:close()
+    local ok, err = os.rename(part, target)
+    if not ok then
+        os.remove(part)
+        error(err, 0)
+    end
+    return true
+end
+
+--- A copy if the last one is older than BACKUP_AGE (or missing).
+function PkProgress:backupIfDue(now)
+    local made = PkProgress.backupTime(self.path)
+    if made and (now or os.time()) - made < PkProgress.BACKUP_AGE then return false end
+    return self:backup()
+end
+
+local function copyFile(from, to)
+    local src = assert(io.open(from, "rb"))
+    local data = src:read("*a")
+    src:close()
+    local dst = assert(io.open(to, "wb"))
+    local ok, err = dst:write(data)
+    dst:close()
+    if not ok then error(err, 0) end
+end
+
+--- Replaces the file at `path` (default: the app's) by its copy. The file
+-- replaced is kept as <path>.broken (with its journal), in case. Raises if
+-- there is no copy or if the copy cannot be opened either.
+function PkProgress.restoreBackup(path)
+    path = path or PkProgress.defaultPath()
+    local bak = PkProgress.backupPath(path)
+    if not PkProgress.backupTime(path) then error("no copy of the progress file", 0) end
+    if shared and shared.path == path then PkProgress.closeShared() end
+    local broken = path .. ".broken"
+    os.remove(broken)
+    os.remove(broken .. "-journal")
+    os.rename(path, broken)
+    os.rename(path .. "-journal", broken .. "-journal")
+    copyFile(bak, path)
+    PkProgress.open(path):close()
 end
 
 --- Closes the shared handle (tests; the next shared() opens the file again).

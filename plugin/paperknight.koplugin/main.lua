@@ -121,10 +121,10 @@ function Paperknight:startPuzzles()
     local ok, progress = pcall(PkProgress.shared)
     if not ok then
         pack:close()
-        Logger.warn("Paperknight: cannot open progress database:", progress)
-        UIManager:show(infoMessage:new{
-            text = _("Cannot open the progress database.") .. "\n" .. tostring(progress),
-        })
+        -- the error's first line (SQLite's errors carry a traceback)
+        local problem = tostring(progress):match("[^\n]*"):gsub("^.-ljsqlite3%[%w+%]%s*", "")
+        Logger.warn("Paperknight: cannot open progress database:", problem)
+        require("pksettings").offerRestore(problem, function() self:startPuzzles() end)
         return nil
     end
     local view = PkPuzzleView:new{ pack = pack, progress = progress }
