@@ -97,6 +97,9 @@ esac
     h.check(not box.text:find("Puzzle pack", 1, true), "the pack up to date: not listed")
     h.check(box.text:find("What's new in v9.9.9:\nNew:\n• Studies: Something new", 1, true), "release notes")
     h.check(h.findButton(box, "Update and install Stockfish (1 MB)"), "Stockfish offered apart")
+    -- no CA bundle in this koreader folder: downloaded without the check, said
+    h.check(box.text:find("could not check the download's certificate", 1, true) and not PkUpdate.verified(),
+        "an unchecked download is said")
     h.shot("settings-update")
     h.tapWidget(exactButton(box, "Update"))
     h.check(h.waitFor(function() return restart end, 10), "restart offered")
@@ -169,14 +172,31 @@ esac
     os.remove(k .. "/hang")
     h.check(h.waitFor(function() return not PkUpdate.jobRunning() end, 10), "the job ended")
 
-    -- 4. Up to date.
+    -- 4. Up to date; KOReader's CA bundle there: the download checked.
     write(k .. "/uptodate", "")
+    os.execute("mkdir -p '" .. k .. "/data' && cp data/ca-bundle.crt '" .. k .. "/data/'")
     h.tapWidget(check_item)
     h.check(h.waitFor(function()
         return top().text and top().text:find("Paperknight is up to date (v9.9.9).", 1, true)
     end, 10), "up to date: " .. tostring(top().text))
+    h.check(PkUpdate.verified(), "the installer's certificate checked")
     UIManager:close(top())
     h.settle()
+
+    -- 4b. Checked once, then a check that fails (an attacker, or a broken
+    -- network): no going back to an unchecked download.
+    local fake = root .. "/fake-curl.sh"
+    write(fake, '#!/bin/sh\ncase "$*" in *--cacert*) exit 60;; esac\nexec curl "$@"\n')
+    os.execute("chmod +x '" .. fake .. "'")
+    PkUpdate.CURL = fake
+    h.tapWidget(check_item)
+    h.check(h.waitFor(function()
+        return top().text and top().text:find("Could not check for updates.", 1, true)
+            and top().text:find("though it could before", 1, true)
+    end, 10), "no fallback once verified: " .. tostring(top().text))
+    UIManager:close(top())
+    h.settle()
+    PkUpdate.CURL = "curl"
 
     -- 5. No release there.
     PkUpdate.url_override = "file://" .. root .. "/missing/install.sh"

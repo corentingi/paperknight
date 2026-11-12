@@ -19,6 +19,7 @@ local PkUpdate = {
     -- tests: where to look for updates and the koreader folder
     url_override = nil,
     koreader_dir_override = nil,
+    CURL = "curl", -- (tests: a fake one)
 }
 
 local function pluginDir()
@@ -339,7 +340,7 @@ end
 
 --- The installer's answer: up to date, or what it would change (with the
 -- release notes when the plugin changes).
-function PkUpdate.offer(parts, release, notes)
+function PkUpdate.offer(parts, release, notes, unverified)
     local ConfirmBox = require("ui/widget/confirmbox")
     local changes, stockfish = PkUpdate.plan(parts)
     if #changes == 0 and not stockfish then
@@ -353,6 +354,10 @@ function PkUpdate.offer(parts, release, notes)
         text = T(_("Updates available (Paperknight %1):"), release or "?") .. "\n\n" .. table.concat(lines, "\n")
         if notes and changes[1].part == "plugin" then
             text = text .. "\n\n" .. T(_("What's new in %1:"), release or "?") .. "\n" .. notes
+        end
+        if unverified then
+            text = text .. "\n\n" .. _("This device could not check the download's certificate"
+                .. " (its curl is too old): it is downloaded without that check.")
         end
         ok_text = _("Update")
         if stockfish then
@@ -376,22 +381,58 @@ function PkUpdate.offer(parts, release, notes)
     })
 end
 
+-- curl's exit codes for a certificate or TLS it cannot check (an old curl
+-- or certificate store), as opposed to a network error
+local TLS_CODES = "35|51|53|54|58|59|60|64|66|77|80|82|83|90|91"
+
+--- The shell command that downloads the installer to `file`, its
+-- certificate checked against KOReader's own CA bundle
+-- (koreader/data/ca-bundle.crt). A device whose curl cannot check it gets
+-- it without the check (curl -k, as on the command line), and the file
+-- `<work>/tls` says which ("verified" or "unverified"); once a download was
+-- verified on the device, a failed check is an error: no going back to -k,
+-- which an attacker could force (ADR-0019). The archives need nothing more:
+-- their checksums are in the installer.
+function PkUpdate.fetchCmd(file, url)
+    local work = PkUpdate.workDir()
+    local ca = PkUpdate.koreaderDir() .. "/data/ca-bundle.crt"
+    local curl = PkUpdate.CURL .. " -fsSL --connect-timeout 30 --max-time 60"
+    return T([[rm -f %4/tls; if [ -f %3 ]; then %5 --cacert %3 -o %1.part %2; rc=$?; else rc=60; fi
+if [ $rc -eq 0 ]; then echo verified > %4/tls; : > %4/tls-verified
+else
+  case $rc in %6) ;; *) exit $rc ;; esac
+  if [ -f %4/tls-verified ]; then echo "certificate check failed ($rc)"; exit 3; fi
+  %5 -k -o %1.part %2 || exit $?
+  echo unverified > %4/tls
+fi
+mv %1.part %1]], q(file), q(url), q(ca), q(work), curl, TLS_CODES)
+end
+
+--- Whether the last installer was downloaded with its certificate checked.
+function PkUpdate.verified()
+    return readFirstLine(PkUpdate.workDir() .. "/tls") == "verified"
+end
+
 --- Downloads the latest installer and asks it what changed.
 function PkUpdate.fetchAndCheck()
     busy()
     info(_("Checking for updates…"))
     local file = installer()
-    local cmd = T("curl -fksSL --connect-timeout 30 --max-time 60 -o %1.part %2 && mv %1.part %1 && %3",
-        q(file), q(PkUpdate.url()), installerCmd("--list"))
+    local cmd = PkUpdate.fetchCmd(file, PkUpdate.url()) .. " && " .. installerCmd("--list")
     PkUpdate.run(cmd, function(ok, output, timed_out)
         idle()
         if not ok then
-            info(_("Could not check for updates.") .. "\n" .. failure(output, timed_out))
+            local why = failure(output, timed_out)
+            if why:find("^certificate check failed") then
+                why = _("GitHub's certificate could not be checked, though it could before on this device."
+                    .. " Not updating: try again later.")
+            end
+            info(_("Could not check for updates.") .. "\n" .. why)
             return
         end
         local script = readFile(file)
         PkUpdate.offer(PkUpdate.parseList(output), PkUpdate.parseVersion(script),
-            PkUpdate.parseNotes(script, PkUpdate.NOTES_MAX_LINES))
+            PkUpdate.parseNotes(script, PkUpdate.NOTES_MAX_LINES), not PkUpdate.verified())
     end, PkUpdate.CHECK_TIMEOUT)
 end
 

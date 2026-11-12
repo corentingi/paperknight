@@ -58,7 +58,7 @@
     <pre><code>curl -fkL https://github.com/corentingi/paperknight/releases/latest/download/install.sh | sh</code></pre>
     <p>The installer shows what it will install and offers Stockfish. It checks every download before changing anything, and your own studies are kept.</p>
     <h3>Updates</h3>
-    <p>In Paperknight, <em>Settings… → Check for updates…</em> (Wi-Fi on): it downloads only what changed. The installer is fetched with <code>curl -k</code> (the Kindle's certificates are often too old to check GitHub's); each archive is then checked against the checksum written in the installer. If that matters to you, update over USB with a zip downloaded on your computer.</p>
+    <p>In Paperknight, <em>Settings… → Check for updates…</em> (Wi-Fi on): it downloads only what changed. It checks GitHub's certificate with KOReader's own certificate list, then every archive against the checksum written in the installer; a device whose <code>curl</code> is too old to check the certificate downloads without that check, and says so. The terminal command uses <code>curl -k</code> so that it works everywhere.</p>
     <h3>Your studies and repertoires</h3>
     <p>Copy PGN files (a Lichess study exported as PGN, for example) to <code>koreader/paperknight/studies/</code> or <code>koreader/paperknight/repertoires/</code> on the Kindle.</p>
   </section>

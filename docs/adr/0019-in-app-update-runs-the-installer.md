@@ -1,7 +1,7 @@
 # ADR-0019: The in-app update runs the release's install.sh
 
 - Date: 2026-10-24
-- Status: accepted
+- Status: accepted (amended 2026-11-12: the installer's certificate checked)
 
 ## Context
 Releases publish `install.sh` (the parts with their versions and sha256)
@@ -49,3 +49,17 @@ devices Paperknight targets have its tools.
   first loads every module and the data read on first use
   (`PkUpdate.preload`), and once the plugin is replaced no mode opens until
   KOReader restarts: it asks for the restart instead.
+- (2026-11-12) The installer is no longer always fetched with `curl -k`.
+  The in-app update first checks GitHub's certificate against KOReader's
+  own CA bundle (`koreader/data/ca-bundle.crt`, shipped with every
+  KOReader); only a device whose `curl` cannot check it (an old TLS
+  library) falls back to `-k`, and the update dialog says so. Once a
+  download was checked on a device, a failed check is an error, never a
+  fallback: an attacker who blocks the check cannot force the unchecked
+  download (a marker in `paperknight/.update/tls-verified`). The archives
+  are still fetched by the installer with `-k`: their sha256 are written in
+  the installer, so a checked installer checks them. Signing `install.sh`
+  was the other option: it protects even unchecked downloads, but needs a
+  signature check in Lua or in the device's shell (neither has one) and a
+  key to keep; it stays open if devices that cannot check certificates
+  turn out to be common.

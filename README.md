@@ -94,12 +94,18 @@ repertoires are kept.
 restart KOReader. It runs the same installer, which you can also run again
 from a terminal.
 
-The installer is downloaded with `curl -k`: the Kindle's certificates are
-often too old for GitHub's, so the certificate is not checked. Each archive
-is then checked against the checksum written in the installer, which
-protects against a broken download but not against a replaced installer
-([ADR-0019](docs/adr/0019-in-app-update-runs-the-installer.md)). If that
-matters to you, install over USB with a zip you downloaded on your computer.
+**Checked downloads**: the in-app update checks GitHub's certificate with
+KOReader's own certificate list, and the installer then checks every
+archive against the checksum it holds. A device whose `curl` is too old to
+check the certificate downloads the installer without that check, and the
+update says so ([ADR-0019](docs/adr/0019-in-app-update-runs-the-installer.md)).
+The terminal command above uses `curl -k` (no certificate check) so that it
+works everywhere; where the device's `curl` can check it, use KOReader's
+list instead, e.g. on a Kindle:
+
+    curl -fL --cacert /mnt/us/koreader/data/ca-bundle.crt https://github.com/corentingi/paperknight/releases/latest/download/install.sh | sh
+
+Or install over USB with a zip downloaded on your computer.
 
 **Your progress** (rating, puzzles to review, repertoires, games in
 progress) is copied once a day; *Settings… → Restore progress from its

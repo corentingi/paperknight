@@ -17,7 +17,7 @@ msgstr "Accueil"
 msgid "Puzzles"
 msgstr "Problèmes"
 
-#: main.lua:69 pknav.lua:63 pkstudies.lua:383 pkupdate.lua:73
+#: main.lua:69 pknav.lua:63 pkstudies.lua:383 pkupdate.lua:74
 msgid "Studies"
 msgstr "Études"
 
@@ -481,7 +481,7 @@ msgstr "Nouvelle partie"
 msgid "Opponent"
 msgstr "Adversaire"
 
-#: pkplaysetup.lua:95 pksettings.lua:17 pkupdate.lua:74
+#: pkplaysetup.lua:95 pksettings.lua:17 pkupdate.lua:75
 msgid "Stockfish"
 msgstr "Stockfish"
 
@@ -1469,90 +1469,98 @@ msgstr "Mat de Vukovic"
 msgid "Zugzwang"
 msgstr "Zugzwang"
 
-#: pkupdate.lua:71
+#: pkupdate.lua:72
 msgid "Puzzle pack"
 msgstr "Pack de problèmes"
 
-#: pkupdate.lua:72
+#: pkupdate.lua:73
 msgid "Emoji font"
 msgstr "Police d’émojis"
 
-#: pkupdate.lua:79
+#: pkupdate.lua:80
 msgid "%1 MB"
 msgstr "%1 Mo"
 
-#: pkupdate.lua:80
+#: pkupdate.lua:81
 msgid "%1 KB"
 msgstr "%1 Ko"
 
-#: pkupdate.lua:137
+#: pkupdate.lua:138
 msgid "%1 → %2"
 msgstr "%1 → %2"
 
-#: pkupdate.lua:137
+#: pkupdate.lua:138
 msgid "unknown"
 msgstr "inconnue"
 
-#: pkupdate.lua:138
+#: pkupdate.lua:139
 msgid "install %1"
 msgstr "installer %1"
 
-#: pkupdate.lua:204
+#: pkupdate.lua:205
 msgid "An update is still running. Try again in a minute."
 msgstr "Une mise à jour est encore en cours. Réessayez dans une minute."
 
-#: pkupdate.lua:233
+#: pkupdate.lua:234
 msgid "No answer after several minutes (Wi-Fi lost?). Try again later."
 msgstr "Pas de réponse depuis plusieurs minutes (Wi-Fi perdu ?). Réessayez plus tard."
 
-#: pkupdate.lua:316
+#: pkupdate.lua:317
 msgid "Paperknight was updated (%1).\nRestart KOReader to use it."
 msgstr "Paperknight a été mis à jour (%1).\nRedémarrez KOReader pour l’utiliser."
 
-#: pkupdate.lua:326
+#: pkupdate.lua:327
 msgid "Updating Paperknight…\nDownloading %1."
 msgstr "Mise à jour de Paperknight…\nTéléchargement de %1."
 
-#: pkupdate.lua:330
+#: pkupdate.lua:331
 msgid "The update failed:"
 msgstr "La mise à jour a échoué :"
 
-#: pkupdate.lua:336
+#: pkupdate.lua:337
 msgid "Paperknight is updated (%1).\nRestart KOReader to use it."
 msgstr "Paperknight est mis à jour (%1).\nRedémarrez KOReader pour l’utiliser."
 
-#: pkupdate.lua:346
+#: pkupdate.lua:347
 msgid "Paperknight is up to date (%1)."
 msgstr "Paperknight est à jour (%1)."
 
-#: pkupdate.lua:353
+#: pkupdate.lua:354
 msgid "Updates available (Paperknight %1):"
 msgstr "Mises à jour disponibles (Paperknight %1) :"
 
-#: pkupdate.lua:355
+#: pkupdate.lua:356
 msgid "What's new in %1:"
 msgstr "Nouveautés de %1 :"
 
-#: pkupdate.lua:357
+#: pkupdate.lua:359
+msgid "This device could not check the download's certificate (its curl is too old): it is downloaded without that check."
+msgstr "Cet appareil n’a pas pu vérifier le certificat du téléchargement (son curl est trop ancien) : il est téléchargé sans cette vérification."
+
+#: pkupdate.lua:361
 msgid "Update"
 msgstr "Mettre à jour"
 
-#: pkupdate.lua:361
+#: pkupdate.lua:365
 msgid "Update and install Stockfish (%1)"
 msgstr "Mettre à jour et installer Stockfish (%1)"
 
-#: pkupdate.lua:365
+#: pkupdate.lua:369
 msgid "Paperknight is up to date (%1).\n\nStockfish is not installed (%2): install it?"
 msgstr "Paperknight est à jour (%1).\n\nStockfish n’est pas installé (%2) : l’installer ?"
 
-#: pkupdate.lua:367
+#: pkupdate.lua:371
 msgid "Install"
 msgstr "Installer"
 
-#: pkupdate.lua:382
+#: pkupdate.lua:418
 msgid "Checking for updates…"
 msgstr "Recherche de mises à jour…"
 
-#: pkupdate.lua:389
+#: pkupdate.lua:426
+msgid "GitHub's certificate could not be checked, though it could before on this device. Not updating: try again later."
+msgstr "Le certificat de GitHub n’a pas pu être vérifié, alors qu’il avait pu l’être sur cet appareil. Pas de mise à jour : réessayez plus tard."
+
+#: pkupdate.lua:428
 msgid "Could not check for updates."
 msgstr "Impossible de rechercher des mises à jour."

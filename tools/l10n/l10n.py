@@ -4,7 +4,8 @@
     python3 tools/l10n/l10n.py extract   # writes build/l10n/paperknight.pot (the template) from the code
     python3 tools/l10n/l10n.py check     # every catalogue: well formed, its placeholders kept
 
-The strings are the `_("...")` calls of plugin/paperknight.koplugin/*.lua.
+The strings are the `_("...")` calls of plugin/paperknight.koplugin/*.lua
+(literals joined with `..` count as one).
 A catalogue is l10n/<lang>.po (msgid/msgstr, no plurals). `check` fails on
 a broken catalogue, a translation whose %1, %2… differ from its msgid, or an
 entry the code no longer has; it lists the strings not translated yet
@@ -19,7 +20,9 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 PLUGIN = REPO / "plugin" / "paperknight.koplugin"
 L10N = PLUGIN / "l10n"
-CALL = re.compile(r'(?<![\w.:])_\(\s*"((?:[^"\\\n]|\\.)*)"\s*\)')
+LITERAL = r'"(?:[^"\\\n]|\\.)*"'
+# _("…"), or literals joined with .. (a long string over several lines)
+CALL = re.compile(r'(?<![\w.:])_\(\s*(' + LITERAL + r'(?:\s*\.\.\s*' + LITERAL + r')*)\s*\)')
 ESCAPES = {"n": "\n", "t": "\t", '"': '"', "\\": "\\", "'": "'"}
 
 
@@ -40,7 +43,8 @@ def extract() -> dict[str, list[str]]:
         text = path.read_text(encoding="utf-8")
         for m in CALL.finditer(text):
             line = text.count("\n", 0, m.start()) + 1
-            found.setdefault(unescape(m.group(1)), []).append(f"{path.name}:{line}")
+            msgid = "".join(unescape(lit[1:-1]) for lit in re.findall(LITERAL, m.group(1)))
+            found.setdefault(msgid, []).append(f"{path.name}:{line}")
     return found
 
 
