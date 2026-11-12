@@ -54,7 +54,8 @@ overrides), then:
 - offers Stockfish, from the Stockfish release named in `release.yml`
   (`STOCKFISH_RELEASE`), when there is a build for the device (`uname -m`;
   `SF_PLATFORM` overrides);
-- asks *Go?*, downloads and checks every part first (sha256, gzip, tar),
+- asks *Go?*, checks there is room (about four times the download: it
+  says so and stops otherwise), downloads and checks every part first (sha256, gzip, tar),
   then installs them; the plugin folder is swapped with renames, keeping
   `packs/` and `bin/`. A download that stalls (under 1 KB/s for a minute)
   gives up; without `sha256sum` on the device the installer says the

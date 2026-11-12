@@ -191,6 +191,26 @@ EOF
     return 0
 }
 
+# KB free where KOReader is (PK_FREE_KB: tests), empty if df cannot say
+free_kb() {
+    if [ -n "${PK_FREE_KB:-}" ]; then
+        echo "$PK_FREE_KB"
+        return
+    fi
+    { df -Pk . 2>/dev/null | awk 'NR == 2 && $4 ~ /^[0-9]+$/ { print $4 }'; } 2>/dev/null || true
+}
+
+# enough room for the downloads and what they unpack to (about four times
+# the download: a compressed pack, then the pack beside the old one)
+check_space() { # bytes to download
+    need=$(( ($1 * 4) / 1024 + 1024 ))
+    have=$(free_kb)
+    [ -n "$have" ] || return 0
+    if [ "$have" -lt "$need" ]; then
+        fail "Not enough free space: $(human $(( need * 1024 ))) needed, $(human $(( have * 1024 ))) free. Nothing changed."
+    fi
+}
+
 download() { # part, file, sha256, size -> the checked download in $DL
     case "$2" in
         *://*) url=$2 ;;
@@ -362,6 +382,13 @@ plugin|"*)
         CHECKSUMS=0
         say "No sha256sum on this device: the downloads are checked for completeness only, not against their checksums."
     fi
+    total=0
+    while IFS='|' read -r part version file sha size; do
+        [ -n "$part" ] && total=$(( total + size ))
+    done <<EOF
+$SELECTED
+EOF
+    check_space "$total"
     cleanup
     mkdir -p "$DL"
     trap cleanup EXIT

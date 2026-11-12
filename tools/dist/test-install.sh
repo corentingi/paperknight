@@ -23,7 +23,7 @@ has() { grep -qF -- "$2" "$1"; }
 SH=sh
 if command -v busybox >/dev/null; then
     mkdir -p "$T/bb"
-    for applet in sh tar gzip find sha256sum mv cp rm mkdir dirname chmod grep tr cat uname rmdir; do
+    for applet in sh tar gzip find sha256sum mv cp rm mkdir dirname chmod grep tr cat uname rmdir df awk; do
         ln -s "$(command -v busybox)" "$T/bb/$applet"
     done
     SH="$T/bb/sh"
@@ -224,6 +224,17 @@ check "no sha256sum: installed anyway" test -f "$K/$P/main.lua"
 run "$T/k9b" r1 -y || no "installer exit status"
 check "with sha256sum: not said" bash -c "! grep -q 'No sha256sum' '$T/out.log'"
 check "the downloads give up when they stall" grep -q -- "--speed-limit 1024 --speed-time 60" "$T/r1/install.sh"
+
+echo "not enough free space: said before anything changes"
+K="$T/k10"
+mkdir -p "$K"
+if PK_FREE_KB=100 run "$K" r1 -y; then no "a full disk: the installer should fail"; fi
+check "full disk: said" has "$T/out.log" "Not enough free space"
+check "full disk: nothing installed" test ! -e "$K/$P"
+PK_FREE_KB=99999999 run "$K" r1 -y || no "installer exit status (room enough)"
+check "room enough: installed" test -f "$K/$P/main.lua"
+run "$T/k11" r1 -y || no "installer exit status (the real df)"
+check "the real df: installed" test -f "$T/k11/$P/main.lua"
 
 echo "KOReader found on a Kobo and a PocketBook, or said missing"
 for place in mnt/onboard/.adds/koreader mnt/ext1/applications/koreader; do
