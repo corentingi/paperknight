@@ -97,7 +97,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 | `pkengine.lua` | Where Stockfish is installed (`bin/stockfish`) |
 | `pkuci.lua` | UCI engine in a subprocess: one polling task, stopped and reaped on close |
 | `pktimer.lua` | Chess clocks |
-| `pkchess.lua` + `pkchesslib/` | Rules engine (move generation, FEN, SAN, PGN) from arizati/chess.lua, with a redo history |
+| `pkchess.lua` + `pkchesslib/` | Rules engine (move generation, FEN, SAN, PGN) from arizati/chess.lua, with a redo history and the moves kept as they are played (`history()` without replaying the game) |
 | `pkutils.lua` | Subprocess, pipe reader and writer |
 
 ### Storage

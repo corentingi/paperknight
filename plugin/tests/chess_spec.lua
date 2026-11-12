@@ -2,6 +2,49 @@
 local Chess = require("pkchess")
 
 return {
+    { "the history kept as moves are played and undone: as the engine replays it", function(t)
+        local function same(game, what)
+            local kept, replayed = game.history(), game._replayed_history()
+            t.eq(table.concat(kept, " "), table.concat(replayed, " "), what .. ": SAN")
+            local kv, rv = game.history({ verbose = true }), game._replayed_history({ verbose = true })
+            t.eq(#kv, #rv, what .. ": length")
+            for i = 1, #rv do
+                for _, k in ipairs({ "from", "to", "san", "piece", "color", "flags", "promotion", "captured" }) do
+                    t.eq(kv[i][k], rv[i][k], ("%s: ply %d %s"):format(what, i, k))
+                end
+            end
+        end
+        math.randomseed(20261112)
+        for g = 1, 12 do
+            local game = Chess:new()
+            if g % 3 == 0 then t.ok(game.load("r3k2r/pppq1ppp/2n2n2/3pp3/1b1PP3/2N2N2/PPPQ1PPP/R3KB1R w KQkq - 2 8")) end
+            for ply = 1, 90 do
+                local r = math.random()
+                if r < 0.12 then game.undo()
+                elseif r < 0.18 then game.redo()
+                else
+                    local moves = game.moves({ verbose = true })
+                    if #moves == 0 then break end
+                    local m = moves[math.random(#moves)]
+                    t.ok(game.move({ from = m.from, to = m.to, promotion = m.promotion }), "a legal move")
+                end
+                if ply % 15 == 0 then same(game, ("game %d, ply %d"):format(g, ply)) end
+            end
+            same(game, "game " .. g)
+        end
+        local game = Chess:new()
+        game.move("e4"); game.move("e5")
+        game.history({ verbose = true })[1].san = "changed"
+        t.eq(game.history()[1], "e4", "the verbose moves are copies")
+        t.ok(not game.load("not a fen"), "a bad FEN")
+        t.eq(#game.history(), 2, "a FEN that does not load keeps the moves")
+        game.reset()
+        t.eq(#game.history(), 0, "reset")
+        t.ok(game.load_pgn("1. d4 d5 2. c4 e6"), "a PGN")
+        same(game, "load_pgn"); t.eq(#game.history(), 4)
+        game.clear()
+        t.eq(#game.history(), 0, "clear")
+    end },
     { "perft(3) from the start position is 8902", function(t)
         local game = Chess:new()
         t.eq(game.perft(3), 8902, "perft(3)")
