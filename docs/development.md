@@ -14,12 +14,13 @@ Run `make help` for the current list. Main ones:
 |---|---|
 | `make koreader` | Download the pinned desktop KOReader into `build/koreader/` |
 | `make test` | Lua unit tests (with KOReader's LuaJIT) + pipeline `pytest` |
-| `make e2e` | Headless end-to-end scenarios; screenshots and logs in `build/e2e/` |
+| `make e2e` | Headless end-to-end scenarios; screenshots and logs in `build/e2e/`. The `engine` scenario uses the real Stockfish of `make games` (`STOCKFISH`) when it is there, and is skipped otherwise |
+| `make lint` | `ruff check` on the pipeline; `luacheck` on the plugin when it is installed |
 | `make emulator` | Visible KOReader window with the plugin loaded (needs a display) |
 | `make packs` | Build data packs into `build/packs/` (`--refresh` on the pipeline downloads the dump again) |
 | `make dist` | Device files in `build/dist/out/`: `install.sh`, one archive per part, the USB zip (see Deploying) |
 | `make test-dist` | Installer tests (`tools/dist/test-install.sh`, part of `make test`) |
-| `make check` | Everything: run it before committing (there is no CI) |
+| `make check` | Everything (`lint`, `test`, `e2e`): run it before committing; CI runs it on every push |
 
 ## The emulator
 
