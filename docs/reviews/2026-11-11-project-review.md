@@ -177,3 +177,23 @@ Still open from this review: F2 (the same game record for Play), S1, S2,
 U1–U3, P3–P9, L1, R2, R4, T1–T6, Q3–Q5, D1–D5. Not covered by P1: a card
 whose puzzle an earlier pack had already dropped, and the stats by theme
 for attempts on puzzles that left the pack.
+
+## Follow-up (2026-11-12)
+
+On the branch `review-followups`, each with its tests and a mutation check:
+
+| Finding | What changed |
+|---|---|
+| U1 | The in-app update waits at most 3 min (check) and 30 min (update), keeps the device awake, never runs two installers at once; the installer's downloads give up when they stall. |
+| S2 | No `sha256sum` on the device: the installer says the checksums are not checked. |
+| L1, R4 | `LICENSE` and `CREDITS.md` in the plugin archive and the USB zip; `_meta.lua` carries the release's version. |
+| R2 | Every action pinned by commit, the tag in a comment. |
+| P3 | A daily copy of `progress.sqlite` (only from a file that passes its check), restored from *Settings…* or offered when the file is damaged. |
+| T1 | `make lint` (in `make check`): ruff on the pipeline and the translation check. luacheck: not yet (see below). |
+| T2, T6 | Specs for the UCI parser and the square ids (`pksquares.lua`). |
+| T3 | The `engine` scenario runs the real Stockfish when the computer has one; skipped in CI. |
+| D1–D5, P4 | Roadmap (milestone 6), Play and Master games screenshots, `CONTRIBUTING.md`, the `curl -k` trade-off in the README, the USB install first (README and site). |
+| P6 | French, following KOReader's language (`pkgettext.lua`, `l10n/fr.po`, docs/translations.md). |
+
+Still open: luacheck for the Lua (T1), F2, S1, U2, U3, P5, P7–P9, Q3–Q5, T4,
+T5.
