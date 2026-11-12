@@ -51,13 +51,13 @@ def download(url: str, dest_dir: Path, force: bool = False, retries: int = 5,
                 raise  # 404 and such: retrying will not help
             failures += 1
             if failures > retries:
-                raise IOError(f"download of {url} failed after {retries} retries: {err}") from err
+                raise OSError(f"download of {url} failed after {retries} retries: {err}") from err
             wait = backoff * 2 ** (failures - 1)
             print(f"download interrupted ({err}); resuming in {wait:.0f} s", file=sys.stderr)
             time.sleep(wait)
     size = tmp.stat().st_size
     if total is not None and size != total:
-        raise IOError(f"truncated download of {url}: {size} of {total} bytes")
+        raise OSError(f"truncated download of {url}: {size} of {total} bytes")
     tmp.rename(dest)
     if _validator_path(tmp).exists():
         _validator_path(tmp).unlink()
@@ -124,7 +124,7 @@ class _ZstdReader(io.RawIOBase):
     CHUNK = 1 << 17
 
     def __init__(self, path: Path):
-        self._raw = open(path, "rb")
+        self._raw = open(path, "rb")  # noqa: SIM115 (the reader owns it: closed by close())
         self._path = path
         self._decompressor = zstandard.ZstdDecompressor()
         self._frame = None  # the frame being decompressed
@@ -138,7 +138,7 @@ class _ZstdReader(io.RawIOBase):
             chunk = self._raw.read(self.CHUNK)
             if not chunk:
                 if self._frame is not None:
-                    raise IOError(f"{self._path}: truncated .zst file")
+                    raise OSError(f"{self._path}: truncated .zst file")
                 return 0
             out = []
             while chunk:

@@ -49,7 +49,12 @@ e2e: koreader fixture-packs ## Headless end-to-end scenarios (screenshots in bui
 emulator: koreader ## Desktop KOReader window with the plugin loaded (needs a display)
 	tools/emulator/run.sh window
 
-.PHONY: test test-lua test-py test-dist check
+.PHONY: test test-lua test-py test-dist check lint
+lint: venv ## Linters: ruff on the pipeline (the Lua: luacheck, when installed)
+	cd pipeline && .venv/bin/ruff check .
+	@if command -v luacheck >/dev/null; then luacheck --quiet plugin/paperknight.koplugin tools/emulator; \
+	else echo "lint: luacheck not installed, the Lua is not linted"; fi
+
 test-lua: koreader fixture-packs ## Lua unit tests (KOReader's LuaJIT and environment)
 	cd $(KO_ASSETS) && timeout 600 ./luajit $(abspath plugin/tests/run.lua)
 
@@ -61,7 +66,7 @@ test-dist: ## Installer tests (tools/dist/install.sh against fake releases)
 
 test: test-lua test-py test-dist ## All unit tests
 
-check: test e2e ## Everything CI runs (exit command of the dev loop)
+check: lint test e2e ## Everything CI runs (exit command of the dev loop)
 
 .PHONY: venv packs fixture-packs
 venv: $(VENV)/.installed ## Create the pipeline virtualenv

@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest==9.1.1", "git-cliff==2.14.2"]  # git-cliff: release notes (make notes)
+dev = ["pytest==9.1.1", "git-cliff==2.14.2", "ruff==0.17.4"]  # git-cliff: release notes (make notes); ruff: make lint
 
 [project.scripts]
 paperknight-pipeline = "paperknight_pipeline.cli:main"
@@ -24,3 +24,11 @@ packages = ["paperknight_pipeline"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+# pyflakes, pycodestyle, bugbear, import order, pyupgrade, simplify
+select = ["F", "E", "W", "B", "I", "UP", "SIM"]

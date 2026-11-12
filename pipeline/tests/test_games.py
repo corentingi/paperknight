@@ -87,7 +87,7 @@ def test_names_and_book():
     assert games.display_name("Polgar, Judit") == "Judit Polgar"
     assert games.display_name("Polgar,Ju") == "Judit Polgar"
     assert games.display_name("Duke Karl Count Isouard") == "Duke Karl Count Isouard"
-    moves = [chess.Move.from_uci(m) for m in "e2e4 e7e5 g1f3 d7d6 d2d4".split()]
+    moves = [chess.Move.from_uci(m) for m in ["e2e4", "e7e5", "g1f3", "d7d6", "d2d4"]]
     from paperknight_pipeline.openings import position_key
     b = chess.Board()
     keys = set()
@@ -125,7 +125,7 @@ def test_no_key_moment_in_check_or_for_a_recapture():
     assert not games.is_key(check, move, [("e1e2", 500), ("e1f1", -500)], None)
     # 1. e4 d5 2. exd5 Qxd5: recapturing the queen's pawn on d5
     board = chess.Board()
-    for m in "e2e4 d7d5 e4d5".split():
+    for m in ["e2e4", "d7d5", "e4d5"]:
         board.push_uci(m)
     last = chess.Move.from_uci("e4d5")
     recapture = chess.Move.from_uci("d8d5")

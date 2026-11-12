@@ -30,9 +30,9 @@ import time
 import unicodedata
 import urllib.request
 import zipfile
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable
 
 import chess
 import chess.engine
@@ -84,7 +84,7 @@ class Game:
 
 
 def read_seeds(lines: Iterable[str]) -> list[Seed]:
-    rows = [l for l in lines if l.strip() and not l.startswith("#")]
+    rows = [line for line in lines if line.strip() and not line.startswith("#")]
     seeds = []
     for row in csv.DictReader(rows, delimiter="\t", quoting=csv.QUOTE_NONE):
         seeds.append(Seed(**{("with_" if k == "with" else k): (v or "").strip() for k, v in row.items()}))
@@ -196,9 +196,8 @@ def is_key(board: chess.Board, move: chess.Move, entry: list[tuple[str, int]],
     other = max(cp for uci, cp in entry if uci != move.uci())
     if win(played) - win(other) < KEY_GAP:
         return False
-    if last is not None and move.to_square == last.to_square and board.is_capture(move):
-        return False
-    return True
+    # a recapture is not a key moment
+    return not (last is not None and move.to_square == last.to_square and board.is_capture(move))
 
 
 Analyser = Callable[[chess.Board, chess.Move], list[tuple[str, int]]]
@@ -293,7 +292,7 @@ def write(games: list[Game], output: Path) -> None:
         for g in games:
             h, s = g.headers, g.seed
             analysis = " ".join(("!" if key else "") + (",".join(f"{u}:{cp}" for u, cp in entry) or "-")
-                                for entry, key in zip(g.analysis, g.keys))
+                                for entry, key in zip(g.analysis, g.keys, strict=True))
             fields = [s.id, s.title, display_name(h.get("White", "")), display_name(h.get("Black", "")),
                       _clean(h.get("Event", "")), _clean(h.get("Site", "")), s.year,
                       _clean(h.get("Round", "")), s.result, s.note, str(g.book),

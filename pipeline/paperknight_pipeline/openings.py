@@ -9,8 +9,8 @@ differently). The first name of a position wins (files in ECO order).
 from __future__ import annotations
 
 import urllib.request
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import chess
 

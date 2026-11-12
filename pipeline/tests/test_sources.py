@@ -185,7 +185,6 @@ def test_a_truncated_zst_file_raises(tmp_path):
     data = zstandard.ZstdCompressor().compress(_lines(50000))
     path = tmp_path / "cut.csv.zst"
     path.write_bytes(data[: len(data) // 2])
-    with pytest.raises(IOError, match="truncated"):
-        with sources.open_text(path) as f:
-            for _line in f:
-                pass
+    with pytest.raises(IOError, match="truncated"), sources.open_text(path) as f:
+        for _line in f:
+            pass

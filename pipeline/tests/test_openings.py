@@ -24,7 +24,7 @@ def test_build_first_name_of_a_position_wins(tmp_path):
     assert openings.build([SAMPLE], out) == 2  # the transposition is the same position
     lines = out.read_text().splitlines()
     assert lines[0].startswith("#")
-    italian = [l for l in lines if "\tC50\t" in l]
+    italian = [line for line in lines if "\tC50\t" in line]
     assert italian and italian[0].endswith("\tItalian Game")
 
 

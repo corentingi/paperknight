@@ -11,9 +11,9 @@ import csv
 import hashlib
 import heapq
 from collections import Counter
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator
 
 import chess
 
@@ -64,7 +64,7 @@ def read_puzzles(lines: Iterable[str]) -> Iterator[Puzzle]:
         if row[0] == "PuzzleId":  # header row: trust its column order
             columns = row
             continue
-        rec = dict(zip(columns, row))
+        rec = dict(zip(columns, row, strict=False))  # a short row: KeyError below, skipped
         try:
             yield Puzzle(
                 id=rec["PuzzleId"],
