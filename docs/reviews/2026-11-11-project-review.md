@@ -195,4 +195,16 @@ On the branch `review-followups`, each with its tests and a mutation check:
 | D1–D5, P4 | Roadmap (milestone 6), Play and Master games screenshots, `CONTRIBUTING.md`, the `curl -k` trade-off in the README, the USB install first (README and site). |
 | P6 | French, following KOReader's language (`pkgettext.lua`, `l10n/fr.po`, docs/translations.md). |
 
-Still open: F2, S1, U2, U3, P5, P7–P9, Q3–Q5, T4, T5.
+Then on the branch `next-batch`: U2 and T5 (after an update, no mode
+opens until KOReader restarts; every module loaded before the swap), F2
+(the moves kept by the chess wrapper: Play, the analysis board and puzzles
+no longer replay the game), P7 (*Report a problem…*, issue forms), P5 (the
+installer finds KOReader on a Kobo or a PocketBook; the README says what is
+tested), S1 (the installer's certificate checked with KOReader's CA bundle,
+no fallback once checked: ADR-0019 amended), U3 (free space checked first),
+Q3 (`pkpuzzlepick.lua`), Q4 (`pkuci.lua` tidied), and the rating over time
+on the stats page.
+
+Still open: P8 and P9 (product), Q5 (the upstream chess library stays
+untouched), T4 (a performance guard beyond the specs that count
+`history()` calls).
