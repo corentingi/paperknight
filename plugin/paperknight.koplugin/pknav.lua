@@ -67,6 +67,16 @@ function PkNav.modes()
         { id = "play", text = _("Play"), start = function() return PkNav.app:startGame() end },
         { id = "games", text = _("Master games"), start = function() return require("pkgamesview").showList() end },
     }
+    -- after an update, until KOReader restarts: no mode opens (its files
+    -- are the new version's, the code already running the old one's)
+    for _, mode in ipairs(modes) do
+        local start = mode.start
+        mode.start = function()
+            local PkUpdate = package.loaded.pkupdate
+            if PkUpdate and PkUpdate.installed then return PkUpdate.askRestartFirst() end
+            return start()
+        end
+    end
     return modes
 end
 

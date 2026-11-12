@@ -5,11 +5,11 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: fr\n"
 
-#: main.lua:29 main.lua:55 pknav.lua:154 pknav.lua:289
+#: main.lua:29 main.lua:55 pknav.lua:164 pknav.lua:299
 msgid "Paperknight"
 msgstr "Paperknight"
 
-#: main.lua:60 pknav.lua:138
+#: main.lua:60 pknav.lua:148
 msgid "Home"
 msgstr "Accueil"
 
@@ -177,7 +177,7 @@ msgstr "Réessayez."
 msgid "Not the move. Try again."
 msgstr "Ce n’est pas le coup. Réessayez."
 
-#: pkdrillview.lua:224 pkpuzzleview.lua:859 pkstudyview.lua:743
+#: pkdrillview.lua:224 pkpuzzleview.lua:860 pkstudyview.lua:743
 msgid "Hint: move the piece on %1."
 msgstr "Indice : jouez la pièce en %1."
 
@@ -329,31 +329,31 @@ msgstr "Liens (%1)…"
 msgid "Show the QR code of a link"
 msgstr "Afficher le code QR d’un lien"
 
-#: pknav.lua:107
+#: pknav.lua:117
 msgid "Night mode: on"
 msgstr "Mode nuit : activé"
 
-#: pknav.lua:107
+#: pknav.lua:117
 msgid "Night mode: off"
 msgstr "Mode nuit : désactivé"
 
-#: pknav.lua:119 pknav.lua:223
+#: pknav.lua:129 pknav.lua:233
 msgid "Frontlight…"
 msgstr "Éclairage…"
 
-#: pknav.lua:123 pknav.lua:245
+#: pknav.lua:133 pknav.lua:255
 msgid "Settings…"
 msgstr "Paramètres…"
 
-#: pknav.lua:147
+#: pknav.lua:157
 msgid "Settings & modes…"
 msgstr "Paramètres et modes…"
 
-#: pknav.lua:204
+#: pknav.lua:214
 msgid "Rating: %1"
 msgstr "Classement : %1"
 
-#: pknav.lua:205
+#: pknav.lua:215
 msgid "%1 to review"
 msgstr "%1 à revoir"
 
@@ -405,71 +405,71 @@ msgstr "%1 min + %2 s"
 msgid "%1 min"
 msgstr "%1 min"
 
-#: pkplay.lua:177
+#: pkplay.lua:178
 msgid "checkmate"
 msgstr "mat"
 
-#: pkplay.lua:178
+#: pkplay.lua:179
 msgid "resignation"
 msgstr "abandon"
 
-#: pkplay.lua:179
+#: pkplay.lua:180
 msgid "on time"
 msgstr "au temps"
 
-#: pkplay.lua:180
+#: pkplay.lua:181
 msgid "stalemate"
 msgstr "pat"
 
-#: pkplay.lua:181
+#: pkplay.lua:182
 msgid "insufficient material"
 msgstr "matériel insuffisant"
 
-#: pkplay.lua:182
+#: pkplay.lua:183
 msgid "threefold repetition"
 msgstr "triple répétition"
 
-#: pkplay.lua:183
+#: pkplay.lua:184
 msgid "fifty-move rule"
 msgstr "règle des cinquante coups"
 
-#: pkplay.lua:192
+#: pkplay.lua:193
 msgid "Draw: %1."
 msgstr "Nulle : %1."
 
-#: pkplay.lua:194
+#: pkplay.lua:195
 msgid "by %1"
 msgstr "par %1"
 
-#: pkplay.lua:196
+#: pkplay.lua:197
 msgid "You win %1."
 msgstr "Vous gagnez %1."
 
-#: pkplay.lua:196
+#: pkplay.lua:197
 msgid "Stockfish wins %1."
 msgstr "Stockfish gagne %1."
 
-#: pkplay.lua:198
+#: pkplay.lua:199
 msgid "White wins %1."
 msgstr "Les Blancs gagnent %1."
 
-#: pkplay.lua:198
+#: pkplay.lua:199
 msgid "Black wins %1."
 msgstr "Les Noirs gagnent %1."
 
-#: pkplay.lua:221 pkplaysetup.lua:102 pkside.lua:21
+#: pkplay.lua:222 pkplaysetup.lua:102 pkside.lua:21
 msgid "White"
 msgstr "Blancs"
 
-#: pkplay.lua:221 pkplaysetup.lua:102 pkside.lua:21
+#: pkplay.lua:222 pkplaysetup.lua:102 pkside.lua:21
 msgid "Black"
 msgstr "Noirs"
 
-#: pkplay.lua:222 pkplayview.lua:276
+#: pkplay.lua:223 pkplayview.lua:276
 msgid "Stockfish %1"
 msgstr "Stockfish %1"
 
-#: pkplay.lua:223 pkplay.lua:224
+#: pkplay.lua:224 pkplay.lua:225
 msgid "You"
 msgstr "Vous"
 
@@ -649,7 +649,7 @@ msgstr "Votre classement : %1"
 msgid "Reviews: %1"
 msgstr "À revoir : %1"
 
-#: pkpuzzleview.lua:230 pkpuzzleview.lua:753
+#: pkpuzzleview.lua:230 pkpuzzleview.lua:754
 msgid "Puzzle %1"
 msgstr "Problème %1"
 
@@ -801,43 +801,43 @@ msgstr "Ce n’est pas un identifiant de problème Lichess (cinq lettres ou chif
 msgid "No liked puzzle yet: like one from this menu."
 msgstr "Aucun problème aimé pour l’instant : aimez-en un depuis ce menu."
 
-#: pkpuzzleview.lua:756
+#: pkpuzzleview.lua:757
 msgid "Puzzle %1 (not in the puzzle pack)"
 msgstr "Problème %1 (pas dans le pack)"
 
-#: pkpuzzleview.lua:761
+#: pkpuzzleview.lua:762
 msgid "Liked puzzles: %1"
 msgstr "Problèmes aimés : %1"
 
-#: pkpuzzleview.lua:776 pkpuzzleview.lua:787 pkstatsview.lua:100
+#: pkpuzzleview.lua:777 pkpuzzleview.lua:788 pkstatsview.lua:99
 msgid "All themes"
 msgstr "Tous les thèmes"
 
-#: pkpuzzleview.lua:787
+#: pkpuzzleview.lua:788
 msgid "Puzzle theme: %1"
 msgstr "Thème des problèmes : %1"
 
-#: pkpuzzleview.lua:871
+#: pkpuzzleview.lua:872
 msgid "Solution shown."
 msgstr "Solution affichée."
 
-#: pkpuzzleview.lua:877
+#: pkpuzzleview.lua:878
 msgid "Solution: %1 (move %2/%3)."
 msgstr "Solution : %1 (coup %2/%3)."
 
-#: pkpuzzleview.lua:901
+#: pkpuzzleview.lua:902
 msgid "Themes: %1"
 msgstr "Thèmes : %1"
 
-#: pkpuzzleview.lua:937
+#: pkpuzzleview.lua:938
 msgid "Before the puzzle: %1 to move."
 msgstr "Avant le problème : au tour des %1."
 
-#: pkpuzzleview.lua:939
+#: pkpuzzleview.lua:940
 msgid "Puzzle position, after %1."
 msgstr "Position du problème, après %1."
 
-#: pkpuzzleview.lua:941
+#: pkpuzzleview.lua:942
 msgid "Move %1/%2: %3"
 msgstr "Coup %1/%2 : %3"
 
@@ -917,23 +917,23 @@ msgstr "Page du projet…"
 msgid "Settings"
 msgstr "Paramètres"
 
-#: pkstatsview.lua:82
+#: pkstatsview.lua:81
 msgid "Your rating %1 · white: clean, grey: missed"
 msgstr "Votre classement %1 · blanc : réussi, gris : manqué"
 
-#: pkstatsview.lua:83
+#: pkstatsview.lua:82
 msgid "Your rating %1 · black: clean, grey: missed"
 msgstr "Votre classement %1 · noir : réussi, gris : manqué"
 
-#: pkstatsview.lua:109
+#: pkstatsview.lua:108
 msgid "Puzzle stats"
 msgstr "Statistiques des problèmes"
 
-#: pkstatsview.lua:128
+#: pkstatsview.lua:127
 msgid "Page %1 of %2"
 msgstr "Page %1 sur %2"
 
-#: pkstatsview.lua:194
+#: pkstatsview.lua:193
 msgid "No puzzles played yet."
 msgstr "Aucun problème joué pour l’instant."
 
@@ -1489,58 +1489,62 @@ msgstr "inconnue"
 msgid "install %1"
 msgstr "installer %1"
 
-#: pkupdate.lua:195
+#: pkupdate.lua:204
 msgid "An update is still running. Try again in a minute."
 msgstr "Une mise à jour est encore en cours. Réessayez dans une minute."
 
-#: pkupdate.lua:224
+#: pkupdate.lua:233
 msgid "No answer after several minutes (Wi-Fi lost?). Try again later."
 msgstr "Pas de réponse depuis plusieurs minutes (Wi-Fi perdu ?). Réessayez plus tard."
 
-#: pkupdate.lua:288
+#: pkupdate.lua:316
+msgid "Paperknight was updated (%1).\nRestart KOReader to use it."
+msgstr "Paperknight a été mis à jour (%1).\nRedémarrez KOReader pour l’utiliser."
+
+#: pkupdate.lua:326
 msgid "Updating Paperknight…\nDownloading %1."
 msgstr "Mise à jour de Paperknight…\nTéléchargement de %1."
 
-#: pkupdate.lua:292
+#: pkupdate.lua:330
 msgid "The update failed:"
 msgstr "La mise à jour a échoué :"
 
-#: pkupdate.lua:296
+#: pkupdate.lua:336
 msgid "Paperknight is updated (%1).\nRestart KOReader to use it."
 msgstr "Paperknight est mis à jour (%1).\nRedémarrez KOReader pour l’utiliser."
 
-#: pkupdate.lua:306
+#: pkupdate.lua:346
 msgid "Paperknight is up to date (%1)."
 msgstr "Paperknight est à jour (%1)."
 
-#: pkupdate.lua:313
+#: pkupdate.lua:353
 msgid "Updates available (Paperknight %1):"
 msgstr "Mises à jour disponibles (Paperknight %1) :"
 
-#: pkupdate.lua:315
+#: pkupdate.lua:355
 msgid "What's new in %1:"
 msgstr "Nouveautés de %1 :"
 
-#: pkupdate.lua:317
+#: pkupdate.lua:357
 msgid "Update"
 msgstr "Mettre à jour"
 
-#: pkupdate.lua:321
+#: pkupdate.lua:361
 msgid "Update and install Stockfish (%1)"
 msgstr "Mettre à jour et installer Stockfish (%1)"
 
-#: pkupdate.lua:325
+#: pkupdate.lua:365
 msgid "Paperknight is up to date (%1).\n\nStockfish is not installed (%2): install it?"
 msgstr "Paperknight est à jour (%1).\n\nStockfish n’est pas installé (%2) : l’installer ?"
 
-#: pkupdate.lua:327
+#: pkupdate.lua:367
 msgid "Install"
 msgstr "Installer"
 
-#: pkupdate.lua:342
+#: pkupdate.lua:382
 msgid "Checking for updates…"
 msgstr "Recherche de mises à jour…"
 
-#: pkupdate.lua:349
+#: pkupdate.lua:389
 msgid "Could not check for updates."
 msgstr "Impossible de rechercher des mises à jour."

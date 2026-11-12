@@ -43,3 +43,9 @@ devices Paperknight targets have its tools.
   the rest once installed; restarting KOReader loads the new plugin (the
   running code stays the old one until then).
 - A device without these tools (another platform) would need option A.
+- (2026-11-12) The plugin folder is swapped while the old version runs, and
+  most modules load on first use: after "restart later", a screen opened for
+  the first time would mix the new files with the old code. So the update
+  first loads every module and the data read on first use
+  (`PkUpdate.preload`), and once the plugin is replaced no mode opens until
+  KOReader restarts: it asks for the restart instead.

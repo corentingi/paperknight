@@ -104,6 +104,26 @@ esac
     h.check((read(k .. "/applied") or ""):find("--yes --parts=plugin\n", 1, true),
         "installer run for the plugin only: " .. tostring(read(k .. "/applied")))
     h.check(top() == settings, "back to the settings")
+    -- restart later (T5): every module was loaded before the installer ran,
+    -- and no mode opens until KOReader restarts (ADR-0019)
+    local lfs = require("libs/libkoreader-lfs")
+    local plugin_dir = require("pkicons").plugin_dir
+    local not_loaded = {}
+    for file in lfs.dir(plugin_dir) do
+        local name = file:match("^(pk[%w_]+)%.lua$")
+        if name and not package.loaded[name] then not_loaded[#not_loaded + 1] = name end
+    end
+    h.check(#not_loaded == 0, "every module loaded before the update: " .. table.concat(not_loaded, " "))
+    h.check(PkUpdate.installed == "v9.9.9", "the update is remembered until a restart")
+    restart = nil
+    h.check(PkNav.open("games") == nil and restart and restart:find("Paperknight was updated (v9.9.9)", 1, true),
+        "a mode asks for the restart instead: " .. tostring(restart))
+    h.check(not (top().name or ""):find("games", 1, true), "Master games not opened")
+    PkUpdate.installed = nil -- (the rest of the scenario: as before the update)
+    PkNav.showSettings()
+    h.settle()
+    settings = top()
+    check_item = menuItem(settings, "Check for updates…")
 
     -- 3. A failed update, with Stockfish this time.
     restart = nil

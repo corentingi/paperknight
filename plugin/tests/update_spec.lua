@@ -92,6 +92,11 @@ return {
         t.eq(PkUpdate.parseNotes("VERSION='v1'\nNOTES='\n\n'\n"), nil, "a release without notes")
         t.eq(PkUpdate.parseNotes("VERSION='v1'\n"), nil, "an older installer")
     end },
+    { "an update of the plugin's files, or only of its data", function(t)
+        t.ok(PkUpdate.changesPlugin({ { part = "fonts" }, { part = "plugin" } }), "the plugin, after the font")
+        t.ok(not PkUpdate.changesPlugin({ { part = "puzzles" }, { part = "stockfish" } }), "the pack and Stockfish only")
+        t.ok(not PkUpdate.changesPlugin({}))
+    end },
     { "the koreader folder and shell quoting", function(t)
         t.eq(PkUpdate.koreaderDir("/mnt/us/koreader/plugins/paperknight.koplugin"), "/mnt/us/koreader")
         t.eq(PkUpdate.quote("it's here"), [['it'\''s here']])

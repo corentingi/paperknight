@@ -28,6 +28,8 @@ contexts: the plugin uses none), read by a small parser in
    existing catalogue.
 2. Fill in the `msgstr` lines. Keep the placeholders (`%1`, `%2`…) and the
    line breaks (`\n`); the order of the placeholders may change.
+   To add several at once: `python3 tools/l10n/merge.py <lang> new.tsv`
+   (one `msgid<TAB>msgstr` a line, `\n` for a line break).
 3. Run the check: it fails on a broken file, a placeholder lost or added,
    or an entry the code no longer has, and lists what is not translated
    yet (shown in English, not an error).

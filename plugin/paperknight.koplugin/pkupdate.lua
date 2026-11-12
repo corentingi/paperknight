@@ -139,6 +139,15 @@ function PkUpdate.describe(p)
     return T("%1: %2 (%3)", label, what, PkUpdate.human(p.size))
 end
 
+--- Whether installing `parts` replaces the plugin's own files (a puzzle
+-- pack or Stockfish alone leaves the running code as it is).
+function PkUpdate.changesPlugin(parts)
+    for _, p in ipairs(parts) do
+        if p.part == "plugin" then return true end
+    end
+    return false
+end
+
 local function names(parts)
     local out = {}
     for _, p in ipairs(parts) do out[#out + 1] = p.part end
@@ -280,11 +289,40 @@ function PkUpdate._askForRestart(text)
     require("ui/uimanager"):askForRestart(text)
 end
 
+--- Loads every module of the plugin, and the data it reads on first use,
+-- before the installer replaces the plugin's folder: the screens already
+-- open keep running the old version until KOReader restarts, so nothing
+-- they need later may come from the new one (ADR-0019). Returns how many
+-- modules were loaded now.
+function PkUpdate.preload()
+    local lfs = require("libs/libkoreader-lfs")
+    local loaded = 0
+    for file in lfs.dir(pluginDir()) do
+        local name = file:match("^(pk[%w_]+)%.lua$")
+        if name and not package.loaded[name] then
+            local ok, err = pcall(require, name)
+            if ok then loaded = loaded + 1 else require("logger").warn("Paperknight: preload", name, err) end
+        end
+    end
+    pcall(function() require("pkgames").list() end)
+    pcall(function() require("pkopeningnames").of("") end)
+    pcall(function() require("pkgettext")("") end)
+    return loaded
+end
+
+--- After an update, until KOReader restarts: a mode asked for shows this
+-- instead (the restart, or nothing).
+function PkUpdate.askRestartFirst()
+    PkUpdate._askForRestart(T(_("Paperknight was updated (%1).\nRestart KOReader to use it."),
+        PkUpdate.installed or "?"))
+end
+
 --- Installs `parts` (from the list) with the downloaded installer.
 function PkUpdate.apply(parts, release)
     local size = 0
     for _, p in ipairs(parts) do size = size + (p.size or 0) end
     busy()
+    PkUpdate.preload()
     info(T(_("Updating Paperknight…\nDownloading %1."), PkUpdate.human(size)))
     PkUpdate.run(installerCmd("--yes --parts=" .. names(parts)), function(ok, output, timed_out)
         idle()
@@ -293,6 +331,8 @@ function PkUpdate.apply(parts, release)
             return
         end
         os.remove(installer())
+        -- the plugin's files are the new version's from now on
+        if PkUpdate.changesPlugin(parts) then PkUpdate.installed = release or "?" end
         PkUpdate._askForRestart(T(_("Paperknight is updated (%1).\nRestart KOReader to use it."), release or "?"))
     end, PkUpdate.APPLY_TIMEOUT)
 end
