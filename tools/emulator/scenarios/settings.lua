@@ -61,6 +61,7 @@ case "$*" in
         fi ;;
     *--parts=*)
         echo "$*" > "$KOREADER_DIR/applied"
+        if [ -f "$KOREADER_DIR/hang" ]; then echo "Downloading x"; sleep 5; fi
         if [ -f "$KOREADER_DIR/fail" ]; then echo "Download failed (x): nothing changed."; exit 1; fi ;;
 esac
 ]])
@@ -119,8 +120,36 @@ esac
     UIManager:close(top())
     h.settle()
 
-    -- 4. Up to date.
+    -- 3b. An update that never answers: given up after its time, the device
+    -- allowed to sleep again, and not started twice while it still runs.
     os.remove(k .. "/fail")
+    write(k .. "/hang", "")
+    local standby = UIManager._prevent_standby_count or 0
+    local apply_timeout = PkUpdate.APPLY_TIMEOUT
+    PkUpdate.APPLY_TIMEOUT = 1
+    h.tapWidget(check_item)
+    h.check(h.waitFor(function() return PkUpdate.confirm_box and top() == PkUpdate.confirm_box end, 10),
+        "offered once more")
+    h.tapWidget(exactButton(PkUpdate.confirm_box, "Update"))
+    h.check((UIManager._prevent_standby_count or 0) == standby + 1, "kept awake while updating")
+    h.check(h.waitFor(function()
+        return top().text and top().text:find("The update failed:\nNo answer after several minutes", 1, true)
+    end, 10), "given up: " .. tostring(top().text))
+    h.check((UIManager._prevent_standby_count or 0) == standby, "allowed to sleep again")
+    h.check(not PkUpdate.busy and PkUpdate.jobRunning(), "not busy; the job left to finish")
+    UIManager:close(top())
+    h.settle()
+    h.tapWidget(check_item)
+    h.check(h.waitFor(function()
+        return top().text and top().text:find("An update is still running", 1, true)
+    end, 10), "not started twice: " .. tostring(top().text))
+    UIManager:close(top())
+    h.settle()
+    PkUpdate.APPLY_TIMEOUT = apply_timeout
+    os.remove(k .. "/hang")
+    h.check(h.waitFor(function() return not PkUpdate.jobRunning() end, 10), "the job ended")
+
+    -- 4. Up to date.
     write(k .. "/uptodate", "")
     h.tapWidget(check_item)
     h.check(h.waitFor(function()

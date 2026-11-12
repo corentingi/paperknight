@@ -47,7 +47,15 @@ what it would change, then:
   `SF_PLATFORM` overrides);
 - asks *Go?*, downloads and checks every part first (sha256, gzip, tar),
   then installs them; the plugin folder is swapped with renames, keeping
-  `packs/` and `bin/`.
+  `packs/` and `bin/`. A download that stalls (under 1 KB/s for a minute)
+  gives up; without `sha256sum` on the device the installer says the
+  checksums are not checked, and goes on with the gzip and tar checks.
+
+The in-app update (`pkupdate.lua`) runs it in the background and keeps the
+device awake meanwhile. It gives up waiting after 3 minutes for the check
+and 30 for the update (the job is left to finish: stopping it mid-install
+could leave the plugin folder half swapped), and does not start a second
+job while the first one still runs.
 
 What it installed is recorded in `koreader/paperknight/.parts/<part>` (the
 version, then the files): an update removes the previous version's files

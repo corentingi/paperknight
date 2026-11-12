@@ -183,10 +183,12 @@ download() { # part, file, sha256, size -> the checked download in $DL
         *) url="$DIST_URL/$2" ;;
     esac
     out="$DL/${2##*/}"
-    # no progress bar: kterm prints every redraw on a new line
+    # no progress bar: kterm prints every redraw on a new line; a download
+    # that stalls (under 1 KB/s for a minute: Wi-Fi lost) gives up
     say "Downloading ${2##*/} ($(human "$4"))"
-    curl -fksSL -o "$out.part" "$url" || fail "Download failed ($url): nothing changed."
-    if command -v sha256sum >/dev/null 2>&1; then
+    curl -fksSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 -o "$out.part" "$url" \
+        || fail "Download failed ($url): nothing changed."
+    if [ "$CHECKSUMS" = 1 ]; then
         echo "$3  $out.part" | sha256sum -c - >/dev/null 2>&1 \
             || fail "Download corrupted or outdated installer (checksum of ${2##*/}): nothing changed."
     fi
@@ -340,6 +342,11 @@ plugin|"*)
     esac
     ask "Go?" y || { say "Nothing changed."; return 0; }
 
+    CHECKSUMS=1
+    if ! command -v sha256sum >/dev/null 2>&1; then
+        CHECKSUMS=0
+        say "No sha256sum on this device: the downloads are checked for completeness only, not against their checksums."
+    fi
     cleanup
     mkdir -p "$DL"
     trap cleanup EXIT

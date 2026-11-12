@@ -3,7 +3,60 @@
 -- the settings e2e scenario.
 local PkUpdate = require("pkupdate")
 
+-- runs PkUpdate's scheduled polls (the real scheduler is KOReader's)
+local function driven(fn)
+    local queue = {}
+    local schedule, dir = PkUpdate._schedule, PkUpdate.koreader_dir_override
+    PkUpdate._schedule = function(_, poll) queue[#queue + 1] = poll end
+    local tmp = os.tmpname()
+    os.remove(tmp)
+    os.execute("mkdir -p '" .. tmp .. "'")
+    PkUpdate.koreader_dir_override = tmp
+    local function step() -- one poll; true if one was waiting
+        local poll = table.remove(queue, 1)
+        if poll then poll() end
+        return poll ~= nil
+    end
+    local ok, err = pcall(fn, step)
+    PkUpdate._schedule, PkUpdate.koreader_dir_override = schedule, dir
+    os.execute("rm -rf '" .. tmp .. "'")
+    if not ok then error(err, 0) end
+end
+
 return {
+    { "a background job: its output and status", function(t)
+        driven(function(step)
+            local result
+            PkUpdate.run("echo first; echo last; exit 3", function(...) result = { ... } end, 60)
+            for _ = 1, 100 do
+                if result or not step() then break end
+                os.execute("sleep 0.05")
+            end
+            t.ok(result, "done")
+            t.eq(result[1], false, "exit 3: failed"); t.eq(result[2], "first\nlast\n"); t.eq(result[3], nil, "not timed out")
+            t.ok(not PkUpdate.jobRunning(), "no job left")
+        end)
+    end },
+    { "a job that never ends: given up after its time, not started twice", function(t)
+        driven(function(step)
+            local result
+            PkUpdate.run("echo started; sleep 30", function(...) result = { ... } end, 2)
+            local polls = 0
+            while not result and step() do polls = polls + 1 end
+            t.eq(polls, 5, "polled for 2 s (every 0.5 s)")
+            t.eq(result[1], false); t.eq(result[3], true, "timed out")
+            t.ok(PkUpdate.jobRunning(), "the job is left running (not killed mid-install)")
+            local again
+            PkUpdate.run("echo second", function(...) again = { ... } end, 60)
+            t.ok(again and again[1] == false and again[2]:find("still running", 1, true), "not started twice")
+            local pid = PkUpdate.readFirstLine(PkUpdate.workDir() .. "/pid")
+            os.execute("kill " .. pid .. " 2>/dev/null; pkill -P " .. pid .. " 2>/dev/null; sleep 0.2")
+            t.ok(not PkUpdate.jobRunning(), "ended: another job may start")
+            -- a pid file left from before a restart, its pid now another process
+            local f = io.open(PkUpdate.workDir() .. "/pid", "w"); f:write("1\n"); f:close()
+            t.ok(not PkUpdate.jobRunning(), "a pid that is not our job")
+        end)
+    end },
     { "the installer's --list output", function(t)
         local parts = PkUpdate.parseList("plugin|v0.1.0|v0.2.0|120000\npuzzles|2026-01-01|2026-01-01|9000000\n"
             .. "fonts||abcd1234|500000\nnoise line\nstockfish||sf_18|1500000\n")

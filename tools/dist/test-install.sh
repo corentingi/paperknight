@@ -203,6 +203,23 @@ run "$K" r2 --parts=stockfish -y || no "installer exit status"
 check "only Stockfish installed" test -x "$K/$P/bin/stockfish"
 check "plugin not updated" has "$K/$P/version.txt" v1
 
+echo "no sha256sum on the device: said, the install goes on"
+# a PATH with the installer's tools but no sha256sum
+mkdir -p "$T/nosha"
+for tool in sh tar gzip find mv cp rm mkdir dirname chmod grep tr cat uname rmdir curl; do
+    if [ -e "$T/bb/$tool" ]; then ln -sf "$(readlink "$T/bb/$tool")" "$T/nosha/$tool"; else ln -sf "$(command -v "$tool")" "$T/nosha/$tool"; fi
+done
+K="$T/k9"
+mkdir -p "$K"
+# (a POSIX sh that looks tools up in PATH: busybox's sh has its applets built in)
+KOREADER_DIR="$K" SF_PLATFORM=pw2 PK_TTY=/nonexistent PATH="$T/nosha" /bin/sh "$T/r1/install.sh" -y > "$T/out.log" 2>&1 \
+    || no "installer exit status"
+check "no sha256sum: said" has "$T/out.log" "No sha256sum on this device"
+check "no sha256sum: installed anyway" test -f "$K/$P/main.lua"
+run "$T/k9b" r1 -y || no "installer exit status"
+check "with sha256sum: not said" bash -c "! grep -q 'No sha256sum' '$T/out.log'"
+check "the downloads give up when they stall" grep -q -- "--speed-limit 1024 --speed-time 60" "$T/r1/install.sh"
+
 echo "the puzzle pack from a release of its own (ADR-0022)"
 # r1's pack archive served from another folder; the plugin release (v3) has
 # a stage without a pack and offers that archive as it is

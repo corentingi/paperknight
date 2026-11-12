@@ -10,6 +10,11 @@ local _ = require("gettext")
 local PkUpdate = {
     DEFAULT_URL = "https://github.com/corentingi/paperknight/releases/latest/download/install.sh",
     POLL_SECONDS = 0.5,
+    -- the longest a job is waited for (seconds): the installer's downloads
+    -- give up by themselves when the network stalls (install.sh), this is
+    -- the last resort when nothing answers at all
+    CHECK_TIMEOUT = 180,
+    APPLY_TIMEOUT = 30 * 60,
     NOTES_MAX_LINES = 10, -- in the update dialog (it does not scroll)
     -- tests: where to look for updates and the koreader folder
     url_override = nil,
@@ -161,32 +166,71 @@ function PkUpdate.workDir()
     return PkUpdate.koreaderDir() .. "/paperknight/.update"
 end
 
---- Runs `cmd` (sh) in the background; `done(ok, output)` when it ends.
-function PkUpdate.run(cmd, done)
-    local UIManager = require("ui/uimanager")
-    local work = PkUpdate.workDir()
-    os.execute("mkdir -p " .. q(work))
-    local out, status = work .. "/output", work .. "/status"
-    os.remove(status)
-    os.execute(T("( (%1) > %2 2>&1; echo $? > %3.part; mv %3.part %3 ) &", cmd, q(out), q(status)))
-    local function poll()
-        local code = readFile(status)
-        if not code then
-            UIManager:scheduleIn(PkUpdate.POLL_SECONDS, poll)
-            return
-        end
-        os.remove(status)
-        done(tonumber(code) == 0, readFile(out) or "")
-    end
-    UIManager:scheduleIn(PkUpdate.POLL_SECONDS, poll)
+-- tests replace it (a scheduler they drive)
+function PkUpdate._schedule(seconds, fn)
+    require("ui/uimanager"):scheduleIn(seconds, fn)
 end
 
-local function lastLine(text)
+-- Whether the job started last is still running: it wrote no status yet,
+-- and its process is alive and still ours (its command line names the work
+-- folder: a pid left from before a restart may belong to another process).
+function PkUpdate.jobRunning()
+    local work = PkUpdate.workDir()
+    if readFile(work .. "/status") then return false end
+    local pid = tonumber(readFirstLine(work .. "/pid") or "")
+    if not pid then return false end
+    local cmdline = readFile("/proc/" .. pid .. "/cmdline")
+    if cmdline then return cmdline:find(work, 1, true) ~= nil end
+    local code = os.execute("kill -0 " .. pid .. " 2>/dev/null") -- no /proc
+    return code == 0 or code == true
+end
+
+--- Runs `cmd` (sh) in the background; `done(ok, output, timed_out)` when it
+-- ends, or after `timeout` seconds without an end (the job is then left to
+-- finish on its own: stopping the installer mid-way could leave the plugin
+-- folder half swapped). A job still running from before is not started
+-- twice: done(false, message).
+function PkUpdate.run(cmd, done, timeout)
+    if PkUpdate.jobRunning() then
+        done(false, _("An update is still running. Try again in a minute."))
+        return
+    end
+    local work = PkUpdate.workDir()
+    os.execute("mkdir -p " .. q(work))
+    local out, status, pidfile = work .. "/output", work .. "/status", work .. "/pid"
+    os.remove(status)
+    os.execute(T("( (%1) > %2 2>&1; echo $? > %3.part; mv %3.part %3 ) & echo $! > %4",
+        cmd, q(out), q(status), q(pidfile)))
+    local waited = 0
+    local function poll()
+        local code = readFile(status)
+        if code then
+            os.remove(status)
+            os.remove(pidfile)
+            done(tonumber(code) == 0, readFile(out) or "")
+        elseif timeout and waited >= timeout then
+            done(false, readFile(out) or "", true)
+        else
+            waited = waited + PkUpdate.POLL_SECONDS
+            PkUpdate._schedule(PkUpdate.POLL_SECONDS, poll)
+        end
+    end
+    PkUpdate._schedule(PkUpdate.POLL_SECONDS, poll)
+end
+
+-- The message of a job that failed: its last line, or that it timed out.
+local function failure(output, timed_out)
+    if timed_out then
+        return _("No answer after several minutes (Wi-Fi lost?). Try again later.")
+    end
+    return PkUpdate.lastLine(output)
+end
+
+function PkUpdate.lastLine(text)
     local last
     for line in (text or ""):gmatch("[^\n]+") do last = line end
     return last or ""
 end
-PkUpdate.lastLine = lastLine
 
 ---------------------------------------------------------------------------
 -- The update, as the user sees it
@@ -211,10 +255,24 @@ local function info(text)
     return show(require("ui/widget/infomessage"):new{ text = text })
 end
 
+-- An update job starts: the device stays awake until it ends (a Kindle
+-- going to sleep mid-download cuts the connection).
+local function busy()
+    PkUpdate.busy = true
+    if not PkUpdate._awake then
+        PkUpdate._awake = true
+        pcall(function() require("ui/uimanager"):preventStandby() end)
+    end
+end
+
 local function idle()
     if PkUpdate.message then require("ui/uimanager"):close(PkUpdate.message) end
     PkUpdate.message = nil
     PkUpdate.busy = false
+    if PkUpdate._awake then
+        PkUpdate._awake = false
+        pcall(function() require("ui/uimanager"):allowStandby() end)
+    end
 end
 
 -- KOReader asks to restart now or later (where it can restart)
@@ -226,17 +284,17 @@ end
 function PkUpdate.apply(parts, release)
     local size = 0
     for _, p in ipairs(parts) do size = size + (p.size or 0) end
-    PkUpdate.busy = true
+    busy()
     info(T(_("Updating Paperknight…\nDownloading %1."), PkUpdate.human(size)))
-    PkUpdate.run(installerCmd("--yes --parts=" .. names(parts)), function(ok, output)
+    PkUpdate.run(installerCmd("--yes --parts=" .. names(parts)), function(ok, output, timed_out)
         idle()
         if not ok then
-            info(_("The update failed:") .. "\n" .. lastLine(output))
+            info(_("The update failed:") .. "\n" .. failure(output, timed_out))
             return
         end
         os.remove(installer())
         PkUpdate._askForRestart(T(_("Paperknight is updated (%1).\nRestart KOReader to use it."), release or "?"))
-    end)
+    end, PkUpdate.APPLY_TIMEOUT)
 end
 
 --- The installer's answer: up to date, or what it would change (with the
@@ -280,21 +338,21 @@ end
 
 --- Downloads the latest installer and asks it what changed.
 function PkUpdate.fetchAndCheck()
-    PkUpdate.busy = true
+    busy()
     info(_("Checking for updates…"))
     local file = installer()
-    local cmd = T("curl -fksSL --max-time 60 -o %1.part %2 && mv %1.part %1 && %3",
+    local cmd = T("curl -fksSL --connect-timeout 30 --max-time 60 -o %1.part %2 && mv %1.part %1 && %3",
         q(file), q(PkUpdate.url()), installerCmd("--list"))
-    PkUpdate.run(cmd, function(ok, output)
+    PkUpdate.run(cmd, function(ok, output, timed_out)
         idle()
         if not ok then
-            info(_("Could not check for updates.") .. "\n" .. lastLine(output))
+            info(_("Could not check for updates.") .. "\n" .. failure(output, timed_out))
             return
         end
         local script = readFile(file)
         PkUpdate.offer(PkUpdate.parseList(output), PkUpdate.parseVersion(script),
             PkUpdate.parseNotes(script, PkUpdate.NOTES_MAX_LINES))
-    end)
+    end, PkUpdate.CHECK_TIMEOUT)
 end
 
 --- "Check for updates…": goes online (KOReader turns Wi-Fi on), then checks.
