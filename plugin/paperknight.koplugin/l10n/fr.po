@@ -1,0 +1,1546 @@
+# Paperknight, traduction française (docs/translations.md).
+# Vérifier : python3 tools/l10n/l10n.py check
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: fr\n"
+
+#: main.lua:29 main.lua:55 pknav.lua:154 pknav.lua:289
+msgid "Paperknight"
+msgstr "Paperknight"
+
+#: main.lua:60 pknav.lua:138
+msgid "Home"
+msgstr "Accueil"
+
+#: main.lua:65 pknav.lua:62 pkpuzzleview.lua:83
+msgid "Puzzles"
+msgstr "Problèmes"
+
+#: main.lua:69 pknav.lua:63 pkstudies.lua:383 pkupdate.lua:73
+msgid "Studies"
+msgstr "Études"
+
+#: main.lua:73 pkdrillview.lua:59 pknav.lua:64 pkopenings.lua:391
+msgid "Openings"
+msgstr "Ouvertures"
+
+#: main.lua:77 pkanalysis.lua:78 pknav.lua:65
+msgid "Analysis board"
+msgstr "Échiquier d’analyse"
+
+#: main.lua:82 pknav.lua:67 pkplayview.lua:67
+msgid "Play"
+msgstr "Jouer"
+
+#: main.lua:87 pkgamesview.lua:79 pknav.lua:68 pkthemes.lua:14
+msgid "Master games"
+msgstr "Parties de maîtres"
+
+#: main.lua:111
+msgid "No puzzle pack found."
+msgstr "Aucun pack de problèmes trouvé."
+
+#: main.lua:111
+msgid "Copy puzzles.sqlite to:"
+msgstr "Copiez puzzles.sqlite dans :"
+
+#: main.lua:118
+msgid "The puzzle pack is empty."
+msgstr "Le pack de problèmes est vide."
+
+#: pkanalysis.lua:385
+msgid "Engine: thinking…"
+msgstr "Moteur : réflexion…"
+
+#: pkanalysis.lua:386
+msgid "Engine: %1 (depth %2)"
+msgstr "Moteur : %1 (profondeur %2)"
+
+#: pkanalysis.lua:391
+msgid "Checkmate."
+msgstr "Échec et mat."
+
+#: pkanalysis.lua:392
+msgid "Stalemate."
+msgstr "Pat."
+
+#: pkanalysis.lua:393
+msgid "Draw."
+msgstr "Nulle."
+
+#: pkanalysis.lua:576 pkplayview.lua:481 pkstudyview.lua:465
+msgid "Flip board"
+msgstr "Retourner l’échiquier"
+
+#: pkanalysis.lua:577
+msgid "Start position"
+msgstr "Position de départ"
+
+#: pkanalysis.lua:580
+msgid "Position from FEN…"
+msgstr "Position depuis un FEN…"
+
+#: pkanalysis.lua:581
+msgid "Position on Lichess…"
+msgstr "Position sur Lichess…"
+
+#: pkanalysis.lua:583
+msgid "Save line as a study…"
+msgstr "Enregistrer la ligne comme étude…"
+
+#: pkanalysis.lua:616
+msgid "Stockfish is not installed: run the Paperknight installer again and answer yes to Stockfish."
+msgstr "Stockfish n’est pas installé : relancez l’installateur de Paperknight et répondez oui pour Stockfish."
+
+#: pkanalysis.lua:636
+msgid "Position from FEN"
+msgstr "Position depuis un FEN"
+
+#: pkanalysis.lua:639 pkanalysis.lua:728 pkplaysetup.lua:123 pkplayview.lua:521
+msgid "Cancel"
+msgstr "Annuler"
+
+#: pkanalysis.lua:640
+msgid "Set"
+msgstr "Valider"
+
+#: pkanalysis.lua:644
+msgid "Not a valid FEN."
+msgstr "FEN non valide."
+
+#: pkanalysis.lua:725
+msgid "Save line as a study"
+msgstr "Enregistrer la ligne comme étude"
+
+#: pkanalysis.lua:729 pkplayview.lua:522
+msgid "Save"
+msgstr "Enregistrer"
+
+#: pkanalysis.lua:735
+msgid "Saved in Studies → Analyses:\n%1"
+msgstr "Enregistrée dans Études → Analyses :\n%1"
+
+#: pkanalysis.lua:740
+msgid "Cannot save the line: %1"
+msgstr "Impossible d’enregistrer la ligne : %1"
+
+#: pkdrillview.lua:70 pkgamesview.lua:117 pkpuzzleview.lua:108 pkstudyview.lua:86
+msgid "Hint"
+msgstr "Indice"
+
+#: pkdrillview.lua:71 pkpuzzleview.lua:109 pkstudyview.lua:87
+msgid "Solution"
+msgstr "Solution"
+
+#: pkdrillview.lua:73 pkdrillview.lua:156
+msgid "Next line"
+msgstr "Ligne suivante"
+
+#: pkdrillview.lua:121 pkopenings.lua:341
+msgid "%1 due · %2 new"
+msgstr "%1 à revoir · %2 nouveaux"
+
+#: pkdrillview.lua:130
+msgid "All done for today."
+msgstr "Tout est fait pour aujourd’hui."
+
+#: pkdrillview.lua:131
+msgid "Reviewed: %1 · Mistakes: %2"
+msgstr "Revus : %1 · Erreurs : %2"
+
+#: pkdrillview.lua:133
+msgid "%1 new moves are waiting for the next days."
+msgstr "%1 nouveaux coups attendent les jours suivants."
+
+#: pkdrillview.lua:136
+msgid "Line complete."
+msgstr "Ligne terminée."
+
+#: pkdrillview.lua:139
+msgid "New move: play %1."
+msgstr "Nouveau coup : jouez %1."
+
+#: pkdrillview.lua:156
+msgid "Continue"
+msgstr "Continuer"
+
+#: pkdrillview.lua:214
+msgid "Not in your repertoire."
+msgstr "Pas dans votre répertoire."
+
+#: pkdrillview.lua:215 pkstudyview.lua:720
+msgid "Try again."
+msgstr "Réessayez."
+
+#: pkdrillview.lua:217 pkpuzzleview.lua:526 pkstudyview.lua:724
+msgid "Not the move. Try again."
+msgstr "Ce n’est pas le coup. Réessayez."
+
+#: pkdrillview.lua:224 pkpuzzleview.lua:859 pkstudyview.lua:743
+msgid "Hint: move the piece on %1."
+msgstr "Indice : jouez la pièce en %1."
+
+#: pkdrillview.lua:263
+msgid "Play the other side (chapter %1)"
+msgstr "Jouer l’autre camp (chapitre %1)"
+
+#: pkdrillview.lua:263
+msgid "Play the other side"
+msgstr "Jouer l’autre camp"
+
+#: pkdrillview.lua:272 pkgamesview.lua:413 pkplayview.lua:484 pkstudyview.lua:466
+msgid "Hide move list"
+msgstr "Masquer la liste des coups"
+
+#: pkdrillview.lua:272 pkgamesview.lua:413 pkplayview.lua:484 pkstudyview.lua:466
+msgid "Show move list"
+msgstr "Afficher la liste des coups"
+
+#: pkdrillview.lua:275
+msgid "Play my known moves too"
+msgstr "Jouer aussi mes coups connus"
+
+#: pkgames.lua:270
+msgid "Found %1 of %2"
+msgstr "Trouvés %1 sur %2"
+
+#: pkgames.lua:271
+msgid "%1 good"
+msgstr "%1 bons"
+
+#: pkgamesview.lua:56
+msgid "Continue: %1"
+msgstr "Continuer : %1"
+
+#: pkgamesview.lua:66
+msgid "Best: %1%"
+msgstr "Meilleur : %1 %"
+
+#: pkgamesview.lua:71
+msgid "No master games: reinstall Paperknight."
+msgstr "Aucune partie de maître : réinstallez Paperknight."
+
+#: pkgamesview.lua:119 pkgamesview.lua:375
+msgid "Show move"
+msgstr "Montrer le coup"
+
+#: pkgamesview.lua:120 pkplayview.lua:80
+msgid "Analyse"
+msgstr "Analyser"
+
+#: pkgamesview.lua:159
+msgid "Guess %1’s moves (%2)."
+msgstr "Devinez les coups de %1 (%2)."
+
+#: pkgamesview.lua:161
+msgid "The opening is played up to move %1."
+msgstr "L’ouverture est jouée jusqu’au coup %1."
+
+#: pkgamesview.lua:204
+msgid "mates"
+msgstr "mate"
+
+#: pkgamesview.lua:205
+msgid "gets mated"
+msgstr "se fait mater"
+
+#: pkgamesview.lua:214
+msgid "✓ %1 %2: %3’s move."
+msgstr "✓ %1 %2 : le coup de %3."
+
+#: pkgamesview.lua:215
+msgid "A key moment!"
+msgstr "Un moment clé !"
+
+#: pkgamesview.lua:217
+msgid "✓ %1 %2, with a hint."
+msgstr "✓ %1 %2, avec un indice."
+
+#: pkgamesview.lua:219
+msgid "A good move too: %1 %2. %3 played %4."
+msgstr "Un bon coup aussi : %1 %2. %3 a joué %4."
+
+#: pkgamesview.lua:221
+msgid "%1 played %2 %3. Yours: %4."
+msgstr "%1 a joué %2 %3. Le vôtre : %4."
+
+#: pkgamesview.lua:223
+msgid "Stockfish: %1 for %2, %3 for yours."
+msgstr "Stockfish : %1 pour %2, %3 pour le vôtre."
+
+#: pkgamesview.lua:228
+msgid "Stockfish’s choice: %1."
+msgstr "Le choix de Stockfish : %1."
+
+#: pkgamesview.lua:245
+msgid "Hint: %1 moved the piece on %2."
+msgstr "Indice : %1 a joué la pièce en %2."
+
+#: pkgamesview.lua:257
+msgid "%1 played %2 %3."
+msgstr "%1 a joué %2 %3."
+
+#: pkgamesview.lua:328
+msgid "Game over: %1."
+msgstr "Partie terminée : %1."
+
+#: pkgamesview.lua:332
+msgid "Key moments: %1 of %2"
+msgstr "Moments clés : %1 sur %2"
+
+#: pkgamesview.lua:335
+msgid "Your best for this game: %1%"
+msgstr "Votre meilleur score pour cette partie : %1 %"
+
+#: pkgamesview.lua:340
+msgid "Key moment: one move stands out. What did %1 play?"
+msgstr "Moment clé : un coup se détache. Qu’a joué %1 ?"
+
+#: pkgamesview.lua:342
+msgid "What did %1 play?"
+msgstr "Qu’a joué %1 ?"
+
+#: pkgamesview.lua:375
+msgid "Next game"
+msgstr "Partie suivante"
+
+#: pkgamesview.lua:403
+msgid "Start this game again? The moves guessed so far are lost."
+msgstr "Recommencer cette partie ? Les coups devinés jusqu’ici seront perdus."
+
+#: pkgamesview.lua:404 pkgamesview.lua:412
+msgid "Start again"
+msgstr "Recommencer"
+
+#: pkgamesview.lua:409
+msgid "Guess %1’s moves instead"
+msgstr "Deviner plutôt les coups de %1"
+
+#: pkgamesview.lua:416
+msgid "Master games…"
+msgstr "Parties de maîtres…"
+
+#: pklinks.lua:92
+msgid "Links (%1)…"
+msgstr "Liens (%1)…"
+
+#: pklinks.lua:113
+msgid "Show the QR code of a link"
+msgstr "Afficher le code QR d’un lien"
+
+#: pknav.lua:107
+msgid "Night mode: on"
+msgstr "Mode nuit : activé"
+
+#: pknav.lua:107
+msgid "Night mode: off"
+msgstr "Mode nuit : désactivé"
+
+#: pknav.lua:119 pknav.lua:223
+msgid "Frontlight…"
+msgstr "Éclairage…"
+
+#: pknav.lua:123 pknav.lua:245
+msgid "Settings…"
+msgstr "Paramètres…"
+
+#: pknav.lua:147
+msgid "Settings & modes…"
+msgstr "Paramètres et modes…"
+
+#: pknav.lua:204
+msgid "Rating: %1"
+msgstr "Classement : %1"
+
+#: pknav.lua:205
+msgid "%1 to review"
+msgstr "%1 à revoir"
+
+#: pkopenings.lua:231
+msgid "too large for a repertoire (%1 MB, limit 2 MB)"
+msgstr "trop gros pour un répertoire (%1 Mo, limite 2 Mo)"
+
+#: pkopenings.lua:244
+msgid "no moves to train for the side of each chapter"
+msgstr "aucun coup à entraîner pour le camp de chaque chapitre"
+
+#: pkopenings.lua:282 pkopenings.lua:303 pkstudies.lua:207
+msgid "Cannot open %1:\n%2"
+msgstr "Impossible d’ouvrir %1 :\n%2"
+
+#: pkopenings.lua:312
+msgid "Your progress cannot be saved:"
+msgstr "Votre progression ne peut pas être enregistrée :"
+
+#: pkopenings.lua:326
+msgid "Loading repertoires…"
+msgstr "Chargement des répertoires…"
+
+#: pkopenings.lua:344
+msgid "error"
+msgstr "erreur"
+
+#: pkopenings.lua:356
+msgid "No repertoires in %1"
+msgstr "Aucun répertoire dans %1"
+
+#: pkopenings.lua:385
+msgid "Cannot list %1"
+msgstr "Impossible de lister %1"
+
+#: pkplay.lua:59
+msgid "full strength"
+msgstr "pleine puissance"
+
+#: pkplay.lua:64 pkplaysetup.lua:117
+msgid "No clock"
+msgstr "Sans pendule"
+
+#: pkplay.lua:65
+msgid "%1 min + %2 s"
+msgstr "%1 min + %2 s"
+
+#: pkplay.lua:65
+msgid "%1 min"
+msgstr "%1 min"
+
+#: pkplay.lua:177
+msgid "checkmate"
+msgstr "mat"
+
+#: pkplay.lua:178
+msgid "resignation"
+msgstr "abandon"
+
+#: pkplay.lua:179
+msgid "on time"
+msgstr "au temps"
+
+#: pkplay.lua:180
+msgid "stalemate"
+msgstr "pat"
+
+#: pkplay.lua:181
+msgid "insufficient material"
+msgstr "matériel insuffisant"
+
+#: pkplay.lua:182
+msgid "threefold repetition"
+msgstr "triple répétition"
+
+#: pkplay.lua:183
+msgid "fifty-move rule"
+msgstr "règle des cinquante coups"
+
+#: pkplay.lua:192
+msgid "Draw: %1."
+msgstr "Nulle : %1."
+
+#: pkplay.lua:194
+msgid "by %1"
+msgstr "par %1"
+
+#: pkplay.lua:196
+msgid "You win %1."
+msgstr "Vous gagnez %1."
+
+#: pkplay.lua:196
+msgid "Stockfish wins %1."
+msgstr "Stockfish gagne %1."
+
+#: pkplay.lua:198
+msgid "White wins %1."
+msgstr "Les Blancs gagnent %1."
+
+#: pkplay.lua:198
+msgid "Black wins %1."
+msgstr "Les Noirs gagnent %1."
+
+#: pkplay.lua:221 pkplaysetup.lua:102 pkside.lua:21
+msgid "White"
+msgstr "Blancs"
+
+#: pkplay.lua:221 pkplaysetup.lua:102 pkside.lua:21
+msgid "Black"
+msgstr "Noirs"
+
+#: pkplay.lua:222 pkplayview.lua:276
+msgid "Stockfish %1"
+msgstr "Stockfish %1"
+
+#: pkplay.lua:223 pkplay.lua:224
+msgid "You"
+msgstr "Vous"
+
+#: pkplaysetup.lua:87 pkplayview.lua:78
+msgid "New game"
+msgstr "Nouvelle partie"
+
+#: pkplaysetup.lua:94
+msgid "Opponent"
+msgstr "Adversaire"
+
+#: pkplaysetup.lua:95 pksettings.lua:16 pkupdate.lua:74
+msgid "Stockfish"
+msgstr "Stockfish"
+
+#: pkplaysetup.lua:96 pkplayview.lua:288
+msgid "Two players"
+msgstr "Deux joueurs"
+
+#: pkplaysetup.lua:98
+msgid "Stockfish is not installed: Settings → Stockfish: install…"
+msgstr "Stockfish n’est pas installé : Paramètres → Stockfish : installer…"
+
+#: pkplaysetup.lua:101
+msgid "You play"
+msgstr "Vous jouez"
+
+#: pkplaysetup.lua:102
+msgid "Random"
+msgstr "Au hasard"
+
+#: pkplaysetup.lua:103
+msgid "Stockfish's strength (Elo)"
+msgstr "Force de Stockfish (Elo)"
+
+#: pkplaysetup.lua:106
+msgid "Full"
+msgstr "Maximale"
+
+#: pkplaysetup.lua:112
+msgid "Seats"
+msgstr "Places"
+
+#: pkplaysetup.lua:113
+msgid "Face to face"
+msgstr "Face à face"
+
+#: pkplaysetup.lua:113
+msgid "Side by side"
+msgstr "Côte à côte"
+
+#: pkplaysetup.lua:115
+msgid "Clock"
+msgstr "Pendule"
+
+#: pkplaysetup.lua:117
+msgid "5 min"
+msgstr "5 min"
+
+#: pkplaysetup.lua:117
+msgid "10 min"
+msgstr "10 min"
+
+#: pkplaysetup.lua:118
+msgid "15 min + 10 s"
+msgstr "15 min + 10 s"
+
+#: pkplaysetup.lua:118
+msgid "30 min"
+msgstr "30 min"
+
+#: pkplaysetup.lua:124
+msgid "Start"
+msgstr "Commencer"
+
+#: pkplayview.lua:79
+msgid "Take back"
+msgstr "Reprendre le coup"
+
+#: pkplayview.lua:279
+msgid "You %1 · %2 %3"
+msgstr "Vous %1 · %2 %3"
+
+#: pkplayview.lua:282
+msgid "You (%1) · %2"
+msgstr "Vous (%1) · %2"
+
+#: pkplayview.lua:288
+msgid "Two players, face to face"
+msgstr "Deux joueurs, face à face"
+
+#: pkplayview.lua:336
+msgid "Stockfish is thinking…"
+msgstr "Stockfish réfléchit…"
+
+#: pkplayview.lua:338
+msgid "Check. Your move."
+msgstr "Échec. À vous de jouer."
+
+#: pkplayview.lua:338
+msgid "Your move."
+msgstr "À vous de jouer."
+
+#: pkplayview.lua:340
+msgid "Check. %1 to move."
+msgstr "Échec. Au tour des %1."
+
+#: pkplayview.lua:340
+msgid "%1 to move."
+msgstr "Au tour des %1."
+
+#: pkplayview.lua:344
+msgid "The clock starts with the next move."
+msgstr "La pendule démarre au prochain coup."
+
+#: pkplayview.lua:440
+msgid "Stockfish played an illegal move (%1). Take back, or start a new game."
+msgstr "Stockfish a joué un coup illégal (%1). Reprenez le coup, ou commencez une nouvelle partie."
+
+#: pkplayview.lua:457
+msgid "Stockfish stopped: the game goes on between two players."
+msgstr "Stockfish s’est arrêté : la partie continue entre deux joueurs."
+
+#: pkplayview.lua:469 pkplayview.lua:477
+msgid "Resign"
+msgstr "Abandonner"
+
+#: pkplayview.lua:470
+msgid "Resign (%1)"
+msgstr "Abandonner (%1)"
+
+#: pkplayview.lua:476
+msgid "Resign this game?"
+msgstr "Abandonner cette partie ?"
+
+#: pkplayview.lua:486
+msgid "Save game as a study…"
+msgstr "Enregistrer la partie comme étude…"
+
+#: pkplayview.lua:518
+msgid "Save game as a study"
+msgstr "Enregistrer la partie comme étude"
+
+#: pkplayview.lua:528
+msgid "Saved in Studies → Games:\n%1"
+msgstr "Enregistrée dans Études → Parties :\n%1"
+
+#: pkplayview.lua:533
+msgid "Cannot save the game: %1"
+msgstr "Impossible d’enregistrer la partie : %1"
+
+#: pkpromotion.lua:30
+msgid "Choose Promotion Piece"
+msgstr "Choisir la pièce de promotion"
+
+#: pkpromotion.lua:64
+msgid "Select the piece for promotion:"
+msgstr "Choisissez la pièce de la promotion :"
+
+#: pkpuzzleview.lua:56
+msgid "Rating: %1 (%2)"
+msgstr "Classement : %1 (%2)"
+
+#: pkpuzzleview.lua:107 pkpuzzleview.lua:118
+msgid "Retry"
+msgstr "Réessayer"
+
+#: pkpuzzleview.lua:110 pkpuzzleview.lua:123 pkstudyview.lua:88
+msgid "Next"
+msgstr "Suivant"
+
+#: pkpuzzleview.lua:226
+msgid "Your rating: %1"
+msgstr "Votre classement : %1"
+
+#: pkpuzzleview.lua:228
+msgid "Reviews: %1"
+msgstr "À revoir : %1"
+
+#: pkpuzzleview.lua:230 pkpuzzleview.lua:753
+msgid "Puzzle %1"
+msgstr "Problème %1"
+
+#: pkpuzzleview.lua:252
+msgid "%1 to move. Find the best move."
+msgstr "Au tour des %1. Trouvez le meilleur coup."
+
+#: pkpuzzleview.lua:254
+msgid "Review: you missed this puzzle on %1."
+msgstr "À revoir : vous avez manqué ce problème le %1."
+
+#: pkpuzzleview.lua:256
+msgid "You played every puzzle of this theme recently: repeating."
+msgstr "Vous avez joué récemment tous les problèmes de ce thème : ils reviennent."
+
+#: pkpuzzleview.lua:257
+msgid "You played every puzzle near your rating recently: repeating."
+msgstr "Vous avez joué récemment tous les problèmes proches de votre classement : ils reviennent."
+
+#: pkpuzzleview.lua:259
+msgid "Puzzle %1, chosen: not rated."
+msgstr "Problème %1, choisi : non classé."
+
+#: pkpuzzleview.lua:420
+msgid "No other puzzle with this theme in the pack."
+msgstr "Aucun autre problème de ce thème dans le pack."
+
+#: pkpuzzleview.lua:421
+msgid "No other puzzle in the pack."
+msgstr "Aucun autre problème dans le pack."
+
+#: pkpuzzleview.lua:423
+msgid "No puzzles with this theme in the pack."
+msgstr "Aucun problème de ce thème dans le pack."
+
+#: pkpuzzleview.lua:424
+msgid "No puzzles found in the pack."
+msgstr "Aucun problème trouvé dans le pack."
+
+#: pkpuzzleview.lua:440
+msgid "Cannot load a puzzle from the pack."
+msgstr "Impossible de charger un problème du pack."
+
+#: pkpuzzleview.lua:455
+msgid "This puzzle contains an invalid move. Tap Next."
+msgstr "Ce problème contient un coup non valide. Touchez Suivant."
+
+#: pkpuzzleview.lua:468
+msgid "Not rated: a puzzle you chose."
+msgstr "Non classé : un problème que vous avez choisi."
+
+#: pkpuzzleview.lua:491
+msgid "It will come back in %1 days for a review."
+msgstr "Il reviendra dans %1 jours pour être revu."
+
+#: pkpuzzleview.lua:504
+msgid "Next review in %1 days."
+msgstr "Prochaine révision dans %1 jours."
+
+#: pkpuzzleview.lua:505
+msgid "Mastered: this puzzle will not come back."
+msgstr "Maîtrisé : ce problème ne reviendra plus."
+
+#: pkpuzzleview.lua:508
+msgid "It will come back in %1 days."
+msgstr "Il reviendra dans %1 jours."
+
+#: pkpuzzleview.lua:533
+msgid "Solved!"
+msgstr "Résolu !"
+
+#: pkpuzzleview.lua:534
+msgid "Solved, with help."
+msgstr "Résolu, avec de l’aide."
+
+#: pkpuzzleview.lua:535
+msgid "Solved, after a mistake."
+msgstr "Résolu, après une erreur."
+
+#: pkpuzzleview.lua:551 pkpuzzleview.lua:567
+msgid "Correct! Keep going."
+msgstr "Exact ! Continuez."
+
+#: pkpuzzleview.lua:598
+msgid "Theme…"
+msgstr "Thème…"
+
+#: pkpuzzleview.lua:599
+msgid "Stats…"
+msgstr "Statistiques…"
+
+#: pkpuzzleview.lua:603 pkstudyview.lua:471
+msgid "Analyse position"
+msgstr "Analyser la position"
+
+#: pkpuzzleview.lua:612
+msgid "Unlike this puzzle"
+msgstr "Ne plus aimer ce problème"
+
+#: pkpuzzleview.lua:612
+msgid "Like this puzzle"
+msgstr "Aimer ce problème"
+
+#: pkpuzzleview.lua:614
+msgid "Liked puzzles…"
+msgstr "Problèmes aimés…"
+
+#: pkpuzzleview.lua:617
+msgid "Open a puzzle by its id…"
+msgstr "Ouvrir un problème par son identifiant…"
+
+#: pkpuzzleview.lua:622
+msgid "Puzzle %1 on Lichess…"
+msgstr "Problème %1 sur Lichess…"
+
+#: pkpuzzleview.lua:627
+msgid "Source game…"
+msgstr "Partie d’origine…"
+
+#: pkpuzzleview.lua:669
+msgid "Puzzle %1: no longer liked."
+msgstr "Problème %1 : n’est plus aimé."
+
+#: pkpuzzleview.lua:669
+msgid "Puzzle %1 liked."
+msgstr "Problème %1 aimé."
+
+#: pkpuzzleview.lua:688
+msgid "Puzzle %1 is not in the puzzle pack of this device.\nOpen it on Lichess with a phone?"
+msgstr "Le problème %1 n’est pas dans le pack de cet appareil.\nL’ouvrir sur Lichess avec un téléphone ?"
+
+#: pkpuzzleview.lua:689
+msgid "QR code"
+msgstr "Code QR"
+
+#: pkpuzzleview.lua:702
+msgid "Lichess puzzle id"
+msgstr "Identifiant de problème Lichess"
+
+#: pkpuzzleview.lua:709
+msgid "Open"
+msgstr "Ouvrir"
+
+#: pkpuzzleview.lua:726
+msgid "Not a Lichess puzzle id (five letters or digits, like 004JD)."
+msgstr "Ce n’est pas un identifiant de problème Lichess (cinq lettres ou chiffres, comme 004JD)."
+
+#: pkpuzzleview.lua:737
+msgid "No liked puzzle yet: like one from this menu."
+msgstr "Aucun problème aimé pour l’instant : aimez-en un depuis ce menu."
+
+#: pkpuzzleview.lua:756
+msgid "Puzzle %1 (not in the puzzle pack)"
+msgstr "Problème %1 (pas dans le pack)"
+
+#: pkpuzzleview.lua:761
+msgid "Liked puzzles: %1"
+msgstr "Problèmes aimés : %1"
+
+#: pkpuzzleview.lua:776 pkpuzzleview.lua:787 pkstatsview.lua:100
+msgid "All themes"
+msgstr "Tous les thèmes"
+
+#: pkpuzzleview.lua:787
+msgid "Puzzle theme: %1"
+msgstr "Thème des problèmes : %1"
+
+#: pkpuzzleview.lua:871
+msgid "Solution shown."
+msgstr "Solution affichée."
+
+#: pkpuzzleview.lua:877
+msgid "Solution: %1 (move %2/%3)."
+msgstr "Solution : %1 (coup %2/%3)."
+
+#: pkpuzzleview.lua:901
+msgid "Themes: %1"
+msgstr "Thèmes : %1"
+
+#: pkpuzzleview.lua:937
+msgid "Before the puzzle: %1 to move."
+msgstr "Avant le problème : au tour des %1."
+
+#: pkpuzzleview.lua:939
+msgid "Puzzle position, after %1."
+msgstr "Position du problème, après %1."
+
+#: pkpuzzleview.lua:941
+msgid "Move %1/%2: %3"
+msgstr "Coup %1/%2 : %3"
+
+#: pksettings.lua:16
+msgid "installed"
+msgstr "installé"
+
+#: pksettings.lua:19
+msgid "Stockfish: install…"
+msgstr "Stockfish : installer…"
+
+#: pksettings.lua:19
+msgid "not installed"
+msgstr "non installé"
+
+#: pksettings.lua:22
+msgid "on"
+msgstr "activé"
+
+#: pksettings.lua:22
+msgid "off"
+msgstr "désactivé"
+
+#: pksettings.lua:28
+msgid "Board coordinates"
+msgstr "Coordonnées de l’échiquier"
+
+#: pksettings.lua:33
+msgid "Show legal moves"
+msgstr "Afficher les coups possibles"
+
+#: pksettings.lua:49
+msgid "Your progress file cannot be opened."
+msgstr "Votre fichier de progression ne peut pas être ouvert."
+
+#: pksettings.lua:52
+msgid "There is no copy of it yet: a copy is made once a day."
+msgstr "Il n’en existe pas encore de copie : une copie est faite une fois par jour."
+
+#: pksettings.lua:57
+msgid "Put back the copy of your progress made on %1?\nWhat you did since then is lost."
+msgstr "Remettre la copie de votre progression faite le %1 ?\nCe que vous avez fait depuis sera perdu."
+
+#: pksettings.lua:59
+msgid "Restore"
+msgstr "Restaurer"
+
+#: pksettings.lua:63
+msgid "Your progress is restored."
+msgstr "Votre progression est restaurée."
+
+#: pksettings.lua:63
+msgid "The copy cannot be restored:"
+msgstr "La copie ne peut pas être restaurée :"
+
+#: pksettings.lua:78
+msgid "Check for updates…"
+msgstr "Rechercher des mises à jour…"
+
+#: pksettings.lua:79
+msgid "development"
+msgstr "développement"
+
+#: pksettings.lua:85
+msgid "Restore progress from its copy…"
+msgstr "Restaurer la progression depuis sa copie…"
+
+#: pksettings.lua:86
+msgid "none yet"
+msgstr "aucune pour l’instant"
+
+#: pksettings.lua:94
+msgid "Project page…"
+msgstr "Page du projet…"
+
+#: pksettings.lua:103
+msgid "Settings"
+msgstr "Paramètres"
+
+#: pkstatsview.lua:82
+msgid "Your rating %1 · white: clean, grey: missed"
+msgstr "Votre classement %1 · blanc : réussi, gris : manqué"
+
+#: pkstatsview.lua:83
+msgid "Your rating %1 · black: clean, grey: missed"
+msgstr "Votre classement %1 · noir : réussi, gris : manqué"
+
+#: pkstatsview.lua:109
+msgid "Puzzle stats"
+msgstr "Statistiques des problèmes"
+
+#: pkstatsview.lua:128
+msgid "Page %1 of %2"
+msgstr "Page %1 sur %2"
+
+#: pkstatsview.lua:194
+msgid "No puzzles played yet."
+msgstr "Aucun problème joué pour l’instant."
+
+#: pkstudies.lua:123
+msgid "This file contains no games."
+msgstr "Ce fichier ne contient aucune partie."
+
+#: pkstudies.lua:124
+msgid "This file is not a PGN file."
+msgstr "Ce fichier n’est pas un fichier PGN."
+
+#: pkstudies.lua:188
+msgid "(no study opened yet)"
+msgstr "(aucune étude ouverte pour l’instant)"
+
+#: pkstudies.lua:189
+msgid "Recent studies"
+msgstr "Études récentes"
+
+#: pkstudies.lua:199
+msgid "%1 is too large for a study (%2 MB, limit 2 MB)."
+msgstr "%1 est trop gros pour une étude (%2 Mo, limite 2 Mo)."
+
+#: pkstudies.lua:215 pkstudyview.lua:490
+msgid "Mark study as not done"
+msgstr "Marquer l’étude comme non terminée"
+
+#: pkstudies.lua:215 pkstudyview.lua:490
+msgid "Mark study as done ✓"
+msgstr "Marquer l’étude comme terminée ✓"
+
+#: pkstudies.lua:251
+msgid "▶ Continue: %1. %2"
+msgstr "▶ Continuer : %1. %2"
+
+#: pkstudies.lua:286
+msgid "../  Back to %1"
+msgstr "../  Retour à %1"
+
+#: pkstudies.lua:288
+msgid "Recent studies…"
+msgstr "Études récentes…"
+
+#: pkstudies.lua:318
+msgid "(%1 done hidden: ☰ to show them)"
+msgstr "(%1 terminées masquées : ☰ pour les afficher)"
+
+#: pkstudies.lua:321
+msgid "(empty folder)"
+msgstr "(dossier vide)"
+
+#: pkstudies.lua:325
+msgid "Open a PGN file…"
+msgstr "Ouvrir un fichier PGN…"
+
+#: pkstudies.lua:328
+msgid "Choose a PGN file"
+msgstr "Choisir un fichier PGN"
+
+#: pkstudies.lua:337
+msgid "(no studies in %1)"
+msgstr "(aucune étude dans %1)"
+
+#: pkstudies.lua:391
+msgid "Show done studies"
+msgstr "Afficher les études terminées"
+
+#: pkstudies.lua:391
+msgid "Hide done studies"
+msgstr "Masquer les études terminées"
+
+#: pkstudyview.lua:73
+msgid "Lines"
+msgstr "Lignes"
+
+#: pkstudyview.lua:76
+msgid "Train"
+msgstr "S’entraîner"
+
+#: pkstudyview.lua:89
+msgid "Restart"
+msgstr "Recommencer"
+
+#: pkstudyview.lua:90
+msgid "Browse"
+msgstr "Parcourir"
+
+#: pkstudyview.lua:228
+msgid "Cannot open this chapter: %1"
+msgstr "Impossible d’ouvrir ce chapitre : %1"
+
+#: pkstudyview.lua:278
+msgid "Interactive lesson"
+msgstr "Leçon interactive"
+
+#: pkstudyview.lua:278
+msgid "Start of the chapter"
+msgstr "Début du chapitre"
+
+#: pkstudyview.lua:288
+msgid "— End of the variation —"
+msgstr "— Fin de la variante —"
+
+#: pkstudyview.lua:288
+msgid "› Back to the main line"
+msgstr "› Retour à la ligne principale"
+
+#: pkstudyview.lua:290
+msgid "(no moves)"
+msgstr "(aucun coup)"
+
+#: pkstudyview.lua:290
+msgid "— End of line —"
+msgstr "— Fin de la ligne —"
+
+#: pkstudyview.lua:293
+msgid "› Next chapter: %1"
+msgstr "› Chapitre suivant : %1"
+
+#: pkstudyview.lua:301
+msgid "(main)"
+msgstr "(principale)"
+
+#: pkstudyview.lua:303
+msgid "Next: %1"
+msgstr "Suivant : %1"
+
+#: pkstudyview.lua:331
+msgid "%1 · Chapter %2/%3"
+msgstr "%1 · Chapitre %2/%3"
+
+#: pkstudyview.lua:344
+msgid "Cannot play the next move: %1"
+msgstr "Impossible de jouer le coup suivant : %1"
+
+#: pkstudyview.lua:361
+msgid "the start of the chapter"
+msgstr "le début du chapitre"
+
+#: pkstudyview.lua:362
+msgid "after %1"
+msgstr "après %1"
+
+#: pkstudyview.lua:363
+msgid "End of the variation.\nBack to the main line, %1?"
+msgstr "Fin de la variante.\nRetour à la ligne principale, %1 ?"
+
+#: pkstudyview.lua:364
+msgid "Main line"
+msgstr "Ligne principale"
+
+#: pkstudyview.lua:369
+msgid "End of the chapter.\nOpen the next one, %1?"
+msgstr "Fin du chapitre.\nOuvrir le suivant, %1 ?"
+
+#: pkstudyview.lua:370
+msgid "Next chapter"
+msgstr "Chapitre suivant"
+
+#: pkstudyview.lua:430
+msgid "(main line)"
+msgstr "(ligne principale)"
+
+#: pkstudyview.lua:440
+msgid "Choose a line"
+msgstr "Choisir une ligne"
+
+#: pkstudyview.lua:454
+msgid "This move is not in the study."
+msgstr "Ce coup n’est pas dans l’étude."
+
+#: pkstudyview.lua:463
+msgid "Chapters…"
+msgstr "Chapitres…"
+
+#: pkstudyview.lua:482
+msgid "Mark chapter as not done"
+msgstr "Marquer le chapitre comme non terminé"
+
+#: pkstudyview.lua:482
+msgid "Mark chapter as done ✓"
+msgstr "Marquer le chapitre comme terminé ✓"
+
+#: pkstudyview.lua:499
+msgid "Study marked as done."
+msgstr "Étude marquée comme terminée."
+
+#: pkstudyview.lua:499
+msgid "Study marked as not done."
+msgstr "Étude marquée comme non terminée."
+
+#: pkstudyview.lua:557
+msgid "Chapter marked as done."
+msgstr "Chapitre marqué comme terminé."
+
+#: pkstudyview.lua:557
+msgid "Chapter marked as not done."
+msgstr "Chapitre marqué comme non terminé."
+
+#: pkstudyview.lua:558
+msgid "All chapters done: study marked as done ✓"
+msgstr "Tous les chapitres sont faits : étude marquée comme terminée ✓"
+
+#: pkstudyview.lua:670
+msgid "Lesson complete — perfect!"
+msgstr "Leçon terminée — parfait !"
+
+#: pkstudyview.lua:672
+msgid "Lesson complete. Mistakes: %1"
+msgstr "Leçon terminée. Erreurs : %1"
+
+#: pkstudyview.lua:673
+msgid "(with hints or solutions)"
+msgstr "(avec des indices ou des solutions)"
+
+#: pkstudyview.lua:676
+msgid "Tap Next for the next chapter."
+msgstr "Touchez Suivant pour le chapitre suivant."
+
+#: pkstudyview.lua:679
+msgid "This study has an illegal move here (%1). Use Browse to read on."
+msgstr "Cette étude a un coup illégal ici (%1). Utilisez Parcourir pour continuer la lecture."
+
+#: pkstudyview.lua:686
+msgid "Tap Next to continue."
+msgstr "Touchez Suivant pour continuer."
+
+#: pkstudyview.lua:714 pkstudyview.lua:715 pkstudyview.lua:717
+msgid "Correct!"
+msgstr "Exact !"
+
+#: pkstudyview.lua:719
+msgid "That's a mistake."
+msgstr "C’est une erreur."
+
+#: pkstudyview.lua:722
+msgid "That move is a sideline in this study. Find the main move."
+msgstr "Ce coup est une variante dans cette étude. Trouvez le coup principal."
+
+#: pkthemes.lua:9
+msgid "Mate in 1"
+msgstr "Mat en 1"
+
+#: pkthemes.lua:9
+msgid "Mate in 2"
+msgstr "Mat en 2"
+
+#: pkthemes.lua:9
+msgid "Mate in 3"
+msgstr "Mat en 3"
+
+#: pkthemes.lua:10
+msgid "Mate in 4"
+msgstr "Mat en 4"
+
+#: pkthemes.lua:10
+msgid "Mate in 5 or more"
+msgstr "Mat en 5 ou plus"
+
+#: pkthemes.lua:11
+msgid "Attacking f2/f7"
+msgstr "Attaque sur f2/f7"
+
+#: pkthemes.lua:11
+msgid "X-ray attack"
+msgstr "Attaque en rayons X"
+
+#: pkthemes.lua:12
+msgid "En passant"
+msgstr "Prise en passant"
+
+#: pkthemes.lua:12
+msgid "Underpromotion"
+msgstr "Sous-promotion"
+
+#: pkthemes.lua:13
+msgid "One-move puzzle"
+msgstr "Problème en un coup"
+
+#: pkthemes.lua:13
+msgid "Short puzzle"
+msgstr "Problème court"
+
+#: pkthemes.lua:13
+msgid "Long puzzle"
+msgstr "Problème long"
+
+#: pkthemes.lua:14
+msgid "Very long puzzle"
+msgstr "Problème très long"
+
+#: pkthemes.lua:15
+msgid "Master vs master games"
+msgstr "Parties entre maîtres"
+
+#: pkthemes.lua:15
+msgid "Super GM games"
+msgstr "Parties de super-GMI"
+
+#: pkthemes.lua:16
+msgid "Morphy's mate"
+msgstr "Mat de Morphy"
+
+#: pkthemes.lua:16
+msgid "Pillsbury's mate"
+msgstr "Mat de Pillsbury"
+
+#: pkthemes.lua:17
+msgid "Anastasia's mate"
+msgstr "Mat d’Anastasie"
+
+#: pkthemes.lua:17
+msgid "Boden's mate"
+msgstr "Mat de Boden"
+
+#: pkthemes.lua:18
+msgid "Hanging piece"
+msgstr "Pièce en prise"
+
+#: pkthemes.lua:18
+msgid "Quiet move"
+msgstr "Coup tranquille"
+
+#: pkthemes.lua:21
+msgid "Advanced pawn"
+msgstr "Pion avancé"
+
+#: pkthemes.lua:21
+msgid "Advantage"
+msgstr "Avantage"
+
+#: pkthemes.lua:21
+msgid "Arabian mate"
+msgstr "Mat arabe"
+
+#: pkthemes.lua:22
+msgid "Attraction"
+msgstr "Attraction"
+
+#: pkthemes.lua:22
+msgid "Back rank mate"
+msgstr "Mat du couloir"
+
+#: pkthemes.lua:22
+msgid "Balestra mate"
+msgstr "Mat de Balestra"
+
+#: pkthemes.lua:23
+msgid "Bishop endgame"
+msgstr "Finale de fous"
+
+#: pkthemes.lua:23
+msgid "Blind swine mate"
+msgstr "Mat des cochons aveugles"
+
+#: pkthemes.lua:24
+msgid "Capturing defender"
+msgstr "Capture du défenseur"
+
+#: pkthemes.lua:24
+msgid "Castling"
+msgstr "Roque"
+
+#: pkthemes.lua:24
+msgid "Clearance"
+msgstr "Dégagement"
+
+#: pkthemes.lua:25
+msgid "Collinear move"
+msgstr "Coup colinéaire"
+
+#: pkthemes.lua:25
+msgid "Corner mate"
+msgstr "Mat dans le coin"
+
+#: pkthemes.lua:25
+msgid "Crushing"
+msgstr "Écrasant"
+
+#: pkthemes.lua:26
+msgid "Defensive move"
+msgstr "Coup défensif"
+
+#: pkthemes.lua:26
+msgid "Deflection"
+msgstr "Déviation"
+
+#: pkthemes.lua:27
+msgid "Discovered attack"
+msgstr "Attaque à la découverte"
+
+#: pkthemes.lua:27
+msgid "Discovered check"
+msgstr "Échec à la découverte"
+
+#: pkthemes.lua:28
+msgid "Double bishop mate"
+msgstr "Mat des deux fous"
+
+#: pkthemes.lua:28
+msgid "Double check"
+msgstr "Échec double"
+
+#: pkthemes.lua:29
+msgid "Dovetail mate"
+msgstr "Mat en queue d’aronde"
+
+#: pkthemes.lua:29
+msgid "Endgame"
+msgstr "Finale"
+
+#: pkthemes.lua:29
+msgid "Epaulette mate"
+msgstr "Mat des épaulettes"
+
+#: pkthemes.lua:30
+msgid "Equality"
+msgstr "Égalité"
+
+#: pkthemes.lua:30
+msgid "Exposed king"
+msgstr "Roi exposé"
+
+#: pkthemes.lua:30
+msgid "Fork"
+msgstr "Fourchette"
+
+#: pkthemes.lua:30
+msgid "Hook mate"
+msgstr "Mat du crochet"
+
+#: pkthemes.lua:31
+msgid "Interference"
+msgstr "Interférence"
+
+#: pkthemes.lua:31
+msgid "Intermezzo"
+msgstr "Coup intermédiaire"
+
+#: pkthemes.lua:31
+msgid "Kill box mate"
+msgstr "Mat de la boîte"
+
+#: pkthemes.lua:32
+msgid "Kingside attack"
+msgstr "Attaque à l’aile roi"
+
+#: pkthemes.lua:32
+msgid "Knight endgame"
+msgstr "Finale de cavaliers"
+
+#: pkthemes.lua:32
+msgid "Mate"
+msgstr "Mat"
+
+#: pkthemes.lua:33
+msgid "Middlegame"
+msgstr "Milieu de partie"
+
+#: pkthemes.lua:33
+msgid "Opening"
+msgstr "Ouverture"
+
+#: pkthemes.lua:33
+msgid "Opera mate"
+msgstr "Mat de l’Opéra"
+
+#: pkthemes.lua:34
+msgid "Pawn endgame"
+msgstr "Finale de pions"
+
+#: pkthemes.lua:34
+msgid "Pin"
+msgstr "Clouage"
+
+#: pkthemes.lua:34
+msgid "Promotion"
+msgstr "Promotion"
+
+#: pkthemes.lua:35
+msgid "Queen endgame"
+msgstr "Finale de dames"
+
+#: pkthemes.lua:35
+msgid "Queen rook endgame"
+msgstr "Finale dame et tour"
+
+#: pkthemes.lua:36
+msgid "Queenside attack"
+msgstr "Attaque à l’aile dame"
+
+#: pkthemes.lua:36
+msgid "Rook endgame"
+msgstr "Finale de tours"
+
+#: pkthemes.lua:36
+msgid "Sacrifice"
+msgstr "Sacrifice"
+
+#: pkthemes.lua:37
+msgid "Skewer"
+msgstr "Enfilade"
+
+#: pkthemes.lua:37
+msgid "Smothered mate"
+msgstr "Mat étouffé"
+
+#: pkthemes.lua:37
+msgid "Swallowstail mate"
+msgstr "Mat en queue d’hirondelle"
+
+#: pkthemes.lua:38
+msgid "Trapped piece"
+msgstr "Pièce piégée"
+
+#: pkthemes.lua:38
+msgid "Triangle mate"
+msgstr "Mat du triangle"
+
+#: pkthemes.lua:38
+msgid "Vukovic mate"
+msgstr "Mat de Vukovic"
+
+#: pkthemes.lua:39
+msgid "Zugzwang"
+msgstr "Zugzwang"
+
+#: pkupdate.lua:71
+msgid "Puzzle pack"
+msgstr "Pack de problèmes"
+
+#: pkupdate.lua:72
+msgid "Emoji font"
+msgstr "Police d’émojis"
+
+#: pkupdate.lua:79
+msgid "%1 MB"
+msgstr "%1 Mo"
+
+#: pkupdate.lua:80
+msgid "%1 KB"
+msgstr "%1 Ko"
+
+#: pkupdate.lua:137
+msgid "%1 → %2"
+msgstr "%1 → %2"
+
+#: pkupdate.lua:137
+msgid "unknown"
+msgstr "inconnue"
+
+#: pkupdate.lua:138
+msgid "install %1"
+msgstr "installer %1"
+
+#: pkupdate.lua:195
+msgid "An update is still running. Try again in a minute."
+msgstr "Une mise à jour est encore en cours. Réessayez dans une minute."
+
+#: pkupdate.lua:224
+msgid "No answer after several minutes (Wi-Fi lost?). Try again later."
+msgstr "Pas de réponse depuis plusieurs minutes (Wi-Fi perdu ?). Réessayez plus tard."
+
+#: pkupdate.lua:288
+msgid "Updating Paperknight…\nDownloading %1."
+msgstr "Mise à jour de Paperknight…\nTéléchargement de %1."
+
+#: pkupdate.lua:292
+msgid "The update failed:"
+msgstr "La mise à jour a échoué :"
+
+#: pkupdate.lua:296
+msgid "Paperknight is updated (%1).\nRestart KOReader to use it."
+msgstr "Paperknight est mis à jour (%1).\nRedémarrez KOReader pour l’utiliser."
+
+#: pkupdate.lua:306
+msgid "Paperknight is up to date (%1)."
+msgstr "Paperknight est à jour (%1)."
+
+#: pkupdate.lua:313
+msgid "Updates available (Paperknight %1):"
+msgstr "Mises à jour disponibles (Paperknight %1) :"
+
+#: pkupdate.lua:315
+msgid "What's new in %1:"
+msgstr "Nouveautés de %1 :"
+
+#: pkupdate.lua:317
+msgid "Update"
+msgstr "Mettre à jour"
+
+#: pkupdate.lua:321
+msgid "Update and install Stockfish (%1)"
+msgstr "Mettre à jour et installer Stockfish (%1)"
+
+#: pkupdate.lua:325
+msgid "Paperknight is up to date (%1).\n\nStockfish is not installed (%2): install it?"
+msgstr "Paperknight est à jour (%1).\n\nStockfish n’est pas installé (%2) : l’installer ?"
+
+#: pkupdate.lua:327
+msgid "Install"
+msgstr "Installer"
+
+#: pkupdate.lua:342
+msgid "Checking for updates…"
+msgstr "Recherche de mises à jour…"
+
+#: pkupdate.lua:349
+msgid "Could not check for updates."
+msgstr "Impossible de rechercher des mises à jour."

@@ -8,7 +8,7 @@ local infoMessage = require("ui/widget/infomessage")
 local PkEngine = require("pkengine")
 local PkNav = require("pknav")
 local Logger = require("logger")
-local _ = require("gettext")
+local _ = require("pkgettext")
 
 local Paperknight = WidgetContainer:extend{
     name = "paperknight",

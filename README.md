@@ -48,7 +48,8 @@ board is drawn and refreshed so that moves don't flash.
   comments shown as QR codes to open on a phone.
 
 Everything runs on the device: no account, no tracking, no network needed
-once installed.
+once installed. In English and French (KOReader's language);
+[other languages](docs/translations.md) are welcome.
 
 ## Install
 

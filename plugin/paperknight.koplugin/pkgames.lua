@@ -5,7 +5,7 @@
 -- other side's reply. A guess is the master's move, a move Stockfish rates
 -- as well (a good move too), or a miss. Pure logic; pkgamesview.lua shows it.
 local Chess = require("pkchess")
-local _ = require("gettext")
+local _ = require("pkgettext")
 local T = require("ffi/util").template
 
 local PkGames = {

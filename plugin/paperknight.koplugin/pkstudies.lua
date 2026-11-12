@@ -10,7 +10,7 @@ local UIManager = require("ui/uimanager")
 local lfs = require("libs/libkoreader-lfs")
 local logger = require("logger")
 local util = require("util")
-local _ = require("gettext")
+local _ = require("pkgettext")
 local T = require("ffi/util").template
 
 local PkDone = require("pkdone")

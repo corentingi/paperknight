@@ -1,5 +1,5 @@
 -- pkboard.lua
-local _ = require("gettext")
+local _ = require("pkgettext")
 local logger = require("logger")
 local Geom = require("ui/geometry")
 local Blitbuffer = require("ffi/blitbuffer")

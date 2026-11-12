@@ -5,7 +5,7 @@
 -- --parts=...`), in the background, then offers to restart KOReader.
 -- The installer is fetched with curl, as on the command line.
 local T = require("ffi/util").template
-local _ = require("gettext")
+local _ = require("pkgettext")
 
 local PkUpdate = {
     DEFAULT_URL = "https://github.com/corentingi/paperknight/releases/latest/download/install.sh",

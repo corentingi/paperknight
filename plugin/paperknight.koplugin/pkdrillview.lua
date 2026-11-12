@@ -10,7 +10,7 @@ local Size = require("ui/size")
 local TitleBar = require("ui/widget/titlebar")
 local UIManager = require("ui/uimanager")
 local util = require("util")
-local _ = require("gettext")
+local _ = require("pkgettext")
 local T = require("ffi/util").template
 
 local PkLinks = require("pklinks")

@@ -3,7 +3,7 @@
 -- white disc), like the board's piece sets. Text already on screen when night
 -- mode is toggled is fixed by PkSide.followNight.
 local Device = require("device")
-local _ = require("gettext")
+local _ = require("pkgettext")
 
 local PkSide = {}
 

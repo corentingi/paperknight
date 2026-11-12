@@ -73,7 +73,7 @@ From [the project review](reviews/2026-11-11-project-review.md).
 - [x] Updates that lose the network give up instead of hanging
 - [x] Licence and credits in the release archives
 - [ ] Play: the same game record as Master games (long games)
-- [ ] Translations: French first (the strings are already marked)
+- [x] Translations: French first (docs/translations.md)
 - [ ] Other KOReader devices (Kobo): say so, find KOReader there, ask for
       device reports
 - [ ] The rating over time on the puzzle stats page

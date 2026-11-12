@@ -70,6 +70,12 @@ committed; read it too when present).
 - In a ButtonTable, icon buttons are taller than text ones: size the icons
   to the text row, or the board moves when the bar is swapped.
 
+## Strings (docs/translations.md)
+- `local _ = require("pkgettext")`, not KOReader's `gettext` (it has none
+  of the plugin's strings); literal strings only in `_()`, templates with
+  `T()`. A new or changed string: add its French to `l10n/fr.po`
+  (`python3 tools/l10n/l10n.py check`, part of `make lint`, lists them).
+
 ## The progress file (pkprogress.lua)
 - One handle for the session: `PkProgress.shared()` (never `open` on the
   default path); settings with `PkProgress.readSetting`/`writeSetting`.

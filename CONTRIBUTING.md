@@ -31,6 +31,11 @@ Chess data in tests and fixtures is checked with python-chess first
 (legality, castling rights, SAN). Don't commit Lichess study text: its
 licence is unclear; write your own fixtures.
 
+## Translations
+
+Paperknight speaks English and French. A new language is one `.po` file:
+see [docs/translations.md](docs/translations.md).
+
 ## Licence
 
 Paperknight is GPL-3.0-or-later ([LICENSE](LICENSE)); contributions are

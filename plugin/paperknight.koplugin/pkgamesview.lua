@@ -13,7 +13,7 @@ local InputContainer = require("ui/widget/container/inputcontainer")
 local Size = require("ui/size")
 local TitleBar = require("ui/widget/titlebar")
 local UIManager = require("ui/uimanager")
-local _ = require("gettext")
+local _ = require("pkgettext")
 local T = require("ffi/util").template
 local Screen = Device.screen
 

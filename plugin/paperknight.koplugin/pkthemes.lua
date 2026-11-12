@@ -1,7 +1,7 @@
 -- Display names and menu order for Lichess puzzle theme keys.
 -- Keys come from the pack's `themes` table; unknown keys get a readable
 -- fallback ("kingsideAttack" -> "Kingside attack"), so new themes still work.
-local _ = require("gettext")
+local _ = require("pkgettext")
 
 local PkThemes = {}
 
@@ -16,6 +16,27 @@ local NAMES = {
     morphysMate = _("Morphy's mate"), pillsburysMate = _("Pillsbury's mate"),
     anastasiaMate = _("Anastasia's mate"), bodenMate = _("Boden's mate"),
     hangingPiece = _("Hanging piece"), quietMove = _("Quiet move"),
+    -- the other themes of Lichess's database, named as the fallback below
+    -- would (so that they can be translated)
+    advancedPawn = _("Advanced pawn"), advantage = _("Advantage"), arabianMate = _("Arabian mate"),
+    attraction = _("Attraction"), backRankMate = _("Back rank mate"), balestraMate = _("Balestra mate"),
+    bishopEndgame = _("Bishop endgame"), blindSwineMate = _("Blind swine mate"),
+    capturingDefender = _("Capturing defender"), castling = _("Castling"), clearance = _("Clearance"),
+    collinearMove = _("Collinear move"), cornerMate = _("Corner mate"), crushing = _("Crushing"),
+    defensiveMove = _("Defensive move"), deflection = _("Deflection"),
+    discoveredAttack = _("Discovered attack"), discoveredCheck = _("Discovered check"),
+    doubleBishopMate = _("Double bishop mate"), doubleCheck = _("Double check"),
+    dovetailMate = _("Dovetail mate"), endgame = _("Endgame"), epauletteMate = _("Epaulette mate"),
+    equality = _("Equality"), exposedKing = _("Exposed king"), fork = _("Fork"), hookMate = _("Hook mate"),
+    interference = _("Interference"), intermezzo = _("Intermezzo"), killBoxMate = _("Kill box mate"),
+    kingsideAttack = _("Kingside attack"), knightEndgame = _("Knight endgame"), mate = _("Mate"),
+    middlegame = _("Middlegame"), opening = _("Opening"), operaMate = _("Opera mate"),
+    pawnEndgame = _("Pawn endgame"), pin = _("Pin"), promotion = _("Promotion"),
+    queenEndgame = _("Queen endgame"), queenRookEndgame = _("Queen rook endgame"),
+    queensideAttack = _("Queenside attack"), rookEndgame = _("Rook endgame"), sacrifice = _("Sacrifice"),
+    skewer = _("Skewer"), smotheredMate = _("Smothered mate"), swallowstailMate = _("Swallowstail mate"),
+    trappedPiece = _("Trapped piece"), triangleMate = _("Triangle mate"), vukovicMate = _("Vukovic mate"),
+    zugzwang = _("Zugzwang"),
 }
 
 -- Shown first, in this order (when present in the pack); the rest follow alphabetically.

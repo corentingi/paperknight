@@ -13,7 +13,7 @@ local GestureRange = require("ui/gesturerange")
 local Menu = require("ui/widget/menu")
 local UIManager = require("ui/uimanager")
 local logger = require("logger")
-local _ = require("gettext")
+local _ = require("pkgettext")
 local T = require("ffi/util").template
 local PkRefresh = require("pkrefresh")
 

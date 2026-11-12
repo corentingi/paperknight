@@ -14,7 +14,7 @@ local TitleBar = require("ui/widget/titlebar")
 local UIManager = require("ui/uimanager")
 local logger = require("logger")
 local util = require("util")
-local _ = require("gettext")
+local _ = require("pkgettext")
 local T = require("ffi/util").template
 
 local Chess = require("pkchess")

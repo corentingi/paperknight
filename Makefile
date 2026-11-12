@@ -51,8 +51,11 @@ emulator: koreader ## Desktop KOReader window with the plugin loaded (needs a di
 	tools/emulator/run.sh window
 
 .PHONY: test test-lua test-py test-dist check lint
-lint: venv ## Linters: ruff on the pipeline (the Lua: luacheck, when installed)
+lint: venv ## Linters: ruff on the pipeline, the translations' check (the Lua: luacheck, when installed)
 	cd pipeline && .venv/bin/ruff check .
+	cd pipeline && .venv/bin/ruff check ../tools/l10n
+	python3 tools/l10n/l10n.py check > build/l10n-check.txt || { cat build/l10n-check.txt; exit 1; }
+	@head -n 1 build/l10n-check.txt
 	@if command -v luacheck >/dev/null; then luacheck --quiet plugin/paperknight.koplugin tools/emulator; \
 	else echo "lint: luacheck not installed, the Lua is not linted"; fi
 

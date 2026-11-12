@@ -91,6 +91,7 @@ check "version.txt" has "$K/$P/version.txt" v1
 check "_meta.lua version from the tag" has "$K/$P/_meta.lua" 'version = "1",'
 check "licence" has "$K/$P/LICENSE" "GNU GENERAL PUBLIC LICENSE"
 check "credits" has "$K/$P/CREDITS.md" "Kochess"
+check "the French translation" has "$K/$P/l10n/fr.po" 'msgstr "Problèmes"'
 check "update-url.txt" has "$K/$P/update-url.txt" "file://$T/r1/install.sh"
 check "puzzle pack" test -f "$K/$P/packs/puzzles.sqlite"
 check "font" test -f "$K/fonts/NotoEmoji.ttf"

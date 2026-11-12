@@ -12,7 +12,7 @@ local TextWidget = require("ui/widget/textwidget")
 local UIManager = require("ui/uimanager")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
-local _ = require("gettext")
+local _ = require("pkgettext")
 
 local Chess = require("pkchess")
 local PkButton = require("pkbutton") -- accepts absolute icon paths

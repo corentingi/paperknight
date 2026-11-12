@@ -4,7 +4,7 @@
 -- result, the clock's time control, and the game in progress, saved so that
 -- it comes back. pkplayview.lua shows it, pkplaysetup.lua sets it up.
 local Chess = require("pkchess")
-local _ = require("gettext")
+local _ = require("pkgettext")
 local T = require("ffi/util").template
 
 local PkPlay = {

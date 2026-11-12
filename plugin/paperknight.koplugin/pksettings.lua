@@ -2,7 +2,7 @@
 -- settings, the version and updates (pkupdate.lua), Stockfish, the project
 -- page. The modes' own options stay in their ☰ menus.
 local UIManager = require("ui/uimanager")
-local _ = require("gettext")
+local _ = require("pkgettext")
 local PkNav = require("pknav")
 local PkUpdate = require("pkupdate")
 
