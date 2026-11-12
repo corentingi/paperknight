@@ -324,7 +324,7 @@ return function(h)
         return pickNear(pack, rating, opts)
     end
     h.check(view:nextPuzzle(), "a good puzzle loaded after the bad one")
-    h.check(view.puzzle.id ~= "BADFEN" and view._bad.BADFEN, "bad puzzle skipped and remembered")
+    h.check(view.puzzle.id ~= "BADFEN" and view.picker.bad.BADFEN, "bad puzzle skipped and remembered")
     view.pack.pickNear = function() error("database is locked") end
     h.check(not view:nextPuzzle(), "a database error is reported")
     h.check(status():find("Cannot load a puzzle", 1, true), "status: " .. status())
@@ -350,7 +350,7 @@ return function(h)
     -- a miss -> in 3 days again; an untouched review is not served twice.
     local function makeDue(step, lapses)
         -- as in a new session (a review is shown once per session)
-        view._skipped, view.review = {}, nil
+        view.picker.skipped, view.review = {}, nil
         local c = view.progress:getReview("004JD") or { missed = os.time() }
         view.progress:saveReview("004JD", { step = step, due = today, lapses = lapses or 0, missed = c.missed })
     end
@@ -384,7 +384,7 @@ return function(h)
     h.check(status():find("Mastered", 1, true) and not view.progress:getReview("004JD"), "mastered: " .. status())
 
     view.progress:saveReview("004JD", { step = 2, due = today, lapses = 0, missed = os.time() })
-    view._skipped, view.review = {}, nil
+    view.picker.skipped, view.review = {}, nil
     view:nextPuzzle()
     h.settle()
     tapButton("solution")
@@ -408,23 +408,24 @@ return function(h)
         -- kept from the pack as when the screen opens)
         h.check(view.progress:keepMissing(function(id) return pack:get(id) end) == 1
             and view.progress:keptPuzzle("004JD"), "a card without its puzzle's copy: kept from the pack")
-        view.pack = setmetatable({
+        local without = setmetatable({
             get = function(_self, id) if id ~= "004JD" then return pack:get(id) end end,
             themesOf = function(_self, id) if id ~= "004JD" then return pack:themesOf(id) end end,
         }, { __index = pack })
-        view._skipped, view.review = {}, nil
-        h.check(view:_servableReviewCount() == 1, "the review of a puzzle gone from the pack still counts")
+        view.pack, view.picker.pack = without, without
+        view.picker.skipped, view.review = {}, nil
+        h.check(view.picker:servableReviewCount(view.theme) == 1, "the review of a puzzle gone from the pack still counts")
         h.check(view:nextPuzzle() and view.puzzle.id == "004JD" and view.review,
             "the review of a puzzle gone from the pack is served")
         h.check(view.puzzle.themes and view.puzzle.rating, "with its themes and rating")
         h.check(view.progress:getReview("004JD"), "its card is kept")
         h.check(view:openPuzzle("004JD"), "and it opens by its id")
         view.progress:saveReview("zzzzz", { step = 0, due = today, lapses = 0, missed = os.time() })
-        view._skipped, view.review = { ["004JD"] = true }, nil
-        view:_nextReview()
+        view.picker.skipped, view.review = { ["004JD"] = true }, nil
+        view.picker:nextReview(view.theme)
         h.check(not view.progress:getReview("zzzzz"), "a card whose puzzle is known nowhere is dropped")
-        view.pack = pack
-        view._skipped, view.review = { ["004JD"] = true }, nil
+        view.pack, view.picker.pack = pack, pack
+        view.picker.skipped, view.review = { ["004JD"] = true }, nil
         view:nextPuzzle()
         h.settle()
     end
@@ -439,7 +440,7 @@ return function(h)
     for _ = 1, 5 do
         view.progress:record{ puzzle_id = view.puzzle.id, puzzle_rating = view.puzzle.rating, success = true,
                               solved = true, mistakes = 0, used_help = false, ts = os.time() }
-        view:_markSeen(view.puzzle.id) -- as _finishAttempt does (session sets)
+        view.picker:markSeen(view.puzzle.id) -- as _finishAttempt does (session sets)
         h.check(view:nextPuzzle(), "a puzzle is served")
         h.check(view.puzzle.id ~= prev, "not the same puzzle again: " .. view.puzzle.id)
         prev = view.puzzle.id

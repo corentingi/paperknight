@@ -56,6 +56,7 @@ clash with Kochess or other plugins in `package.loaded` (ADR-0009).
 
 | File | Role |
 |---|---|
+| `pkpuzzlepick.lua` | Which puzzle comes next: due reviews (of the theme, from the kept copy when the pack lost the puzzle), then a new one near the rating, not under review, not shown this session; the session's sets |
 | `pkpuzzleview.lua` | Puzzle screen: Retry / Hint / Solution / Next (greyed until the puzzle is over) while solving, Retry / ‹ / › / Next to step through the line once finished; themes once finished; ☰ Theme…, Stats…, Analyse position (the analysis board with the puzzle's line), Like this puzzle, Liked puzzles…, Open a puzzle by its id… (chosen puzzles are not rated), the puzzle and its game on Lichess (QR codes) |
 | `pkpuzzle.lua` | Puzzle session state machine (pure logic) |
 | `pkpuzzlepack.lua` | Read-only access to `puzzles.sqlite` (paged random picks within ±50 of the rating first) |

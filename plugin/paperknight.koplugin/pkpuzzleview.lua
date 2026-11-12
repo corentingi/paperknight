@@ -36,7 +36,7 @@ local PkSide = require("pkside")
 local PkPuzzle = require("pkpuzzle")
 local PkPuzzlePack = require("pkpuzzlepack")
 local PkPuzzleReview = require("pkpuzzlereview")
-local PkSrs = require("pksrs")
+local PkPuzzlePick = require("pkpuzzlepick")
 local PkThemes = require("pkthemes")
 local PkPuzzleStats = require("pkpuzzlestats")
 local PkStatsView = require("pkstatsview")
@@ -47,7 +47,6 @@ local InputDialog = require("ui/widget/inputdialog")
 local Notification = require("ui/widget/notification")
 
 local REPLY_DELAY = 0.6 -- seconds before the opponent replies, so the user sees their move first
-local RECENT_DAYS = 30  -- don't repeat puzzles attempted this recently (ADR-0010)
 local SEED_DAYS = 60    -- past misses turned into reviews, once (ADR-0014)
 
 -- "Rating: 1512 (+8)", "Rating: 1490 (−14)".
@@ -141,9 +140,7 @@ function PkPuzzleView:init()
         - math.max(self.solve_buttons:getSize().h, self.replay_buttons:getSize().h) - 4 * Size.padding.default
     self.board_size = math.min(self.dimen.w, board_h)
     self:_prepareBoard(false) -- the frame exists even if no puzzle can be picked
-    self._skipped = {} -- reviews already shown this session
-    self._bad = {}     -- puzzles whose line is broken (never served again)
-    self._served = {}  -- puzzles already shown this session (no repeat until all were)
+    self.picker = PkPuzzlePick.new(self.pack, self.progress, self.random) -- (pkpuzzlepick.lua)
     local ok, err = pcall(self.progress.seedReviews, self.progress, os.time(), SEED_DAYS)
     if not ok then logger.warn("Paperknight: cannot seed puzzle reviews:", err) end
     -- cards and likes without their puzzle's copy (older than ADR-0022, or
@@ -224,7 +221,7 @@ function PkPuzzleView:_updateTitle()
     local ok, rating = pcall(self.progress.rating, self.progress)
     if not ok then rating = "?" end
     local subtitle = T(_("Your rating: %1"), rating)
-    local c_ok, due = pcall(self._servableReviewCount, self)
+    local c_ok, due = pcall(self.picker.servableReviewCount, self.picker, self.theme)
     if c_ok and due > 0 then subtitle = subtitle .. " · " .. T(_("Reviews: %1"), due) end
     if self.puzzle then
         subtitle = subtitle .. " · " .. T(_("Puzzle %1"), self.puzzle.rating)
@@ -297,117 +294,26 @@ end
 
 local MAX_LOAD_TRIES = 5
 
---- Puzzle `id`: the pack's, else the copy kept with its review or like
--- (ADR-0022: a new pack drops puzzles); nil if neither has it.
-function PkPuzzleView:_find(id)
-    local ok, puzzle = pcall(self.pack.get, self.pack, id)
-    if ok and puzzle then return puzzle end
-    local k_ok, kept = pcall(self.progress.keptPuzzle, self.progress, id)
-    return k_ok and kept or nil
-end
-
--- Its theme tags, nil if it is not known.
-function PkPuzzleView:_themesOf(id)
-    local themes = self.pack:themesOf(id)
-    if themes then return themes end
-    local ok, kept = pcall(self.progress.keptPuzzle, self.progress, id)
-    return ok and kept and kept.themes or nil
-end
-
--- First due review not shown yet this session (and of the chosen theme),
--- with its puzzle.
--- Due reviews this session can still serve: of the chosen theme, not
--- skipped or broken (what "Reviews: N" counts; _nextReview picks among them).
-function PkPuzzleView:_servableReviewCount()
-    local n = 0
-    for _, card in ipairs(self.progress:dueReviews(PkSrs.today())) do
-        local id = card.puzzle_id
-        if not self._skipped[id] and not self._bad[id] then
-            local tags = not self.theme or self:_themesOf(id)
-            if tags == true or (tags and (" " .. tags .. " "):find(" " .. self.theme .. " ", 1, true)) then
-                n = n + 1
-            end
-        end
-    end
-    return n
-end
-
-function PkPuzzleView:_nextReview()
-    for _, card in ipairs(self.progress:dueReviews(PkSrs.today())) do
-        local id = card.puzzle_id
-        if not self._skipped[id] and not self._bad[id] then
-            local puzzle = self:_find(id)
-            if not puzzle then
-                -- neither in the pack nor kept (a card older than ADR-0022
-                -- whose puzzle a new pack dropped)
-                self.progress:removeReview(id)
-            elseif not self.theme or (" " .. (puzzle.themes or "") .. " "):find(" " .. self.theme .. " ", 1, true) then
-                return card, puzzle
-            end
-        end
-    end
-    return nil
-end
-
---- Picks and loads the next puzzle. Returns true on success. A puzzle that
--- cannot be set up (bad pack data) is skipped for the session.
--- Puzzles seen recently and puzzles under review (or mastered), as sets,
--- read once per session and kept up to date by _finishAttempt and
--- _gradeReview: the pick tests many candidates per Next.
-function PkPuzzleView:_seenSets()
-    if not self._recent then
-        self._recent = self.progress:attemptedSince(os.time() - RECENT_DAYS * 86400)
-        self._reviewed = self.progress:reviewedIds()
-    end
-    return self._recent, self._reviewed
-end
-
--- A puzzle was attempted (or reviewed): update the session sets.
-function PkPuzzleView:_markSeen(id, reviewed)
-    if not self._recent then return end -- read later, from the database
-    self._recent[id] = true
-    if reviewed then self._reviewed[id] = true end
-end
-
 function PkPuzzleView:nextPuzzle()
     -- the puzzle left (touched, not finished) is recorded before the pick:
     -- the pick uses the rating after it
     self:_cancelReply()
     self:_finishAttempt("skipped")
-    if self.review and self.puzzle then self._skipped[self.puzzle.id] = true end
-    local r_ok, review, r_puzzle = pcall(self._nextReview, self)
+    local picker = self.picker
+    if self.review and self.puzzle then picker.skipped[self.puzzle.id] = true end
+    local r_ok, review, r_puzzle = pcall(picker.nextReview, picker, self.theme)
     if not r_ok then
         logger.warn("Paperknight: cannot read puzzle reviews:", review)
     elseif review then
         local l_ok, l_err = pcall(self.loadPuzzle, self, r_puzzle, review)
         if l_ok then return true end
         logger.warn("Paperknight: skipping review", review.puzzle_id, l_err)
-        self._bad[review.puzzle_id] = true
+        picker.bad[review.puzzle_id] = true
         self.session, self.puzzle, self.review = nil, nil, nil
     end
     local err
-    local function pick()
-        local recent, reviewed = self:_seenSets()
-        return self.pack:pickNear(self.progress:rating(), {
-            random = self.random,
-            theme = self.theme,
-            accept = function(p)
-                return not (self.puzzle and p.id == self.puzzle.id)
-                    and not self._served[p.id]
-                    and not self._bad[p.id]
-                    -- under review: comes back as a review; mastered: never again
-                    and not reviewed[p.id]
-            end,
-            fresh = function(p) return not recent[p.id] end,
-        })
-    end
     for _try = 1, MAX_LOAD_TRIES do
-        local ok, puzzle, fresh = pcall(pick)
-        if ok and not puzzle and next(self._served) then
-            -- every puzzle was shown this session: start a new round
-            self._served = {}
-            ok, puzzle, fresh = pcall(pick)
-        end
+        local ok, puzzle, fresh = pcall(picker.nextNew, picker, self.theme, self.puzzle and self.puzzle.id)
         if not ok then
             err = puzzle
             break -- the database itself: retrying will not help
@@ -425,12 +331,11 @@ function PkPuzzleView:nextPuzzle()
             end
             return false
         end
-        self._served[puzzle.id] = true
         local l_ok, l_err = pcall(self.loadPuzzle, self, puzzle, nil, not fresh)
         if l_ok then return true end
         err = l_err
         logger.warn("Paperknight: skipping puzzle", puzzle.id, l_err)
-        self._bad[puzzle.id] = true
+        picker.bad[puzzle.id] = true
         self.session, self.puzzle = nil, nil
     end
     logger.warn("Paperknight: cannot load a puzzle:", err)
@@ -444,7 +349,7 @@ end
 -- A puzzle whose line contains an impossible move: stop it cleanly.
 function PkPuzzleView:_broken(err)
     logger.warn("Paperknight: broken puzzle", self.puzzle and self.puzzle.id, err)
-    if self.puzzle then self._bad[self.puzzle.id] = true end
+    if self.puzzle then self.picker.bad[self.puzzle.id] = true end
     self.session = nil
     self.replaying = false
     self:_setButtons(self.solve_buttons)
@@ -485,7 +390,7 @@ function PkPuzzleView:_finishAttempt(reason)
         return nil
     end
     logger.info("Paperknight: attempt", self.puzzle.id, reason, before, "->", after)
-    self:_markSeen(self.puzzle.id, missed)
+    self.picker:markSeen(self.puzzle.id, missed)
     self._stats = nil -- recomputed when the stats page opens
     local note
     if missed then note = T(_("It will come back in %1 days for a review."), PkPuzzleReview.AFTER_MISS) end
@@ -510,7 +415,7 @@ function PkPuzzleView:_gradeReview(clean)
         -- recorded as a review (not rated): the puzzle stays seen, so a
         -- mastered one never comes back as a new puzzle
         self.progress:recordReview(id, clean, self.puzzle.rating, card)
-        self:_markSeen(id, true)
+        self.picker:markSeen(id, true)
     end)
     if not ok then logger.warn("Paperknight: cannot save the review:", err) end
     logger.info("Paperknight: review", id, clean and "clean" or "missed")
@@ -675,7 +580,7 @@ end
 --- Opens puzzle `id` (not rated): the pack's, or a kept one. False if it
 -- is not known.
 function PkPuzzleView:openPuzzle(id)
-    local puzzle = self:_find(id)
+    local puzzle = self.picker:find(id)
     if not puzzle then return false end
     local l_ok, err = pcall(self.loadPuzzle, self, puzzle, nil, false, true)
     if not l_ok then self:_broken(err) end
@@ -743,7 +648,7 @@ function PkPuzzleView:showLiked()
     end
     local items = {}
     for _i, id in ipairs(ids) do
-        local puzzle = self:_find(id)
+        local puzzle = self.picker:find(id)
         local item = { callback = function()
             close()
             if not self:openPuzzle(id) then self:_notInPack(id) end
@@ -815,7 +720,7 @@ function PkPuzzleView:showStats()
         self._themes_cache = self._themes_cache or {}
         local cache = self._themes_cache
         local function themesOf(id)
-            if cache[id] == nil then cache[id] = self:_themesOf(id) or false end
+            if cache[id] == nil then cache[id] = self.picker:themesOf(id) or false end
             return cache[id] or nil
         end
         local ok, stats = pcall(function() return PkPuzzleStats.compute(self.progress:attempts(), themesOf) end)
