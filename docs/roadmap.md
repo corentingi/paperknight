@@ -15,7 +15,8 @@
 - [x] Theme filter (e.g. only forks, mates in 2)
 - [x] Square cells, thin grey board frame
 - [x] Board coordinates (a–h / 1–8)
-- [ ] Test on a real Kindle Paperwhite 2
+- [x] Test on a real Kindle Paperwhite 2 (the e-ink refresh choices were
+      checked there: docs/eink-refresh.md, ADR-0018)
 
 ## Milestone 2b — Studies (Lichess-style)
 - [x] Design (ADR-0011, docs/studies.md)
@@ -61,6 +62,22 @@ Order matters: the updater reads what the releases publish.
 - [x] **In-app updater**: *Settings… → Check for updates…* runs the latest
       release's `install.sh` (`--list`, then `--yes --parts=`), Stockfish
       installed on request, then offers to restart KOReader (ADR-0019)
+
+## Milestone 6 — Data safety, speed, reach (review of 2026-11-11)
+From [the project review](reviews/2026-11-11-project-review.md).
+- [x] A new puzzle pack keeps the puzzles under review and the liked ones;
+      the pack is a release of its own (ADR-0022)
+- [x] Master games stay fast in long games
+- [x] One handle on the progress file; numbered schema steps
+- [x] A daily copy of the progress file, restored from *Settings…*
+- [x] Updates that lose the network give up instead of hanging
+- [x] Licence and credits in the release archives
+- [ ] Play: the same game record as Master games (long games)
+- [ ] Translations: French first (the strings are already marked)
+- [ ] Other KOReader devices (Kobo): say so, find KOReader there, ask for
+      device reports
+- [ ] The rating over time on the puzzle stats page
+- [ ] Authenticate the installer (ADR-0019: pin or sign `install.sh`)
 
 ## Later / undecided
 - Puzzles generated from master games (lichess-puzzler)

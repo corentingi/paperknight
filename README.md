@@ -12,8 +12,10 @@ board is drawn and refreshed so that moves don't flash.
 | Puzzles | Studies | Openings |
 |---|---|---|
 | ![A solved puzzle with its themes and rating change](docs/screenshots/puzzle.png) | ![A study chapter with its move list and comments](docs/screenshots/study.png) | ![The openings drill on a repertoire](docs/screenshots/openings.png) |
-| **Analysis board** | **Puzzle stats** | **Night mode** |
-| ![The analysis board with the opening named](docs/screenshots/analysis.png) | ![Results per puzzle theme](docs/screenshots/stats.png) | ![A puzzle in night mode](docs/screenshots/night.png) |
+| **Analysis board** | **Play** | **Master games** |
+| ![The analysis board with the opening named](docs/screenshots/analysis.png) | ![A game against Stockfish, as Black](docs/screenshots/play.png) | ![Guess the move in the Opera Game: Morphy's move found](docs/screenshots/games.png) |
+| **Puzzle stats** | **Night mode** | |
+| ![Results per puzzle theme](docs/screenshots/stats.png) | ![A puzzle in night mode](docs/screenshots/night.png) | |
 
 ## Features
 
@@ -53,25 +55,46 @@ once installed.
 You need a jailbroken Kindle with [KOReader](https://koreader.rocks)
 installed (tested on a Kindle Paperwhite 2 with KOReader 2026.07).
 
-In a terminal on the Kindle (kterm or SSH):
+**Over USB** (no terminal needed):
+
+1. Download `paperknight-<version>-usb.zip` from the
+   [latest release](https://github.com/corentingi/paperknight/releases/latest).
+2. Unzip it, connect the Kindle over USB, and copy **what is inside** the
+   zip's `koreader` folder (`plugins`, `fonts`, `paperknight`) into the
+   Kindle's `koreader` folder. Don't replace the Kindle's `koreader` folder
+   itself (on a Mac, Finder would delete KOReader's own files).
+3. Restart KOReader: **Paperknight** is in the **Tools** menu (KOReader's
+   gesture settings can also open it with one tap, *Paperknight* action).
+
+The zip holds everything: the plugin, the puzzle pack, an emoji font and
+**Stockfish**, the engine behind the analysis board and *Play* against the
+engine (Stockfish 18 built for the Paperwhite 2, about 3 MB,
+[details](docs/stockfish.md)).
+
+**In a terminal** on the Kindle (kterm or SSH):
 
     curl -fkL https://github.com/corentingi/paperknight/releases/latest/download/install.sh | sh
 
-The installer shows what it will install (the plugin, the puzzle pack, an
-emoji font) and offers **Stockfish**, the engine behind the analysis board
-and *Play* against the engine (Stockfish 18 built for the Paperwhite 2,
-about 3 MB, [details](docs/stockfish.md)). It checks every download before
-changing anything. Your own studies and repertoires are kept. Then restart KOReader:
-**Paperknight** is in the **Tools** menu (KOReader's gesture settings can
-also open it with one tap, *Paperknight* action).
+The installer shows what it will install and offers Stockfish. It checks
+every download before changing anything, and your own studies and
+repertoires are kept.
 
-Without a terminal: download `paperknight-<version>-usb.zip` from the
-[latest release](https://github.com/corentingi/paperknight/releases/latest),
-unzip it and copy its `koreader` folder onto the Kindle over USB.
+**To update**, either way: **Settings… → Check for updates…** in Paperknight
+(Wi-Fi on). It lists what changed, downloads only that, and offers to
+restart KOReader. It runs the same installer, which you can also run again
+from a terminal.
 
-To update: **Settings… → Check for updates…** in Paperknight (Wi-Fi on). It
-lists what changed, downloads only that, and offers to restart KOReader. It
-runs the same installer, which you can also run again from a terminal.
+The installer is downloaded with `curl -k`: the Kindle's certificates are
+often too old for GitHub's, so the certificate is not checked. Each archive
+is then checked against the checksum written in the installer, which
+protects against a broken download but not against a replaced installer
+([ADR-0019](docs/adr/0019-in-app-update-runs-the-installer.md)). If that
+matters to you, install over USB with a zip you downloaded on your computer.
+
+**Your progress** (rating, puzzles to review, repertoires, games in
+progress) is copied once a day; *Settings… → Restore progress from its
+copy…* puts the copy back, and Paperknight offers it if the file is ever
+damaged.
 
 **Your own studies and repertoires**: copy PGN files (for example a Lichess
 study exported as PGN) to `koreader/paperknight/studies/` or
@@ -97,7 +120,7 @@ pipeline; a headless desktop KOReader runs end-to-end tests.
 
 ```sh
 make help          # list targets
-make check         # unit tests (plugin + pipeline) and headless end-to-end scenarios
+make check         # linters, unit tests (plugin + pipeline), installer tests, headless end-to-end scenarios
 make emulator      # the plugin in a desktop KOReader window
 make packs         # download the Lichess puzzle database (~300 MB, once) and build the puzzle pack
 make dist          # device files in build/dist/out: install.sh, one archive per part, a USB zip
@@ -105,6 +128,8 @@ make dist          # device files in build/dist/out: install.sh, one archive per
 
 `make dist` needs `PAPERKNIGHT_DIST_URL`, the address the files will be
 served from (set it in the environment or in a `local.mk` file).
+
+Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Path | What lives there |
 |---|---|

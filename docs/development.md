@@ -46,9 +46,11 @@ See [ADR-0007](adr/0007-headless-koreader-emulator.md).
 ### README screenshots
 
 `docs/screenshots/` holds the README's screenshots, all from the emulator:
-`puzzle.png`, `study.png`, `openings.png`, `night.png` and `stats.png` are
-`build/e2e/puzzle-2-solved.png`, `study-badge.png`, `openings-test.png`,
-`night-board.png` and `puzzle-stats.png` after `make e2e`; `analysis.png` is
+`puzzle.png`, `study.png`, `openings.png`, `night.png`, `stats.png`,
+`play.png` and `games.png` are `build/e2e/puzzle-2-solved.png`,
+`study-badge.png`, `openings-test.png`, `night-board.png`,
+`puzzle-stats.png`, `play-engine.png` and `games-found.png` after
+`make e2e`; `analysis.png` is
 `build/e2e/readme-analysis.png` from
 `make e2e E2E_SCENARIOS=tools/emulator/shots/readme.lua`.
 
